@@ -1,0 +1,22 @@
+.join-workspace-modal {
+  max-width: 460px;
+  width: 90%;
+  animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.join-workspace-modal__title-box {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.join-workspace-modal__icon {
+  font-size: 1.25rem;
+}
+
+.join-workspace-modal__subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #9ca3af);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}

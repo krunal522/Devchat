@@ -1,0 +1,230 @@
+// DevChat SQLite Schema (Zero-Setup Local Development Mode)
+// No Docker or PostgreSQL installation required!
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ─── Workspace ──────────────────────────────────────────
+
+model Workspace {
+  id           String   @id @default(uuid())
+  name         String
+  slug         String   @unique
+  logoUrl      String?  @map("logo_url")
+  description  String?
+  inviteCode   String   @unique @default(uuid()) @map("invite_code")
+  settingsJson String?  @default("{}") @map("settings_json")
+  createdById  String   @map("created_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  createdBy   User                  @relation("workspace_creator", fields: [createdById], references: [id])
+  members     WorkspaceMember[]
+  channels    Channel[]
+  invitations WorkspaceInvitation[]
+
+  @@index([slug])
+  @@index([inviteCode])
+  @@map("workspaces")
+}
+
+// ─── Workspace Member ───────────────────────────────────
+
+model WorkspaceMember {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  workspaceId String   @map("workspace_id")
+  role        String   @default("MEMBER") // OWNER, ADMIN, MEMBER
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+// ─── Workspace Invitation ───────────────────────────────
+
+model WorkspaceInvitation {
+  id          String   @id @default(uuid())
+  workspaceId String   @map("workspace_id")
+  email       String
+  token       String   @unique
+  role        String   @default("MEMBER") // ADMIN, MEMBER
+  status      String   @default("PENDING") // PENDING, ACCEPTED, REJECTED, EXPIRED
+  expiresAt   DateTime @map("expires_at")
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("invitation_creator", fields: [createdById], references: [id])
+
+  @@index([workspaceId])
+  @@index([email])
+  @@index([token])
+  @@map("workspace_invitations")
+}
+
+// ─── User ───────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  username     String   @unique
+  displayName  String   @map("display_name")
+  passwordHash String   @map("password_hash")
+  avatarUrl    String?  @map("avatar_url")
+  statusText   String   @default("Hey there! I'm using DevChat") @map("status_text")
+  isOnline     Boolean  @default(false) @map("is_online")
+  lastSeenAt   DateTime @default(now()) @map("last_seen_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  messages             Message[]
+  memberships          ChannelMember[]
+  createdChannels      Channel[]             @relation("channel_creator")
+  reactions            Reaction[]
+  createdWorkspaces    Workspace[]           @relation("workspace_creator")
+  workspaceMemberships WorkspaceMember[]
+  sentInvitations      WorkspaceInvitation[] @relation("invitation_creator")
+  auditLogs            AuditLog[]
+
+  @@map("users")
+}
+
+// ─── Channel ────────────────────────────────────────────
+
+model Channel {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  type        String   @default("PUBLIC") // PUBLIC, PRIVATE, DIRECT
+  createdById String   @map("created_by_id")
+  workspaceId String?  @map("workspace_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  createdBy User            @relation("channel_creator", fields: [createdById], references: [id])
+  workspace Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  members   ChannelMember[]
+
+  @@index([type])
+  @@index([slug])
+  @@index([workspaceId])
+  @@map("channels")
+}
+
+// ─── Channel Member ─────────────────────────────────────
+
+model ChannelMember {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  channelId String   @map("channel_id")
+  role      String   @default("MEMBER") // ADMIN, MEMBER
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channelId])
+  @@index([channelId])
+  @@index([userId])
+  @@map("channel_members")
+}
+
+// ─── Message ────────────────────────────────────────────
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  userId    String   @map("user_id")
+  channelId String   @map("channel_id")
+  parentId  String?  @map("parent_id")
+  isEdited  Boolean  @default(false) @map("is_edited")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel     Channel      @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  parent      Message?     @relation("thread", fields: [parentId], references: [id], onDelete: SetNull)
+  replies     Message[]    @relation("thread")
+  reactions   Reaction[]
+  attachments Attachment[]
+
+  @@index([channelId])
+  @@index([parentId])
+  @@index([userId])
+  @@map("messages")
+}
+
+// ─── Reaction ───────────────────────────────────────────
+
+model Reaction {
+  id        String   @id @default(uuid())
+  emoji     String
+  userId    String   @map("user_id")
+  messageId String   @map("message_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, messageId, emoji])
+  @@index([messageId])
+  @@map("reactions")
+}
+
+// ─── Attachment ─────────────────────────────────────────
+
+model Attachment {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  fileName  String   @map("file_name")
+  fileUrl   String   @map("file_url")
+  fileType  String   @map("file_type") // IMAGE, DOCUMENT, CODE, AUDIO, VIDEO, OTHER
+  fileSize  Int      @map("file_size")
+  mimeType  String   @map("mime_type")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("attachments")
+}
+
+// ─── AuditLog ───────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  workspaceId String?  @map("workspace_id")
+  userId      String   @map("user_id")
+  action      String // USER_JOINED, USER_LEFT, ROLE_CHANGED, CHANNEL_CREATED, CHANNEL_DELETED, FILE_UPLOADED
+  details     String
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@map("audit_logs")
+}

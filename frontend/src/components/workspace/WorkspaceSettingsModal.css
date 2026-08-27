@@ -1,0 +1,458 @@
+/* ═══════════════════════════════════════════════
+   Workspace Settings Modal CSS
+   ═══════════════════════════════════════════════ */
+
+.ws-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.ws-settings-card {
+  width: 900px;
+  max-width: 95vw;
+  height: 600px;
+  max-height: 90vh;
+  background: #121319;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* Sidebar Nav */
+.ws-settings-sidebar {
+  width: 260px;
+  background: rgba(18, 19, 25, 0.95);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1rem;
+}
+
+.ws-settings-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1rem;
+}
+
+.ws-settings-sidebar-info h3 {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.ws-settings-sidebar-role {
+  font-size: 0.75rem;
+  color: var(--accent, #6c5ce7);
+  font-weight: 600;
+}
+
+.ws-settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ws-settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 0.84375rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.ws-settings-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.ws-settings-nav-item.active {
+  background: rgba(108, 92, 231, 0.15);
+  color: #a29bfe;
+  font-weight: 600;
+}
+
+.ws-settings-nav-item--danger.active {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+/* Content Area */
+.ws-settings-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #161722;
+}
+
+.ws-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ws-settings-header h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.ws-settings-close {
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.ws-settings-close:hover {
+  color: #ffffff;
+}
+
+.ws-settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.ws-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ws-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.ws-settings-field label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+.ws-settings-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background: rgba(10, 11, 15, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.ws-settings-input:focus {
+  border-color: rgba(162, 155, 254, 0.5);
+}
+
+.ws-settings-textarea {
+  resize: vertical;
+}
+
+.ws-settings-code-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(10, 11, 15, 0.9);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ws-settings-code-box code {
+  font-family: monospace;
+  font-size: 0.9375rem;
+  color: #a29bfe;
+  flex: 1;
+}
+
+.ws-settings-btn-primary {
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.ws-settings-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.ws-settings-btn-secondary {
+  padding: 0.375rem 0.75rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ws-settings-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Members Tab */
+.ws-settings-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.ws-member-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(10, 11, 15, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.ws-member-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ws-member-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ws-member-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.ws-member-username {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.ws-member-you-tag {
+  font-size: 0.6875rem;
+  padding: 1px 6px;
+  background: rgba(108, 92, 231, 0.2);
+  color: #a29bfe;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ws-member-status {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.ws-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ws-member-role-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.ws-member-role-badge--owner {
+  background: rgba(225, 112, 85, 0.2);
+  color: #ff7675;
+}
+
+.ws-member-role-badge--admin {
+  background: rgba(108, 92, 231, 0.2);
+  color: #a29bfe;
+}
+
+.ws-member-role-badge--member {
+  background: rgba(255, 255, 255, 0.06);
+  color: #9ca3af;
+}
+
+.ws-member-role-select {
+  padding: 0.25rem 0.5rem;
+  background: rgba(10, 11, 15, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.75rem;
+}
+
+.ws-member-remove-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  opacity: 0.6;
+}
+
+.ws-member-remove-btn:hover {
+  opacity: 1;
+}
+
+/* Invites Tab */
+.ws-invite-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 140px 100px;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.ws-settings-section-heading {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 1rem 0 0.75rem;
+}
+
+.ws-invites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.ws-invite-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgba(10, 11, 15, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.ws-invite-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.ws-invite-email {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.ws-invite-meta {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.ws-invite-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ws-invite-cancel-btn {
+  padding: 0.375rem 0.75rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 6px;
+  color: #f87171;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Danger Tab */
+.ws-danger-box {
+  padding: 1.25rem;
+  background: rgba(10, 11, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+}
+
+.ws-danger-box--delete {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.ws-danger-box h4 {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.375rem;
+}
+
+.ws-danger-box p {
+  font-size: 0.8125rem;
+  color: #9ca3af;
+  margin-bottom: 1rem;
+}
+
+.ws-danger-confirm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 1rem;
+}
+
+.ws-settings-btn-danger {
+  padding: 0.5rem 1rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #f87171;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.ws-settings-btn-danger-confirm {
+  padding: 0.625rem 1.25rem;
+  background: #ef4444;
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.ws-settings-btn-danger-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

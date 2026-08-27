@@ -1,0 +1,186 @@
+/* ═══════════════════════════════════════════════
+   Enterprise Workspace Modal Design System
+   ═══════════════════════════════════════════════ */
+
+.ws-modal-backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(8, 9, 13, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 99999 !important;
+}
+
+.ws-modal-card {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(20, 22, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 1.75rem;
+  box-sizing: border-box;
+  animation: wsModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ws-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.ws-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.ws-modal-title h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.ws-modal-title-icon {
+  font-size: 1.35rem;
+}
+
+.ws-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary, #6b7280);
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.25rem;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.ws-modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.ws-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.ws-modal-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #9ca3af);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.ws-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ws-modal-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary, #d1d5db);
+}
+
+.ws-modal-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(12, 13, 18, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.ws-modal-input:focus {
+  border-color: #6c5ce7;
+  background: rgba(12, 13, 18, 0.98);
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.25);
+}
+
+.ws-modal-error {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #ff6b6b;
+  margin-top: 0.25rem;
+}
+
+.ws-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 1.25rem;
+}
+
+.ws-modal-btn {
+  padding: 0.625rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  font-family: inherit;
+}
+
+.ws-modal-btn--cancel {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary, #9ca3af);
+}
+
+.ws-modal-btn--cancel:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.ws-modal-btn--submit {
+  background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(108, 92, 231, 0.4);
+}
+
+.ws-modal-btn--submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(108, 92, 231, 0.55);
+}
+
+.ws-modal-btn--submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@keyframes wsModalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

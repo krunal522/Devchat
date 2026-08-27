@@ -1,0 +1,279 @@
+.message-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-list__inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+  padding-bottom: 0.5rem;
+}
+
+/* ── Empty State ──────────────────────── */
+.message-list__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.message-list__empty-content {
+  text-align: center;
+  animation: fadeInUp var(--duration-slower) var(--ease-out);
+}
+
+.message-list__empty-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: var(--space-4);
+  opacity: 0.6;
+}
+
+.message-list__empty-content h3 {
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.message-list__empty-content p {
+  color: var(--text-muted);
+  font-size: var(--text-base);
+}
+
+/* ── Slack/Discord Style Rich Date Separator ───────────────────── */
+.message-list__date-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1.25rem 1rem;
+  position: relative;
+}
+
+.message-list__date-separator::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+  z-index: 1;
+}
+
+.message-list__date-text {
+  position: relative;
+  z-index: 2;
+  font-size: 0.71875rem;
+  font-weight: 700;
+  color: #a29bfe;
+  background: var(--bg-primary, #161822);
+  padding: 0.25rem 0.875rem;
+  border-radius: 12px;
+  border: 1px solid rgba(108, 92, 231, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Load More ────────────────────────── */
+.message-list__load-more {
+  text-align: center;
+  padding: var(--space-4);
+}
+
+.message-list__load-btn {
+  font-size: var(--text-sm);
+  color: var(--accent);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.message-list__load-btn:hover {
+  background: var(--accent-muted);
+}
+
+/* ── Skeleton Loading ─────────────────── */
+.message-list__skeleton {
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.message-skeleton {
+  display: flex;
+  gap: var(--space-3);
+  animation: fadeIn var(--duration-slower) var(--ease-out);
+}
+
+.message-skeleton__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-elevated) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.message-skeleton__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.message-skeleton__header {
+  width: 140px;
+  height: 14px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-elevated) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite 0.1s;
+}
+
+.message-skeleton__text {
+  width: 80%;
+  height: 14px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-elevated) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite 0.2s;
+}
+
+.message-skeleton__text--short {
+  width: 45%;
+}
+
+/* ── ChatGPT-Style Starter Welcome Hero ────────────────── */
+.message-list--starter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+}
+
+.message-list__starter-hero {
+  max-width: 680px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.message-list__starter-icon-wrapper {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  border-radius: 20px;
+  background: rgba(108, 92, 231, 0.12);
+  border: 1px solid rgba(108, 92, 231, 0.25);
+  box-shadow: 0 4px 20px rgba(108, 92, 231, 0.25);
+}
+
+.message-list__starter-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.message-list__starter-sub {
+  font-size: 0.875rem;
+  color: #a0aec0;
+  max-width: 480px;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+.message-list__starter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.875rem;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 640px) {
+  .message-list__starter-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.message-list__starter-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.message-list__starter-card:hover {
+  background: rgba(108, 92, 231, 0.15);
+  border-color: rgba(108, 92, 231, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(108, 92, 231, 0.2);
+}
+
+.message-list__starter-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.375rem;
+}
+
+.message-list__starter-card-icon {
+  font-size: 1.125rem;
+}
+
+.message-list__starter-card-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.message-list__starter-card-desc {
+  font-size: 0.75rem;
+  color: #a0aec0;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.message-list__starter-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.message-list__restore-history-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #a29bfe;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.message-list__restore-history-btn:hover {
+  background: rgba(108, 92, 231, 0.2);
+  border-color: rgba(108, 92, 231, 0.4);
+  color: #ffffff;
+}

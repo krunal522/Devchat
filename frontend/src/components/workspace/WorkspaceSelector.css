@@ -1,0 +1,213 @@
+.workspace-selector {
+  position: relative;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+}
+
+.workspace-selector__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #ffffff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.workspace-selector__trigger:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.workspace-selector__logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.workspace-selector__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.workspace-selector__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-selector__name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-selector__role {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--accent, #a29bfe);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.workspace-selector__arrow {
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #6b7280);
+  transition: transform 0.2s ease;
+}
+
+.workspace-selector__arrow--open {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.workspace-selector__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0.75rem;
+  right: 0.75rem;
+  background: rgba(22, 24, 34, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  z-index: 999;
+  padding: 0.5rem;
+  animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.workspace-selector__dropdown-header {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--text-tertiary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.375rem 0.5rem;
+}
+
+.workspace-selector__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.workspace-selector__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.45rem 0.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary, #9ca3af);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.workspace-selector__item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.workspace-selector__item--active {
+  background: rgba(108, 92, 231, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.workspace-selector__item-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.workspace-selector__item-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.workspace-selector__item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-selector__item-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-selector__item-role {
+  font-size: 0.625rem;
+  color: var(--text-tertiary, #6b7280);
+}
+
+.workspace-selector__active-check {
+  font-size: 0.8125rem;
+  color: #6c5ce7;
+  font-weight: 700;
+}
+
+.workspace-selector__divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0.375rem 0;
+}
+
+.workspace-selector__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.workspace-selector__action-btn {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.78125rem;
+  font-weight: 500;
+  color: var(--text-secondary, #9ca3af);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.workspace-selector__action-btn:hover {
+  background: rgba(108, 92, 231, 0.15);
+  color: #ffffff;
+}

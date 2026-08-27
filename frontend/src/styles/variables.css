@@ -1,0 +1,122 @@
+/* ═══════════════════════════════════════════════
+   DevChat Design Tokens
+   Premium dark theme with glassmorphism
+   ═══════════════════════════════════════════════ */
+
+:root {
+  /* ── Colors ─────────────────────────────────── */
+
+  /* Background scale (dark → light) */
+  --bg-deepest: hsl(228, 28%, 6%);
+  --bg-primary: hsl(228, 25%, 10%);
+  --bg-secondary: hsl(228, 22%, 13%);
+  --bg-tertiary: hsl(228, 20%, 17%);
+  --bg-elevated: hsl(228, 18%, 20%);
+  --bg-hover: hsl(228, 18%, 23%);
+  --bg-active: hsl(228, 18%, 26%);
+
+  /* Accent palette */
+  --accent: hsl(252, 87%, 64%);
+  --accent-hover: hsl(252, 87%, 72%);
+  --accent-muted: hsla(252, 87%, 64%, 0.15);
+  --accent-glow: hsla(252, 87%, 64%, 0.3);
+
+  /* Semantic colors */
+  --success: hsl(152, 68%, 50%);
+  --success-muted: hsla(152, 68%, 50%, 0.15);
+  --warning: hsl(38, 92%, 55%);
+  --warning-muted: hsla(38, 92%, 55%, 0.15);
+  --danger: hsl(0, 78%, 62%);
+  --danger-muted: hsla(0, 78%, 62%, 0.15);
+  --info: hsl(210, 100%, 65%);
+
+  /* Text hierarchy */
+  --text-primary: hsl(0, 0%, 95%);
+  --text-secondary: hsl(228, 15%, 65%);
+  --text-muted: hsl(228, 12%, 45%);
+  --text-disabled: hsl(228, 10%, 30%);
+  --text-inverse: hsl(228, 25%, 10%);
+
+  /* Borders */
+  --border: hsla(228, 15%, 35%, 0.4);
+  --border-light: hsla(228, 15%, 35%, 0.2);
+  --border-focus: var(--accent);
+
+  /* Glass effect */
+  --glass-bg: hsla(228, 22%, 13%, 0.85);
+  --glass-border: hsla(228, 15%, 40%, 0.25);
+  --glass-blur: 20px;
+
+  /* ── Typography ─────────────────────────────── */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  --text-xs: 0.6875rem;   /* 11px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.875rem;  /* 14px */
+  --text-md: 1rem;        /* 16px */
+  --text-lg: 1.25rem;     /* 20px */
+  --text-xl: 1.5rem;      /* 24px */
+  --text-2xl: 2rem;       /* 32px */
+
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* ── Spacing ────────────────────────────────── */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+
+  /* ── Borders & Radius ───────────────────────── */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ────────────────────────────────── */
+  --shadow-sm: 0 1px 2px hsla(0, 0%, 0%, 0.3);
+  --shadow-md: 0 4px 12px hsla(0, 0%, 0%, 0.3);
+  --shadow-lg: 0 8px 32px hsla(0, 0%, 0%, 0.4);
+  --shadow-xl: 0 16px 48px hsla(0, 0%, 0%, 0.5);
+  --shadow-glow: 0 0 20px var(--accent-glow);
+
+  /* ── Transitions ────────────────────────────── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --duration-slow: 350ms;
+  --duration-slower: 500ms;
+
+  /* ── Layout ─────────────────────────────────── */
+  --sidebar-width: 260px;
+  --header-height: 52px;
+  --member-panel-width: 240px;
+  --message-input-min-height: 44px;
+  --scrollbar-width: 6px;
+
+  /* ── Z-index scale ──────────────────────────── */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+}

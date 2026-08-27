@@ -1,0 +1,88 @@
+.logout-confirm-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.25rem;
+  padding: 0.5rem 0;
+}
+
+.logout-confirm-modal__user {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logout-confirm-modal__user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logout-confirm-modal__name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+}
+
+.logout-confirm-modal__email {
+  font-size: 0.8125rem;
+  color: var(--text-tertiary, #6b7280);
+}
+
+.logout-confirm-modal__message {
+  font-size: 0.9375rem;
+  color: var(--text-secondary, #9ca3af);
+  line-height: 1.5;
+  max-width: 360px;
+  margin: 0;
+}
+
+.logout-confirm-modal__message strong {
+  color: var(--text-primary, #ffffff);
+}
+
+.logout-confirm-modal__actions {
+  display: flex;
+  gap: 0.875rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.logout-confirm-modal__btn {
+  flex: 1;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logout-confirm-modal__btn--cancel {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  color: var(--text-secondary, #9ca3af);
+}
+
+.logout-confirm-modal__btn--cancel:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.06));
+  color: var(--text-primary, #ffffff);
+}
+
+.logout-confirm-modal__btn--logout {
+  background: linear-gradient(135deg, #eb4d4b 0%, #ff6b6b 100%);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(235, 77, 75, 0.3);
+}
+
+.logout-confirm-modal__btn--logout:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(235, 77, 75, 0.5);
+}
+
+.logout-confirm-modal__btn--logout:active {
+  transform: translateY(0);
+}

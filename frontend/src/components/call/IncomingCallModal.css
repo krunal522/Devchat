@@ -1,0 +1,128 @@
+/* ── WhatsApp / Discord Style Centered Incoming Call Modal ─────────────────── */
+.incoming-call-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(8, 9, 13, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: callFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes callFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.incoming-call-card {
+  width: 360px;
+  padding: 2.25rem 1.75rem;
+  background: rgba(18, 20, 29, 0.96);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(108, 92, 231, 0.5);
+  border-radius: 28px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.incoming-call-avatar-wrapper {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+
+.incoming-call-pulse {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border-radius: 50%;
+  border: 2px solid #6c5ce7;
+  animation: pulseRing 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.incoming-call-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.375rem 0;
+}
+
+.incoming-call-subtitle {
+  font-size: 0.875rem;
+  color: #a29bfe;
+  margin: 0 0 2rem 0;
+}
+
+.incoming-call-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  width: 100%;
+}
+
+.incoming-call-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #ffffff;
+}
+
+.incoming-call-btn--decline {
+  background: linear-gradient(135deg, #eb4d4b 0%, #ff7979 100%);
+  box-shadow: 0 8px 24px rgba(235, 77, 75, 0.5);
+}
+
+.incoming-call-btn--decline:hover {
+  transform: scale(1.12);
+  box-shadow: 0 10px 30px rgba(235, 77, 75, 0.7);
+}
+
+.incoming-call-btn--accept {
+  background: linear-gradient(135deg, #2ed573 0%, #7bed9f 100%);
+  box-shadow: 0 8px 24px rgba(46, 213, 115, 0.5);
+}
+
+.incoming-call-btn--accept:hover {
+  transform: scale(1.12);
+  box-shadow: 0 10px 30px rgba(46, 213, 115, 0.7);
+}

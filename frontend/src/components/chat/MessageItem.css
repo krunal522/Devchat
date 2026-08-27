@@ -1,0 +1,612 @@
+/* ═══════════════════════════════════════════════
+   Hyper-Professional Message Component & Actions
+   ═══════════════════════════════════════════════ */
+
+.message {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3, 0.75rem);
+  padding: 0.625rem 1rem;
+  border-radius: 12px;
+  transition: background-color 0.15s ease;
+}
+
+.message:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.message--editing {
+  background-color: rgba(108, 92, 231, 0.06) !important;
+}
+
+.message--highlighted {
+  background: rgba(108, 92, 231, 0.22) !important;
+  border: 1px solid rgba(108, 92, 231, 0.5) !important;
+  box-shadow: 0 0 16px rgba(108, 92, 231, 0.35) !important;
+  animation: pulseHighlight 2.5s ease-out;
+}
+
+@keyframes pulseHighlight {
+  0%   { background: rgba(108, 92, 231, 0.4); }
+  50%  { background: rgba(108, 92, 231, 0.2); }
+  100% { background: transparent; }
+}
+
+.message__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.message__header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.message__author {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+}
+
+.message__time {
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #6b7280);
+}
+
+.message__edited {
+  font-size: 0.6875rem;
+  color: var(--text-tertiary, #6b7280);
+  font-style: italic;
+}
+
+.message__content {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-secondary, #d1d5db);
+  word-break: break-word;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+/* ── Quoted Reply Card (WhatsApp / Telegram / Discord Style) ── */
+.message__quoted-reply {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.75rem;
+  margin: 0.25rem 0 0.375rem 0;
+  background: rgba(108, 92, 231, 0.08);
+  border-left: 3px solid #6c5ce7;
+  border-radius: 4px 8px 8px 4px;
+  font-size: 0.8125rem;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.message__quoted-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.message__quoted-author {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #a29bfe;
+}
+
+.message__quoted-text {
+  color: #cbd5e1;
+  font-size: 0.78125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: italic;
+  margin-top: 1px;
+}
+
+/* ── Message Attachments Renderer ─────────────────────── */
+.message__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 0.5rem;
+}
+
+.message__attachment-image {
+  max-width: 320px;
+  max-height: 240px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message__attachment-image:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.message__attachment-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.message__attachment-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background: rgba(22, 24, 34, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  text-decoration: none;
+  color: #ffffff;
+  max-width: 340px;
+  transition: all 0.15s ease;
+}
+
+.message__attachment-card:hover {
+  background: rgba(108, 92, 231, 0.15);
+  border-color: rgba(108, 92, 231, 0.4);
+  transform: translateY(-1px);
+}
+
+.message__attachment-card-icon {
+  font-size: 1.5rem;
+}
+
+.message__attachment-card-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.message__attachment-card-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message__attachment-card-meta {
+  font-size: 0.6875rem;
+  color: var(--text-tertiary, #6b7280);
+}
+
+.message__attachment-card-download {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.message__attachment-media {
+  margin-top: 0.375rem;
+}
+
+/* ── Lightbox Image Modal ─────────────────────────────── */
+.image-lightbox-backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(8, 9, 13, 0.92) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 999999 !important;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+/* Floating Top Header Bar */
+.image-lightbox-header {
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 3rem);
+  max-width: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 1.25rem;
+  background: rgba(22, 24, 34, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+  z-index: 1000000;
+  animation: actionsFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.image-lightbox-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.image-lightbox-icon {
+  font-size: 1.125rem;
+}
+
+.image-lightbox-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.image-lightbox-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-shrink: 0;
+}
+
+.image-lightbox-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.4375rem 0.875rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.image-lightbox-action-btn--download {
+  background: rgba(108, 92, 231, 0.25);
+  border: 1px solid rgba(108, 92, 231, 0.45);
+  color: #a29bfe;
+}
+
+.image-lightbox-action-btn--download:hover {
+  background: rgba(108, 92, 231, 0.45);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.image-lightbox-action-btn--close {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  padding: 0.4375rem;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  justify-content: center;
+}
+
+.image-lightbox-action-btn--close:hover {
+  background: rgba(235, 77, 75, 0.85);
+  border-color: #ff6b6b;
+  transform: scale(1.1);
+}
+
+.image-lightbox-card {
+  position: relative;
+  max-width: 88vw;
+  max-height: 80vh;
+  margin-top: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.image-lightbox-card img {
+  max-width: 88vw;
+  max-height: 78vh;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.95);
+  object-fit: contain;
+  display: block;
+}
+
+/* ── Floating Hover Action Toolbar ──────────────────────── */
+.message__actions {
+  position: absolute;
+  top: -16px;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  background: var(--bg-elevated, #1f2230);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  animation: actionsFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes actionsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.message__action-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--text-secondary, #9ca3af);
+  transition: all 0.15s ease;
+}
+
+.message__action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.18);
+  color: #ffffff;
+}
+
+.message__action-btn--active,
+.message__action-btn--more {
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: #a29bfe;
+}
+
+.message__action-btn--danger:hover {
+  background: rgba(235, 77, 75, 0.2);
+  color: #ff6b6b;
+}
+
+.message__action-divider {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 2px;
+}
+
+/* More Emoji Wrapper & Popover Position */
+.message__more-emoji-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.message__full-emoji-picker {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 9999;
+}
+
+/* ── Reaction Badges ────────────────────────── */
+.message__reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.375rem;
+}
+
+.message__reaction-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #9ca3af);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.message__reaction-badge:hover {
+  background: rgba(108, 92, 231, 0.15);
+  border-color: rgba(108, 92, 231, 0.3);
+}
+
+.message__reaction-badge--active {
+  background: rgba(108, 92, 231, 0.25);
+  border-color: rgba(108, 92, 231, 0.5);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(108, 92, 231, 0.2);
+}
+
+.message__reaction-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.message__thread-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #a29bfe;
+  cursor: pointer;
+}
+
+/* ── Professional Edit Mode ────────────────────────── */
+.message__edit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+  padding: 0.75rem;
+  background: rgba(15, 16, 21, 0.9);
+  border: 1px solid rgba(108, 92, 231, 0.5);
+  border-radius: 12px;
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+}
+
+.message__edit-textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.875rem;
+  outline: none;
+  resize: vertical;
+  min-height: 52px;
+}
+
+.message__edit-textarea:focus {
+  border-color: #6c5ce7;
+}
+
+.message__edit-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.message__edit-hint {
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #6b7280);
+}
+
+.message__edit-hint kbd {
+  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  font-size: 0.6875rem;
+}
+
+.message__edit-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.message__edit-btn {
+  padding: 0.375rem 0.875rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.message__edit-btn--cancel {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary, #9ca3af);
+}
+
+.message__edit-btn--cancel:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.message__edit-btn--save {
+  background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(108, 92, 231, 0.35);
+}
+
+.message__edit-btn--save:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(108, 92, 231, 0.5);
+}
+
+/* ── Small & Minimal WhatsApp/Slack Style Deleted Message ── */
+.message--deleted {
+  opacity: 0.65;
+}
+
+.message__deleted-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--text-tertiary, #6b7280);
+  font-style: italic;
+  margin: 0.125rem 0 0 0;
+}
+
+.message__deleted-icon {
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+/* ── Inline Expandable Replies (WhatsApp / Slack Style) ── */
+.message__inline-replies {
+  margin-top: 0.5rem;
+  margin-left: 1rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid rgba(108, 92, 231, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  animation: actionsFadeIn 0.2s ease;
+}
+
+.message__inline-loading {
+  font-size: 0.75rem;
+  color: #a29bfe;
+  font-style: italic;
+  padding: 0.25rem 0;
+}
+
+@media (max-width: 600px) {
+  .message {
+    padding: 0.5rem 0.625rem;
+  }
+  .message__attachment-image {
+    max-width: 100%;
+  }
+  .message__actions {
+    right: 0.5rem;
+    top: -14px;
+    padding: 3px 5px;
+  }
+  .message__action-btn {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+}

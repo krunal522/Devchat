@@ -1,0 +1,120 @@
+/* Voice Player Styling */
+.voice-player {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(108, 92, 231, 0.12);
+  border: 1px solid rgba(108, 92, 231, 0.25);
+  border-radius: 16px;
+  max-width: 290px;
+  width: 100%;
+  margin: 0.25rem 0;
+  box-sizing: border-box;
+}
+
+.voice-player__btn-wrapper {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.voice-player__circle-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48px;
+  height: 48px;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.voice-player__circle-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 3.5;
+}
+
+.voice-player__circle-fill {
+  fill: none;
+  stroke: #a29bfe;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgba(162, 155, 254, 0.6));
+  transition: stroke-dashoffset 0.05s linear;
+}
+
+.voice-player__play-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6c5ce7 0%, #4834d4 100%);
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  box-shadow: 0 3px 10px rgba(108, 92, 231, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.voice-player__play-btn:active {
+  transform: scale(0.92);
+}
+
+.voice-player__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.voice-player__waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  width: 100%;
+}
+
+.voice-player__bar {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  transition: background 0.15s ease;
+  min-width: 2px;
+}
+
+.voice-player__bar--played {
+  background: #a29bfe;
+}
+
+.voice-player__info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.voice-player__time {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #d1d5db;
+}
+
+.voice-player__speed-btn {
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #a29bfe;
+  cursor: pointer;
+}
