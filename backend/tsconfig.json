@@ -25,6 +25,6 @@
       "@utils/*": ["./src/utils/*"]
     }
   },
-  "include": ["src/**/*", "prisma/seed.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "src/__tests__", "prisma/seed.ts"]
 }
