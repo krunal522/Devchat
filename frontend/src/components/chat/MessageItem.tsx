@@ -10,6 +10,7 @@ import { useIsUserOnline } from '../../stores/presenceStore';
 import { useSocketActions } from '../../hooks/useSocket';
 import { messageApi } from '../../services/messageApi';
 import { formatMessageTime } from '../../utils/formatDate';
+import { FileIcon } from '../ui/FileIcon';
 import type { Message } from '../../types/message';
 import '../ui/FileIcon.css';
 import './MessageItem.css';

@@ -109,7 +109,7 @@ export function VoicePlayer({ src }: VoicePlayerProps) {
       } catch (err) {
         console.error('Audio play error:', err);
         useToastStore.getState().addToast({
-          type: 'error',
+          type: 'danger',
           title: 'Audio Error',
           message: 'Unable to play voice audio file',
         });

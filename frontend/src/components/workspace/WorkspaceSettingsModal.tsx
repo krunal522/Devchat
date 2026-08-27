@@ -90,7 +90,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, defaultTab = 'general'
       });
     } catch (err: any) {
       useToastStore.getState().addToast({
-        type: 'error',
+        type: 'danger',
         title: 'Update Failed',
         message: err.response?.data?.error?.message || 'Failed to update workspace',
       });
@@ -120,7 +120,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, defaultTab = 'general'
       });
     } catch (err: any) {
       useToastStore.getState().addToast({
-        type: 'error',
+        type: 'danger',
         title: 'Export Failed',
         message: err.response?.data?.error?.message || 'Failed to export workspace backup',
       });
@@ -147,7 +147,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, defaultTab = 'general'
       setInviteEmail('');
     } catch (err: any) {
       useToastStore.getState().addToast({
-        type: 'error',
+        type: 'danger',
         title: 'Invite Failed',
         message: err.response?.data?.error?.message || 'Failed to send invitation',
       });
@@ -166,7 +166,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, defaultTab = 'general'
       });
     } catch (err: any) {
       useToastStore.getState().addToast({
-        type: 'error',
+        type: 'danger',
         title: 'Role Update Failed',
         message: err.response?.data?.error?.message || 'Failed to update member role',
       });
@@ -185,7 +185,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, defaultTab = 'general'
       });
     } catch (err: any) {
       useToastStore.getState().addToast({
-        type: 'error',
+        type: 'danger',
         title: 'Failed to Remove',
         message: err.response?.data?.error?.message || 'Failed to remove member',
       });
@@ -202,7 +202,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, defaultTab = 'general'
       });
     } catch (err: any) {
       useToastStore.getState().addToast({
-        type: 'error',
+        type: 'danger',
         title: 'Action Failed',
         message: 'Failed to cancel invitation',
       });
@@ -223,7 +223,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, defaultTab = 'general'
       onClose();
     } catch (err: any) {
       useToastStore.getState().addToast({
-        type: 'error',
+        type: 'danger',
         title: 'Deletion Failed',
         message: err.response?.data?.error?.message || 'Failed to delete workspace',
       });
@@ -244,7 +244,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, defaultTab = 'general'
       onClose();
     } catch (err: any) {
       useToastStore.getState().addToast({
-        type: 'error',
+        type: 'danger',
         title: 'Failed to Leave',
         message: err.response?.data?.error?.message || 'Failed to leave workspace',
       });

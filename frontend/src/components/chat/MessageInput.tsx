@@ -77,7 +77,7 @@ export function MessageInput() {
     } catch (err: any) {
       console.error('Failed to start voice recording:', err);
       useToastStore.getState().addToast({
-        type: 'error',
+        type: 'danger',
         title: 'Microphone Error',
         message: 'Please allow microphone access in your browser to record voice messages.',
       });
@@ -143,14 +143,13 @@ export function MessageInput() {
         console.error('Failed to upload voice note:', err);
         const blobUrl = URL.createObjectURL(audioBlob);
         const fallbackAtt: UploadedFileResponse = {
-          id: `voice-${Date.now()}`,
           fileUrl: blobUrl,
           fileName: `Voice Note (${recordingSeconds || 3}s).${ext}`,
           fileSize: audioBlob.size,
           mimeType: blobType,
           fileType: 'AUDIO',
         };
-        sendMessage(activeChannelId, '🎤 Voice Message', undefined, [fallbackAtt]);
+        sendMessage(activeChannelId, '🎤 Voice Message', undefined, [fallbackAtt as any]);
       } finally {
         setIsUploading(false);
       }
@@ -199,7 +198,7 @@ export function MessageInput() {
       });
     } catch (err: any) {
       useToastStore.getState().addToast({
-        type: 'error',
+        type: 'danger',
         title: 'Upload Failed',
         message: err.response?.data?.error?.message || 'Failed to upload file',
       });

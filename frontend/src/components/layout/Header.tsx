@@ -82,7 +82,7 @@ export function Header() {
     if (!channel) return;
 
     // Ensure all messages loaded and activate selected session
-    await useChatStore.getState().loadMessages(channel.id, 100);
+    await useChatStore.getState().loadMessages(channel.id);
     useChatStore.getState().setActiveSessionId(sessionId);
   };
 

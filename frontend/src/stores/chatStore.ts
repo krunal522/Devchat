@@ -4,6 +4,7 @@ import type { Message } from '../types/message';
 import { channelApi } from '../services/channelApi';
 import { messageApi } from '../services/messageApi';
 import { getSocket } from '../services/socketManager';
+import { useAuthStore } from './authStore';
 
 interface ChatState {
   // Channels
@@ -257,22 +258,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       const dm = get().dmChannels.find((d) => d.id === dmChannel.id);
       if (dm && dm.otherUser) {
+        const otherUser = dm.otherUser;
         set((state) => ({
           activeChannelId: dm.id,
           activeChannel: {
             id: dm.id,
-            name: dm.otherUser.displayName || dm.otherUser.username,
+            name: otherUser.displayName || otherUser.username,
             slug: dm.id,
-            description: `@${dm.otherUser.username}`,
+            description: `@${otherUser.username}`,
             type: 'DIRECT',
             createdById: '',
             createdAt: dm.updatedAt,
             updatedAt: dm.updatedAt,
             createdBy: {
-              id: dm.otherUser.id,
-              username: dm.otherUser.username,
-              displayName: dm.otherUser.displayName,
-              avatarUrl: dm.otherUser.avatarUrl,
+              id: otherUser.id,
+              username: otherUser.username,
+              displayName: otherUser.displayName,
+              avatarUrl: otherUser.avatarUrl,
             },
             _count: { members: 2, messages: 0 },
             isMember: true,

@@ -5,6 +5,7 @@ interface UIState {
   isMemberPanelOpen: boolean;
   isCreateChannelModalOpen: boolean;
   isStartDMModalOpen: boolean;
+  activeModal: string | null;
   mobileView: 'list' | 'chat' | 'details';
   setMobileView: (view: 'list' | 'chat' | 'details') => void;
 

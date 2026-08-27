@@ -16,6 +16,7 @@ import { usePresenceStore } from '../stores/presenceStore';
 import { useToastStore } from '../stores/toastStore';
 import { useAuthStore } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
+import { notificationService } from './notificationService';
 import type { Message } from '../types/message';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';

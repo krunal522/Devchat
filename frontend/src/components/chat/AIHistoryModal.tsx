@@ -25,7 +25,7 @@ export function AIHistoryModal({ isOpen, onClose, channelId, onSelectMessage }: 
   // Auto-fetch history messages from backend DB whenever modal is opened
   useEffect(() => {
     if (isOpen && channelId) {
-      loadMessages(channelId, 100);
+      loadMessages(channelId);
     }
   }, [isOpen, channelId, loadMessages]);
 
@@ -173,7 +173,7 @@ export function AIHistoryModal({ isOpen, onClose, channelId, onSelectMessage }: 
             className="ai-history-modal__restore-btn"
             onClick={() => {
               onClose();
-              useChatStore.getState().loadMessages(channelId, 100);
+              useChatStore.getState().loadMessages(channelId);
             }}
           >
             📜 Restore All Sessions

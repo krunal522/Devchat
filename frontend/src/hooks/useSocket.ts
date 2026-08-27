@@ -33,7 +33,7 @@ export function useSocketActions() {
       } else {
         // REST API fallback for offline mode
         try {
-          const msg = await messageApi.sendMessage(channelId, content, parentId, attachments);
+          const msg = await messageApi.sendMessage(channelId, content, parentId, attachments as any);
           useChatStore.getState().addMessage(msg);
         } catch (err) {
           console.error('Failed to send message via REST fallback:', err);
