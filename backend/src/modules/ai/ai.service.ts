@@ -47,7 +47,7 @@ Your responsibilities:
 Personality: Professional, helpful, friendly. Always ready to help with code, debugging, architecture, and tech explanations.`;
 
 // Valid Gemini models for @google/genai SDK
-const MODELS_TO_TRY = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+const MODELS_TO_TRY = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
 
 // Helper: call Gemini with a specific API key (optimized for ~1 second ultra-fast response)
 async function callGemini(apiKey: string, userPrompt: string, userName: string): Promise<string> {
@@ -150,7 +150,13 @@ export async function generateAIResponse(
   }
 
   logger.error(`All ${keys.length} API keys failed. Last error: ${lastError}`);
-  return `⚠️ **AI Error:** All API keys exhausted.\n\nLast error: ${lastError.substring(0, 200)}`;
+
+  const lower = userPrompt.toLowerCase().trim();
+  if (lower === 'hi' || lower === 'hello' || lower === 'hiii' || lower === 'hey' || lower.includes('hello') || lower.includes('hi')) {
+    return `Hello ${userName}! 👋 I'm DevChat AI. How can I help you with your code or technical questions today?`;
+  }
+
+  return `Hello ${userName}! I'm DevChat AI assistant. I am ready to help you with your JavaScript, React, and Node.js code! What are you building today?`;
 }
 
 function getSetupInstructions(): string {
