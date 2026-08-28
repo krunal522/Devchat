@@ -64,17 +64,15 @@ export function MessageList() {
     (activeChannel?.createdBy as any)?.username === 'devchat_ai'
   );
 
-  // ChatGPT-style Session Isolation Filter
+  // Show all messages continuously in chat list
   let displayMessages = messages;
-  if (isAIChat) {
+  if (isAIChat && activeSessionId === 'new') {
+    displayMessages = EMPTY_MESSAGES;
+  } else if (isAIChat && activeSessionId) {
     const sessions = groupMessagesIntoSessions(messages);
-    if (activeSessionId === 'new') {
-      displayMessages = EMPTY_MESSAGES;
-    } else if (activeSessionId) {
-      const matchedSession = sessions.find((s) => s.id === activeSessionId);
-      displayMessages = matchedSession ? matchedSession.messages : (sessions[0]?.messages ?? EMPTY_MESSAGES);
-    } else {
-      displayMessages = sessions[0]?.messages ?? EMPTY_MESSAGES;
+    const matchedSession = sessions.find((s) => s.id === activeSessionId);
+    if (matchedSession) {
+      displayMessages = matchedSession.messages;
     }
   }
 
