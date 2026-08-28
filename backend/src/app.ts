@@ -19,6 +19,18 @@ import adminRoutes from './modules/admin/admin.routes.js';
 
 const app = express();
 
+// Trust reverse proxy (Render, Cloudflare, Vercel)
+app.set('trust proxy', 1);
+
+// Root route for Render health checks
+app.get('/', (_req, res) => {
+  res.json({
+    success: true,
+    message: 'DevChat API Server is live and healthy',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // ─── Security Middleware ────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },

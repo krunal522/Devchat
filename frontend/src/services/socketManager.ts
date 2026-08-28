@@ -19,7 +19,7 @@ import { useUIStore } from '../stores/uiStore';
 import { notificationService } from './notificationService';
 import type { Message } from '../types/message';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://devchat-war7.onrender.com';
 
 let socket: Socket | null = null;
 let listenersAttached = false;

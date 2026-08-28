@@ -11,7 +11,7 @@ export async function uploadFile(req: Request, res: Response, next: NextFunction
     const file = req.file;
     const fileType = getFileType(file.mimetype, file.originalname);
     const host = req.get('host') || 'localhost:3001';
-    const protocol = req.protocol || 'http';
+    const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
     const fileUrl = `${protocol}://${host}/uploads/${file.filename}`;
 
     res.json({
