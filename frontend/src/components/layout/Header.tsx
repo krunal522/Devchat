@@ -21,24 +21,41 @@ export function formatLastSeenText(isOnline: boolean, lastSeenAt?: string | Date
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
 
-  // If server time is ahead of client time or less than 1 min ago
-  if (diffMs <= 0) return 'Last seen just now';
+  // If server time is ahead of client time or within 10 seconds
+  if (diffMs <= 10000) return '🟢 Active now';
 
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
 
   if (diffMins < 1) return 'Last seen just now';
   if (diffMins < 60) return `Last seen ${diffMins}m ago`;
-  if (diffHours < 24 && now.getDate() === date.getDate()) {
+
+  // Same calendar day
+  const todayStr = now.toDateString();
+  const dateDateStr = date.toDateString();
+  if (todayStr === dateDateStr) {
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return `Last seen today at ${timeStr}`;
   }
-  if (diffHours < 48 && Math.abs(now.getDate() - date.getDate()) === 1) {
+
+  // Yesterday
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (yesterday.toDateString() === dateDateStr) {
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return `Last seen yesterday at ${timeStr}`;
   }
 
-  return `Last seen ${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+  // Within 7 days
+  if (diffDays < 7) {
+    const dayName = date.toLocaleDateString([], { weekday: 'long' });
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `Last seen ${dayName} at ${timeStr}`;
+  }
+
+  // More than 7 days — just show Offline (don't show stale old dates)
+  return 'Offline';
 }
 
 export function Header() {

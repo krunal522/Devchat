@@ -24,11 +24,11 @@ export async function setOnline(userId: string, socketId: string): Promise<void>
     // Bypass redis presence if offline
   }
 
-  // Update database
+  // Update database — also update lastSeenAt to now so stale old dates are cleared
   try {
     await prisma.user.update({
       where: { id: userId },
-      data: { isOnline: true },
+      data: { isOnline: true, lastSeenAt: new Date() },
     });
   } catch (err) {}
 
