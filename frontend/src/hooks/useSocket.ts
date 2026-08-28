@@ -11,6 +11,7 @@ import { getSocket } from '../services/socketManager';
 import { messageApi } from '../services/messageApi';
 import { useChatStore } from '../stores/chatStore';
 import { useAuthStore } from '../stores/authStore';
+import { useUIStore } from '../stores/uiStore';
 import type { Message } from '../types/message';
 
 export function useSocketActions() {
@@ -28,6 +29,20 @@ export function useSocketActions() {
       }>
     ) => {
       const currentUser = useAuthStore.getState().user;
+      const dmChannels = useChatStore.getState().dmChannels;
+      const activeChannel = useChatStore.getState().activeChannel;
+
+      const dmInfo = dmChannels.find((d) => d.id === channelId);
+      const isAIChat =
+        activeChannel?.type === 'DIRECT' &&
+        (activeChannel?.name?.toLowerCase().includes('devchat ai') ||
+          dmInfo?.otherUser?.username === 'devchat_ai' ||
+          (activeChannel?.createdBy as any)?.username === 'devchat_ai');
+      const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
+
+      if (isAIChat || isAIMentioned) {
+        useUIStore.getState().setAITypingChannelId(channelId);
+      }
 
       // Optimistic UI Update — render message instantly (0ms latency)
       if (currentUser) {

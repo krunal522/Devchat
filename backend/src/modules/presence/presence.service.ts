@@ -90,12 +90,23 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
 export async function getOnlineUsers(): Promise<string[]> {
   try {
     if (redis.status === 'ready') {
-      return await redis.smembers(RedisKeys.onlineUsers);
+      const redisUsers = await redis.smembers(RedisKeys.onlineUsers);
+      if (redisUsers && redisUsers.length > 0) return redisUsers;
     }
   } catch (err) {}
 
-  // Fallback to active in-memory socket map
-  return Array.from(memorySockets.keys());
+  // Fallback to active in-memory socket map + DB online status
+  const memoryUserIds = Array.from(memorySockets.keys());
+  try {
+    const dbOnlineUsers = await prisma.user.findMany({
+      where: { isOnline: true },
+      select: { id: true },
+    });
+    const dbUserIds = dbOnlineUsers.map((u) => u.id);
+    return Array.from(new Set([...memoryUserIds, ...dbUserIds]));
+  } catch {
+    return memoryUserIds;
+  }
 }
 
 /**

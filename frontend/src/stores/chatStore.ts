@@ -5,6 +5,7 @@ import { channelApi } from '../services/channelApi';
 import { messageApi } from '../services/messageApi';
 import { getSocket } from '../services/socketManager';
 import { useAuthStore } from './authStore';
+import { useUIStore } from './uiStore';
 
 interface ChatState {
   // Channels
@@ -343,6 +344,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         existing = existing.filter(
           (m) => !(m.id.startsWith('temp-') && m.user?.id === message.user?.id && m.content === message.content)
         );
+      }
+
+      if (message.user?.username === 'devchat_ai' || message.user?.displayName?.includes('DevChat AI')) {
+        useUIStore.getState().setAITypingChannelId(null);
       }
 
       const newUnreads = { ...state.unreadCounts };

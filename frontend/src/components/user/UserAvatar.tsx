@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { AILogoIcon } from '../ui/AILogoIcon';
 import './UserAvatar.css';
 
@@ -26,6 +26,7 @@ export const UserAvatar = memo(function UserAvatar({
   showStatus = false,
   isAI,
 }: UserAvatarProps) {
+  const [imgError, setImgError] = useState(false);
   const isAIBot = isAI || displayName?.toLowerCase().includes('devchat ai') || displayName?.toLowerCase().includes('devchat_ai');
 
   if (isAIBot) {
@@ -50,8 +51,8 @@ export const UserAvatar = memo(function UserAvatar({
 
   return (
     <div className={`avatar avatar--${size}`}>
-      {src ? (
-        <img src={src} alt={displayName} className="avatar__image" />
+      {src && !imgError ? (
+        <img src={src} alt={displayName} className="avatar__image" onError={() => setImgError(true)} />
       ) : (
         <div className="avatar__fallback">{initials}</div>
       )}

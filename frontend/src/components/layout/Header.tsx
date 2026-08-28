@@ -19,6 +19,10 @@ export function formatLastSeenText(isOnline: boolean, lastSeenAt?: string | Date
 
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
+
+  // If server time is ahead of client time or less than 1 min ago
+  if (diffMs <= 0) return 'Last seen just now';
+
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMins / 60);
 
