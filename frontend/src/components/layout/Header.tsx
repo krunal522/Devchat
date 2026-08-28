@@ -85,19 +85,14 @@ export function Header() {
     }).catch(() => {});
   }, [otherUserId, isAIChat]);
 
-  const handleNewChat = () => {
+  const handleClearChat = () => {
     if (!channel) return;
-    useChatStore.getState().setActiveSessionId('new');
+    useChatStore.getState().clearChannelMessages(channel.id);
     useToastStore.getState().addToast({
-      type: 'success',
-      title: 'New Chat Session',
-      message: 'Started a fresh AI conversation 🚀',
+      type: 'info',
+      title: 'Chat Cleared',
+      message: 'DevChat AI conversation cleared 🧹',
     });
-  };
-
-  const handleLoadHistory = () => {
-    if (!channel) return;
-    setIsAIHistoryOpen(true);
   };
 
   const handleSelectMessage = async (sessionId: string) => {
@@ -229,30 +224,17 @@ export function Header() {
           {channel && (
             <>
               {isAIChat && (
-                <>
-                  <button
-                    className="chat-header__new-chat-btn"
-                    onClick={handleNewChat}
-                    title="Start a new clean AI conversation session (ChatGPT style)"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    <span>New Chat</span>
-                  </button>
-                  <button
-                    className="chat-header__history-btn"
-                    onClick={handleLoadHistory}
-                    title="Load previous chat history from database"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    <span>History</span>
-                  </button>
-                </>
+                <button
+                  className="chat-header__new-chat-btn"
+                  onClick={handleClearChat}
+                  title="Clear conversation screen"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                  <span>Clear Chat</span>
+                </button>
               )}
 
               {!isDirect && (
