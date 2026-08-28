@@ -7,6 +7,7 @@ import { updateProfileSchema } from './user.schema.js';
 const router = Router();
 
 router.get('/', authenticate, userController.getUsers);
+router.get('/online', authenticate, userController.getOnlineUsers);
 router.get('/search', authenticate, userController.searchUsers);
 router.get('/:userId', authenticate, userController.getUserById);
 router.patch('/me', authenticate, validate(updateProfileSchema), userController.updateProfile);

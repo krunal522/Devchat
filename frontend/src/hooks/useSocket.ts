@@ -10,6 +10,8 @@ import { useCallback } from 'react';
 import { getSocket } from '../services/socketManager';
 import { messageApi } from '../services/messageApi';
 import { useChatStore } from '../stores/chatStore';
+import { useAuthStore } from '../stores/authStore';
+import type { Message } from '../types/message';
 
 export function useSocketActions() {
   const sendMessage = useCallback(
@@ -25,13 +27,37 @@ export function useSocketActions() {
         mimeType: string;
       }>
     ) => {
+      const currentUser = useAuthStore.getState().user;
+
+      // Optimistic UI Update — render message instantly (0ms latency)
+      if (currentUser) {
+        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const optimisticMsg: Message = {
+          id: tempId,
+          content,
+          channelId,
+          parentId: parentId || null,
+          user: {
+            id: currentUser.id,
+            username: currentUser.username,
+            displayName: currentUser.displayName,
+            avatarUrl: currentUser.avatarUrl,
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isEdited: false,
+          reactions: [],
+          attachments: (attachments as any) || [],
+          _count: { replies: 0 },
+        };
+        useChatStore.getState().addMessage(optimisticMsg);
+      }
+
       const socket = getSocket();
       if (socket && socket.connected) {
-        // Ensure room is joined so broadcast arrives back instantly
         socket.emit('channel:join', channelId);
         socket.emit('message:send', { channelId, content, parentId, attachments });
       } else {
-        // REST API fallback for offline mode
         try {
           const msg = await messageApi.sendMessage(channelId, content, parentId, attachments as any);
           useChatStore.getState().addMessage(msg);

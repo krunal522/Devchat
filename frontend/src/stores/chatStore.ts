@@ -333,13 +333,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const isCurrentlyActive = currentActiveId === message.channelId;
 
     set((state) => {
-      const existing = state.messages[message.channelId] || [];
+      let existing = state.messages[message.channelId] || [];
       if (existing.some((m) => m.id === message.id)) {
         return state;
       }
 
+      // If adding real server message, deduplicate/replace matching optimistic message
+      if (!message.id.startsWith('temp-')) {
+        existing = existing.filter(
+          (m) => !(m.id.startsWith('temp-') && m.user?.id === message.user?.id && m.content === message.content)
+        );
+      }
+
       const newUnreads = { ...state.unreadCounts };
-      if (!isCurrentlyActive) {
+      if (!isCurrentlyActive && !message.id.startsWith('temp-')) {
         newUnreads[message.channelId] = (newUnreads[message.channelId] || 0) + 1;
       }
 

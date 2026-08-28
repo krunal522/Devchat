@@ -11,6 +11,7 @@ import { EditProfileModal } from '../user/EditProfileModal';
 import { LogoutConfirmModal } from '../auth/LogoutConfirmModal';
 import { WorkspaceSelector } from '../workspace/WorkspaceSelector';
 import { channelApi } from '../../services/channelApi';
+import { userApi } from '../../services/userApi';
 import { AILogoIcon } from '../ui/AILogoIcon';
 import './Sidebar.css';
 
@@ -57,6 +58,14 @@ export function Sidebar() {
   useEffect(() => {
     loadChannels();
     loadDMChannels();
+    userApi
+      .getOnlineUsers()
+      .then((userIds) => {
+        if (userIds && userIds.length > 0) {
+          usePresenceStore.getState().setOnlineUsers(userIds);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const workspaceMembers = useWorkspaceStore((s) => s.members);

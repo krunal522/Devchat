@@ -2,6 +2,7 @@ import { prisma } from '../../config/database.js';
 import { redis, RedisKeys } from '../../config/redis.js';
 import { ApiError } from '../../utils/ApiError.js';
 import type { UpdateProfileInput } from './user.schema.js';
+import { getOnlineUsers as getPresenceOnlineUsers } from '../presence/presence.service.js';
 
 const USER_SELECT = {
   id: true,
@@ -20,6 +21,10 @@ export async function getUsers() {
     select: USER_SELECT,
     orderBy: { displayName: 'asc' },
   });
+}
+
+export async function getOnlineUsers() {
+  return getPresenceOnlineUsers();
 }
 
 export async function getUserById(userId: string) {

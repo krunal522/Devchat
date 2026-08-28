@@ -10,6 +10,15 @@ export async function getUsers(req: Request, res: Response, next: NextFunction) 
   }
 }
 
+export async function getOnlineUsers(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const userIds = await userService.getOnlineUsers();
+    res.json({ success: true, data: userIds });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getUserById(req: Request, res: Response, next: NextFunction) {
   try {
     const user = await userService.getUserById(req.params.userId as string);

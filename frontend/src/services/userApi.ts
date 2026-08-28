@@ -7,6 +7,11 @@ export const userApi = {
     return res.data.data;
   },
 
+  getOnlineUsers: async (): Promise<string[]> => {
+    const res = await api.get('/users/online');
+    return res.data.data;
+  },
+
   getUser: async (userId: string): Promise<User> => {
     const res = await api.get(`/users/${userId}`);
     return res.data.data;
