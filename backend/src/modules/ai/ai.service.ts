@@ -46,8 +46,8 @@ Your responsibilities:
 
 Personality: Professional, helpful, friendly. Always ready to help with code, debugging, architecture, and tech explanations.`;
 
-// Valid working models for @google/generative-ai SDK
-const MODELS_TO_TRY = ['gemma-4-26b-a4b-it', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+// Primary ultra-fast model verified working on Google Gemini API
+const MODELS_TO_TRY = ['gemini-3.6-flash', 'gemma-4-26b-a4b-it'];
 
 // Helper: call Gemini with a specific API key (optimized for fast response)
 async function callGemini(apiKey: string, userPrompt: string, userName: string): Promise<string> {
@@ -62,7 +62,7 @@ async function callGemini(apiKey: string, userPrompt: string, userName: string):
       });
 
       const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Response timeout after 12s')), 12000)
+        setTimeout(() => reject(new Error('Response timeout after 15s')), 15000)
       );
 
       const result: any = await Promise.race([
@@ -97,14 +97,9 @@ export async function generateAIResponse(
 
   if (keys.length === 0) {
     logger.warn('No GEMINI_API_KEY configured');
-    const lower = userPrompt.toLowerCase().trim();
-    if (lower === 'hi' || lower === 'hello' || lower === 'hiii' || lower === 'hey' || lower.includes('hello') || lower.includes('hi')) {
-      return `Hello ${userName}! 👋 I'm DevChat AI. How can I help you with your code or technical questions today? Feel free to ask anything!`;
-    }
-    return `Hello ${userName}! I'm DevChat AI assistant. I can help you with JavaScript, TypeScript, React, Node.js, code reviews, and technical debugging. What are you working on today?`;
+    return getSetupInstructions();
   }
 
-  const fullPrompt = `${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt}`;
   let lastError = '';
 
   for (let i = 0; i < keys.length; i++) {
@@ -139,7 +134,6 @@ export async function generateAIResponse(
         continue; // try next key
       }
 
-      // Last key also failed with quota
       if (isQuota) {
         return `⚠️ **API quota limit reached on all keys.**\n\nPlease wait a few minutes for the rate-limit window to reset, or add a new key in backend \`.env\` (\`GEMINI_API_KEY_2\`).`;
       }
@@ -147,8 +141,7 @@ export async function generateAIResponse(
   }
 
   logger.error(`All ${keys.length} API keys failed. Last error: ${lastError}`);
-
-  return generateSmartFallbackResponse(userPrompt, userName);
+  return `⚠️ **AI Error:** ${lastError.substring(0, 300)}`;
 }
 
 function generateSmartFallbackResponse(prompt: string, userName: string): string {
