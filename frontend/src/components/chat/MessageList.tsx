@@ -91,10 +91,14 @@ export function MessageList() {
     };
   }, [activeChannelId, messages.length]);
 
-  // When AI is typing, keep scrolled to bottom instantly
+  // When AI is typing, keep scrolled to bottom instantly & set safety timeout to hide loader after 15s max
   useEffect(() => {
     if (isAITyping) {
       scrollToBottomInstant();
+      const safetyTimer = setTimeout(() => {
+        useUIStore.getState().setAITypingChannelId(null);
+      }, 15000);
+      return () => clearTimeout(safetyTimer);
     }
   }, [isAITyping]);
 

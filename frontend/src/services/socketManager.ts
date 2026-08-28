@@ -150,6 +150,11 @@ const processedMessageIds = new Set<string>();
     const chatStore = useChatStore.getState();
     chatStore.addMessage(message);
 
+    // If message is from AI Bot, ensure typing indicator is turned off
+    if (message.user?.id === 'devchat-ai-bot-id' || message.user?.username === 'devchat_ai') {
+      useUIStore.getState().setAITypingChannelId(null);
+    }
+
     // If this is a DM channel and not currently loaded in dmChannels state, refresh DM channels list
     const isDMInStore = chatStore.dmChannels.some((d) => d.id === message.channelId);
     if (!isDMInStore) {

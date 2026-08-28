@@ -87,8 +87,16 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
               const senderName = senderUser?.displayName || senderUser?.username || 'Developer';
               const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || 'Hello AI';
 
-              // 🔴 Emit AI typing start → show loader bubble on frontend
+              const channelMembers = await prisma.channelMember.findMany({
+                where: { channelId },
+                select: { userId: true },
+              });
+
+              // 🔴 Emit AI typing start to channel room AND user rooms
               io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
+              channelMembers.forEach((m) => {
+                io.to(`user:${m.userId}`).emit('ai:typing:start', { channelId });
+              });
 
               try {
                 const aiReplyText = await generateAIResponse(cleanPrompt, senderName);
@@ -100,16 +108,15 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
 
                 // Broadcast AI message to channel and member user rooms
                 io.to(`channel:${channelId}`).emit('message:new', aiMessage);
-                const members = await prisma.channelMember.findMany({
-                  where: { channelId },
-                  select: { userId: true },
-                });
-                members.forEach((m) => {
+                channelMembers.forEach((m) => {
                   io.to(`user:${m.userId}`).emit('message:new', aiMessage);
                 });
               } finally {
-                // 🟢 Always stop typing indicator — even if AI fails!
+                // 🟢 Always stop typing indicator in both channel room AND user rooms!
                 io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
+                channelMembers.forEach((m) => {
+                  io.to(`user:${m.userId}`).emit('ai:typing:stop', { channelId });
+                });
               }
             }
           } catch (aiErr) {
