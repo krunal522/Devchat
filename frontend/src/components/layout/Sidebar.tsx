@@ -60,6 +60,9 @@ export function Sidebar() {
     loadDMChannels();
 
     const fetchOnlineUsers = () => {
+      // Refresh DM channels to get fresh isOnline from DB
+      loadDMChannels();
+
       userApi
         .getOnlineUsers()
         .then((userIds) => {
@@ -72,8 +75,8 @@ export function Sidebar() {
     };
 
     fetchOnlineUsers();
-    // Refresh online users every 30 seconds
-    const interval = setInterval(fetchOnlineUsers, 30000);
+    // Refresh online users every 15 seconds (faster updates)
+    const interval = setInterval(fetchOnlineUsers, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -221,7 +224,11 @@ export function Sidebar() {
                       src={dm.otherUser?.avatarUrl}
                       displayName={dm.otherUser?.displayName || '?'}
                       size="xs"
-                      isOnline={dm.otherUser ? onlineUsers.has(dm.otherUser.id) : false}
+                      isOnline={
+                        dm.otherUser
+                          ? onlineUsers.has(dm.otherUser.id) || dm.otherUser.isOnline
+                          : false
+                      }
                       showStatus
                     />
                     <span className="sidebar__item-name">
