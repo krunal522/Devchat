@@ -198,7 +198,7 @@ export function MessageList() {
   return (
     <div className="message-list" ref={containerRef} onScroll={handleScroll}>
       <div className="message-list__inner">
-        {hasMore && (
+        {!isAIChat && hasMore && (
           <div className="message-list__load-more">
             <button className="message-list__load-btn" onClick={() => loadMoreMessages(activeChannelId)}>
               Load older messages
