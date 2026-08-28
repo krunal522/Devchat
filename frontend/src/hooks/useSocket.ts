@@ -66,6 +66,10 @@ export function useSocketActions() {
           _count: { replies: 0 },
         };
         useChatStore.getState().addMessage(optimisticMsg);
+
+        if (useChatStore.getState().activeSessionId === 'new') {
+          useChatStore.getState().setActiveSessionId(optimisticMsg.id);
+        }
       }
 
       const socket = getSocket();
