@@ -57,8 +57,8 @@ export function initializeSocket(httpServer: HttpServer): Server {
     // Set user online
     await presenceService.setOnline(userId, socket.id);
 
-    // Broadcast online status to all users
-    socket.broadcast.emit('user:online', {
+    // Broadcast online status to all connected users
+    io.emit('user:online', {
       userId,
       username,
     });
@@ -83,8 +83,8 @@ export function initializeSocket(httpServer: HttpServer): Server {
       const wentOffline = await presenceService.removeSocket(userId, socket.id);
 
       if (wentOffline) {
-        // Broadcast offline status only if user has no remaining connections
-        socket.broadcast.emit('user:offline', {
+        // Broadcast offline status to all connected users
+        io.emit('user:offline', {
           userId,
           username,
           lastSeen: new Date().toISOString(),
