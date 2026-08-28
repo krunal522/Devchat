@@ -29,7 +29,8 @@ export function initializeSocket(httpServer: HttpServer): Server {
     },
     pingTimeout: 60000,
     pingInterval: 25000,
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
+    allowUpgrades: true,
   });
 
   // Redis adapter for horizontal scaling (or fallback to memory adapter if offline)
