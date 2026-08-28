@@ -64,20 +64,10 @@ export function MessageList() {
     (activeChannel?.createdBy as any)?.username === 'devchat_ai'
   );
 
-  // ChatGPT-style Session Isolation Filter
+  // Continuous chat display for AI conversations
   let displayMessages = messages;
-  if (isAIChat) {
-    const sessions = groupMessagesIntoSessions(messages);
-    if (activeSessionId === 'new') {
-      displayMessages = EMPTY_MESSAGES;
-    } else if (activeSessionId) {
-      const matchedSession = sessions.find(
-        (s) => s.id === activeSessionId || s.messages.some((m) => m.id === activeSessionId)
-      );
-      displayMessages = matchedSession ? matchedSession.messages : (sessions[0]?.messages ?? EMPTY_MESSAGES);
-    } else {
-      displayMessages = sessions[0]?.messages ?? EMPTY_MESSAGES;
-    }
+  if (isAIChat && activeSessionId === 'new') {
+    displayMessages = EMPTY_MESSAGES;
   }
 
   // Helper to force INSTANT scroll to absolute bottom of container (0ms delay)

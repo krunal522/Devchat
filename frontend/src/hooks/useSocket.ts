@@ -68,7 +68,7 @@ export function useSocketActions() {
         useChatStore.getState().addMessage(optimisticMsg);
 
         if (useChatStore.getState().activeSessionId === 'new') {
-          useChatStore.getState().setActiveSessionId(optimisticMsg.id);
+          useChatStore.getState().setActiveSessionId(null);
         }
       }
 
