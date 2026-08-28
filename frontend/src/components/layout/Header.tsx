@@ -79,7 +79,8 @@ export function Header() {
   useEffect(() => {
     if (!otherUserId || isAIChat) return;
     userApi.getOnlineUsers().then((ids) => {
-      if (Array.isArray(ids)) {
+      if (Array.isArray(ids) && ids.length > 0) {
+        // Only update if we got actual data — don't clear with empty array on Render restart
         usePresenceStore.getState().setOnlineUsers(ids);
       }
     }).catch(() => {});

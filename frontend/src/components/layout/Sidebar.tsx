@@ -63,7 +63,8 @@ export function Sidebar() {
       userApi
         .getOnlineUsers()
         .then((userIds) => {
-          if (userIds && Array.isArray(userIds)) {
+          if (userIds && Array.isArray(userIds) && userIds.length > 0) {
+            // Only update if we got actual data — don't clear existing state with empty array
             usePresenceStore.getState().setOnlineUsers(userIds);
           }
         })

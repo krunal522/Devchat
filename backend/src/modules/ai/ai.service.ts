@@ -46,8 +46,8 @@ Your responsibilities:
 
 Personality: Professional, helpful, friendly. Always ready to help with code, debugging, architecture, and tech explanations.`;
 
-// Ultra-fast sub-second models (gemini-3.1-flash-lite responds in ~1.0s!)
-const MODELS_TO_TRY = ['gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.1-flash-lite-preview'];
+// Valid Gemini models (fast & free tier)
+const MODELS_TO_TRY = ['gemini-2.0-flash-lite', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
 
 // Helper: call Gemini with a specific API key (optimized for ~1 second ultra-fast response)
 async function callGemini(apiKey: string, userPrompt: string, userName: string): Promise<string> {

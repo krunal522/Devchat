@@ -90,25 +90,27 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
               // 🔴 Emit AI typing start → show loader bubble on frontend
               io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
 
-              const aiReplyText = await generateAIResponse(cleanPrompt, senderName);
+              try {
+                const aiReplyText = await generateAIResponse(cleanPrompt, senderName);
 
-              // 🟢 Emit AI typing stop → hide loader bubble
-              io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
+                const aiMessage = await messageService.sendMessage(AI_BOT_ID, channelId, {
+                  content: aiReplyText,
+                  parentId: isAIMentioned ? message.id : parentId,
+                });
 
-              const aiMessage = await messageService.sendMessage(AI_BOT_ID, channelId, {
-                content: aiReplyText,
-                parentId: isAIMentioned ? message.id : parentId,
-              });
-
-              // Broadcast AI message to channel and member user rooms
-              io.to(`channel:${channelId}`).emit('message:new', aiMessage);
-              const members = await prisma.channelMember.findMany({
-                where: { channelId },
-                select: { userId: true },
-              });
-              members.forEach((m) => {
-                io.to(`user:${m.userId}`).emit('message:new', aiMessage);
-              });
+                // Broadcast AI message to channel and member user rooms
+                io.to(`channel:${channelId}`).emit('message:new', aiMessage);
+                const members = await prisma.channelMember.findMany({
+                  where: { channelId },
+                  select: { userId: true },
+                });
+                members.forEach((m) => {
+                  io.to(`user:${m.userId}`).emit('message:new', aiMessage);
+                });
+              } finally {
+                // 🟢 Always stop typing indicator — even if AI fails!
+                io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
+              }
             }
           } catch (aiErr) {
             logger.error(`Error in AI Bot auto-reply: ${aiErr}`);
