@@ -70,7 +70,7 @@ export function Header() {
   const isAIChat = isDirect && (channel?.name?.toLowerCase().includes('devchat ai') || dmInfo?.otherUser?.username === 'devchat_ai' || (channel?.createdBy as any)?.username === 'devchat_ai');
 
   const otherUserId = isDirect ? (dmInfo?.otherUser?.id || channel?.createdBy?.id) : undefined;
-  const isOtherUserOnline = useIsUserOnline(otherUserId);
+  const isOtherUserOnline = useIsUserOnline(otherUserId) || Boolean(dmInfo?.otherUser?.isOnline);
   const lastSeenAt = dmInfo?.otherUser?.lastSeenAt || (channel?.createdBy as any)?.lastSeenAt;
 
   const [, setTick] = useState(0);
@@ -78,9 +78,10 @@ export function Header() {
   // REST fallback: refresh online status for the DM recipient whenever switching channels
   useEffect(() => {
     if (!otherUserId || isAIChat) return;
+    // Refresh DM channels to get fresh isOnline from DB
+    useChatStore.getState().loadDMChannels();
     userApi.getOnlineUsers().then((ids) => {
       if (Array.isArray(ids) && ids.length > 0) {
-        // Only update if we got actual data — don't clear with empty array on Render restart
         usePresenceStore.getState().setOnlineUsers(ids);
       }
     }).catch(() => {});
