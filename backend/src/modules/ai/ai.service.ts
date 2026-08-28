@@ -88,8 +88,8 @@ export async function generateAIResponse(
   );
 
   if (keys.length === 0) {
-    logger.warn('No GEMINI_API_KEY configured');
-    return getSetupInstructions();
+    logger.warn('No GEMINI_API_KEY configured — using smart fallback generator');
+    return generateSmartFallbackResponse(userPrompt, userName);
   }
 
   let lastError = '';
@@ -127,13 +127,14 @@ export async function generateAIResponse(
       }
 
       if (isQuota) {
-        return `⚠️ **API quota limit reached on all keys.**\n\nPlease wait a few minutes for the rate-limit window to reset, or add a new key in backend \`.env\` (\`GEMINI_API_KEY_2\`).`;
+        logger.warn(`Quota reached on all configured keys — using smart fallback generator`);
+        return generateSmartFallbackResponse(userPrompt, userName);
       }
     }
   }
 
   logger.error(`All ${keys.length} API keys failed. Last error: ${lastError}`);
-  return `⚠️ **AI Error:** ${lastError.substring(0, 300)}`;
+  return generateSmartFallbackResponse(userPrompt, userName);
 }
 
 function generateSmartFallbackResponse(prompt: string, userName: string): string {
