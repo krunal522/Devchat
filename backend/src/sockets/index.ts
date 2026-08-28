@@ -23,19 +23,13 @@ export function getIO(): Server {
 export function initializeSocket(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin: (requestOrigin, callback) => {
-        if (!requestOrigin || requestOrigin.includes('localhost') || requestOrigin.includes('127.0.0.1') || requestOrigin === env.CLIENT_URL) {
-          callback(null, true);
-        } else {
-          callback(null, true);
-        }
-      },
+      origin: true,
       methods: ['GET', 'POST'],
       credentials: true,
     },
     pingTimeout: 60000,
     pingInterval: 25000,
-    transports: ['polling', 'websocket'],
+    transports: ['websocket', 'polling'],
   });
 
   // Redis adapter for horizontal scaling (or fallback to memory adapter if offline)

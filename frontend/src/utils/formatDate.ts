@@ -2,10 +2,14 @@
  * Format a date for message display
  */
 export function formatMessageTime(dateStr: string): string {
+  if (!dateStr) return '';
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '';
+
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((today.getTime() - messageDate.getTime()) / (1000 * 60 * 60 * 24));
 
   const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -13,15 +17,17 @@ export function formatMessageTime(dateStr: string): string {
     return time;
   } else if (diffDays === 1) {
     return `Yesterday at ${time}`;
-  } else if (diffDays < 7) {
+  } else if (diffDays > 1 && diffDays < 7) {
     const day = date.toLocaleDateString([], { weekday: 'long' });
     return `${day} at ${time}`;
   } else {
-    return date.toLocaleDateString([], {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-    }) + ` at ${time}`;
+    return (
+      date.toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+      }) + ` at ${time}`
+    );
   }
 }
 
