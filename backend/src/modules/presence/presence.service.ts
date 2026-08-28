@@ -88,6 +88,11 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
  * Get all currently online users
  */
 export async function getOnlineUsers(): Promise<string[]> {
+  // Primary: use in-memory socket map (most accurate — reflects active WS connections)
+  const memoryUserIds = Array.from(memorySockets.keys());
+  if (memoryUserIds.length > 0) return memoryUserIds;
+
+  // Secondary: try Redis
   try {
     if (redis.status === 'ready') {
       const redisUsers = await redis.smembers(RedisKeys.onlineUsers);
@@ -95,17 +100,19 @@ export async function getOnlineUsers(): Promise<string[]> {
     }
   } catch (err) {}
 
-  // Fallback to active in-memory socket map + DB online status
-  const memoryUserIds = Array.from(memorySockets.keys());
+  // Tertiary: DB fallback (only return users that connected in last 5 minutes)
   try {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const dbOnlineUsers = await prisma.user.findMany({
-      where: { isOnline: true },
+      where: {
+        isOnline: true,
+        lastSeenAt: { gte: fiveMinutesAgo },
+      },
       select: { id: true },
     });
-    const dbUserIds = dbOnlineUsers.map((u) => u.id);
-    return Array.from(new Set([...memoryUserIds, ...dbUserIds]));
+    return dbOnlineUsers.map((u) => u.id);
   } catch {
-    return memoryUserIds;
+    return [];
   }
 }
 

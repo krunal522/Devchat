@@ -8,6 +8,7 @@ import { SearchModal } from '../search/SearchModal';
 import { AddMemberModal } from '../channel/AddMemberModal';
 import { AIHistoryModal } from '../chat/AIHistoryModal';
 import { UserAvatar } from '../user/UserAvatar';
+import { userApi } from '../../services/userApi';
 import './Header.css';
 
 export function formatLastSeenText(isOnline: boolean, lastSeenAt?: string | Date): string {
@@ -65,6 +66,16 @@ export function Header() {
   const lastSeenAt = dmInfo?.otherUser?.lastSeenAt || (channel?.createdBy as any)?.lastSeenAt;
 
   const [, setTick] = useState(0);
+
+  // REST fallback: refresh online status for the DM recipient whenever switching channels
+  useEffect(() => {
+    if (!otherUserId || isAIChat) return;
+    userApi.getOnlineUsers().then((ids) => {
+      if (Array.isArray(ids)) {
+        usePresenceStore.getState().setOnlineUsers(ids);
+      }
+    }).catch(() => {});
+  }, [otherUserId, isAIChat]);
 
   const handleNewChat = () => {
     if (!channel) return;

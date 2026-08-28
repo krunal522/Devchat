@@ -33,6 +33,18 @@ async function start(): Promise<void> {
     // Connect database and seed AI bot user
     connectDatabase()
       .then(async () => {
+        // Reset stale isOnline flags from previous server session (handles Render restarts)
+        try {
+          const { prisma } = await import('./config/database.js');
+          await prisma.user.updateMany({
+            where: { isOnline: true },
+            data: { isOnline: false },
+          });
+          logger.info('✅ Cleared stale online presence flags');
+        } catch (err) {
+          logger.warn('Could not reset isOnline flags:', err);
+        }
+
         const { getOrCreateAIBotUser } = await import('./modules/ai/ai.service.js');
         await getOrCreateAIBotUser();
       })

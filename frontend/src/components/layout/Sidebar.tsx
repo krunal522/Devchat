@@ -58,14 +58,22 @@ export function Sidebar() {
   useEffect(() => {
     loadChannels();
     loadDMChannels();
-    userApi
-      .getOnlineUsers()
-      .then((userIds) => {
-        if (userIds && userIds.length > 0) {
-          usePresenceStore.getState().setOnlineUsers(userIds);
-        }
-      })
-      .catch(() => {});
+
+    const fetchOnlineUsers = () => {
+      userApi
+        .getOnlineUsers()
+        .then((userIds) => {
+          if (userIds && Array.isArray(userIds)) {
+            usePresenceStore.getState().setOnlineUsers(userIds);
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchOnlineUsers();
+    // Refresh online users every 30 seconds
+    const interval = setInterval(fetchOnlineUsers, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const workspaceMembers = useWorkspaceStore((s) => s.members);
