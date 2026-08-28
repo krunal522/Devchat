@@ -90,6 +90,20 @@ function attachListeners(sock: Socket): void {
         console.log(`[Socket] Joined ${res.channelIds?.length ?? 0} rooms`);
       }
     });
+
+    // Also fetch online users via REST immediately after connection
+    // This guarantees green dots show even if presence:online_users socket event is missed
+    const token = localStorage.getItem('accessToken') || '';
+    fetch(`${SOCKET_URL}/api/users/online`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data && Array.isArray(json.data)) {
+          usePresenceStore.getState().setOnlineUsers(json.data);
+        }
+      })
+      .catch(() => {});
   });
 
   sock.on('disconnect', (reason) => {
