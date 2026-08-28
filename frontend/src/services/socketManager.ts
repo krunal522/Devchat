@@ -28,15 +28,20 @@ let listenersAttached = false;
 
 /** Call once after login / checkAuth succeeds. */
 export function initSocket(token: string): Socket {
-  if (socket !== null) return socket; // already initialised
+  if (socket !== null) {
+    if (socket.connected) return socket;
+    socket.disconnect();
+    socket = null;
+    listenersAttached = false;
+  }
 
   socket = io(SOCKET_URL, {
     auth: { token },
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: 20,
     reconnectionDelay: 1000,
-    reconnectionDelayMax: 10000,
+    reconnectionDelayMax: 5000,
     timeout: 20000,
   });
 
@@ -75,6 +80,10 @@ function attachListeners(sock: Socket): void {
   // ── Connection ────────────────────────────────────────────────────────────
   sock.on('connect', () => {
     console.log('[Socket] Connected:', sock.id);
+    const currentUser = useAuthStore.getState().user;
+    if (currentUser?.id) {
+      usePresenceStore.getState().addOnlineUser(currentUser.id);
+    }
     // Join all channel rooms once connected
     sock.emit('channel:join_all', (res: { success: boolean; channelIds?: string[] }) => {
       if (res?.success) {

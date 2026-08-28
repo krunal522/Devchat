@@ -1,14 +1,70 @@
 import { Request, Response, NextFunction } from 'express';
 import * as messageService from './message.service.js';
+import { getIO } from '../../sockets/index.js';
+import { prisma } from '../../config/database.js';
+import { AI_BOT_ID, generateAIResponse } from '../ai/ai.service.js';
+import { logger } from '../../utils/logger.js';
 
 export async function sendMessage(req: Request, res: Response, next: NextFunction) {
   try {
-    const message = await messageService.sendMessage(
-      req.user!.userId,
-      req.params.channelId as string,
-      req.body
-    );
+    const channelId = req.params.channelId as string;
+    const senderUserId = req.user!.userId;
+    const content = req.body.content || '';
+
+    const message = await messageService.sendMessage(senderUserId, channelId, req.body);
     res.status(201).json({ success: true, data: message });
+
+    // Asynchronously handle Socket broadcast and AI bot auto-response
+    try {
+      const io = getIO();
+      io.to(`channel:${channelId}`).emit('message:new', message);
+
+      const members = await prisma.channelMember.findMany({
+        where: { channelId },
+        select: { userId: true },
+      });
+      members.forEach((m) => {
+        io.to(`user:${m.userId}`).emit('message:new', message);
+      });
+
+      if (senderUserId !== AI_BOT_ID) {
+        setTimeout(async () => {
+          try {
+            const channel = await prisma.channel.findUnique({
+              where: { id: channelId },
+              include: { members: true },
+            });
+
+            const isDMWithAI = channel?.type === 'DIRECT' && channel.members.some((m) => m.userId === AI_BOT_ID);
+            const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
+
+            if (isDMWithAI || isAIMentioned) {
+              const senderUser = await prisma.user.findUnique({ where: { id: senderUserId } });
+              const senderName = senderUser?.displayName || senderUser?.username || 'Developer';
+              const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || 'Hello AI';
+
+              io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
+              const aiReplyText = await generateAIResponse(cleanPrompt, senderName);
+              io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
+
+              const aiMessage = await messageService.sendMessage(AI_BOT_ID, channelId, {
+                content: aiReplyText,
+                parentId: isAIMentioned ? message.id : req.body.parentId,
+              });
+
+              io.to(`channel:${channelId}`).emit('message:new', aiMessage);
+              members.forEach((m) => {
+                io.to(`user:${m.userId}`).emit('message:new', aiMessage);
+              });
+            }
+          } catch (aiErr) {
+            logger.error(`Error in REST AI Bot response: ${aiErr}`);
+          }
+        }, 0);
+      }
+    } catch {
+      // Ignore socket emit errors if socket not initialized
+    }
   } catch (error) {
     next(error);
   }
