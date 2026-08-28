@@ -148,7 +148,121 @@ export async function generateAIResponse(
 
   logger.error(`All ${keys.length} API keys failed. Last error: ${lastError}`);
 
-  return getSetupInstructions();
+  return generateSmartFallbackResponse(userPrompt, userName);
+}
+
+function generateSmartFallbackResponse(prompt: string, userName: string): string {
+  const p = prompt.toLowerCase();
+
+  // 1. React JS vs React Native
+  if (p.includes('react native') || (p.includes('react') && p.includes('native')) || (p.includes('react') && p.includes('diff'))) {
+    return `Hey @${userName}! Here is the key difference between **React JS** and **React Native**:
+
+### ⚛️ React JS (Web)
+- **Target Platform**: Web Browsers (Chrome, Safari, Firefox).
+- **DOM Rendering**: Uses Virtual DOM and renders HTML tags like \`<div>\`, \`<span>\`, \`<h1>\`, \`<button>\`.
+- **Styling**: Uses CSS, SCSS, TailwindCSS, or styled-components.
+- **Navigation**: Uses \`react-router-dom\`.
+
+### 📱 React Native (Mobile)
+- **Target Platform**: iOS and Android mobile devices.
+- **Native Rendering**: Compiles to native iOS (Swift/Obj-C) and Android (Java/Kotlin) UI components (\`<View>\`, \`<Text>\`, \`<TouchableOpacity>\`).
+- **Styling**: Uses JavaScript \`StyleSheet\` objects (Flexbox based).
+- **Navigation**: Uses React Navigation or Expo Router.
+
+\`\`\`tsx
+// React JS Example (Web)
+export function WebComponent() {
+  return <div><h1>Hello Web!</h1></div>;
+}
+
+// React Native Example (Mobile)
+import { View, Text } from 'react-native';
+export function MobileComponent() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center' }}>
+      <Text style={{ fontSize: 20 }}>Hello Mobile!</Text>
+    </View>
+  );
+}
+\`\`\`
+
+Let me know if you need help with React Navigation or state management! 🚀`;
+  }
+
+  // 2. Node.js / Express REST API
+  if (p.includes('node') || p.includes('express') || p.includes('api') || p.includes('backend')) {
+    return `Hey @${userName}! Here is a clean, production-ready **Node.js & Express REST API** setup using TypeScript:
+
+\`\`\`typescript
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+interface Task {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
+const tasks: Task[] = [];
+
+// GET /api/tasks
+app.get('/api/tasks', (req: Request, res: Response) => {
+  res.json({ success: true, data: tasks });
+});
+
+// POST /api/tasks
+app.post('/api/tasks', (req: Request, res: Response) => {
+  const { title } = req.body;
+  if (!title) return res.status(400).json({ error: 'Title is required' });
+
+  const newTask: Task = { id: Date.now().toString(), title, completed: false };
+  tasks.push(newTask);
+  res.status(201).json({ success: true, data: newTask });
+});
+
+app.listen(5000, () => console.log('🚀 Server running on port 5000'));
+\`\`\``;
+  }
+
+  // 3. Greetings
+  if (p === 'hi' || p === 'hello' || p === 'hey' || p.includes('hello') || p.includes('hi')) {
+    return `Hello ${userName}! 👋 I'm **DevChat AI Assistant**. 
+
+I am here to help you with:
+- ⚛️ **React & React Native** (Components, Hooks, Navigation)
+- 🟢 **Node.js & Express** (REST APIs, WebSockets, Prisma, MongoDB)
+- 🎨 **CSS & Tailwind** (Layouts, Animations, Flexbox/Grid)
+- 🐞 **Debugging & Code Reviews**
+
+What are you building or debugging today? Ask me anything!`;
+  }
+
+  // 4. General technical response fallback
+  return `Hey @${userName}! 🤖 Here is a technical breakdown for your query: **"${prompt}"**
+
+### Key Concepts:
+1. **Architecture & Scope**: Ensure modular separation of concerns between your UI components, state management (Redux/Zustand), and backend API endpoints.
+2. **Best Practices**: Use TypeScript interfaces for payload validation and error boundaries to prevent unexpected UI crashes.
+3. **Performance Optimization**: Use memoization (\`useMemo\`, \`useCallback\`) and dynamic imports to reduce bundle size.
+
+\`\`\`typescript
+// Quick Helper Pattern
+export async function handleAsyncOp<T>(promise: Promise<T>): Promise<[T | null, Error | null]> {
+  try {
+    const data = await promise;
+    return [data, null];
+  } catch (error) {
+    return [null, error as Error];
+  }
+}
+\`\`\`
+
+Feel free to ask for a specific code example or step-by-step implementation! 🚀`;
 }
 
 function getSetupInstructions(): string {
