@@ -60,14 +60,10 @@ export function Sidebar() {
     loadDMChannels();
 
     const fetchOnlineUsers = () => {
-      // Refresh DM channels to get fresh isOnline from DB
-      loadDMChannels();
-
       userApi
         .getOnlineUsers()
         .then((userIds) => {
           if (userIds && Array.isArray(userIds) && userIds.length > 0) {
-            // Only update if we got actual data — don't clear existing state with empty array
             usePresenceStore.getState().setOnlineUsers(userIds);
           }
         })
@@ -75,8 +71,7 @@ export function Sidebar() {
     };
 
     fetchOnlineUsers();
-    // Refresh online users every 15 seconds (faster updates)
-    const interval = setInterval(fetchOnlineUsers, 15000);
+    const interval = setInterval(fetchOnlineUsers, 30000);
     return () => clearInterval(interval);
   }, []);
 

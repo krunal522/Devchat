@@ -78,8 +78,6 @@ export function Header() {
   // REST fallback: refresh online status for the DM recipient whenever switching channels
   useEffect(() => {
     if (!otherUserId || isAIChat) return;
-    // Refresh DM channels to get fresh isOnline from DB
-    useChatStore.getState().loadDMChannels();
     userApi.getOnlineUsers().then((ids) => {
       if (Array.isArray(ids) && ids.length > 0) {
         usePresenceStore.getState().setOnlineUsers(ids);
