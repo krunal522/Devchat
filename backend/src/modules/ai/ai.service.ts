@@ -1,7 +1,7 @@
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 import { env } from '../../config/env.js';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const AI_BOT_ID = 'devchat-ai-bot-id';
 
@@ -46,39 +46,36 @@ Your responsibilities:
 
 Personality: Professional, helpful, friendly. Always ready to help with code, debugging, architecture, and tech explanations.`;
 
-// Valid working models verified against Google Gemini API
-const MODELS_TO_TRY = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemma-4-26b-a4b-it', 'gemini-1.5-flash'];
+// Valid working models for @google/generative-ai SDK
+const MODELS_TO_TRY = ['gemma-4-26b-a4b-it', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 
-// Helper: call Gemini with a specific API key (optimized for ~1 second ultra-fast response)
+// Helper: call Gemini with a specific API key (optimized for fast response)
 async function callGemini(apiKey: string, userPrompt: string, userName: string): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+  const genAI = new GoogleGenerativeAI(apiKey.trim());
 
   let lastModelError = '';
   for (const modelName of MODELS_TO_TRY) {
     try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: SYSTEM_INSTRUCTION,
+      });
+
       const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Response timeout after 4s')), 4200)
+        setTimeout(() => reject(new Error('Response timeout after 6s')), 6000)
       );
 
-      const response: any = await Promise.race([
-        ai.models.generateContent({
-          model: modelName,
-          contents: `User (${userName}) asks: ${userPrompt}`,
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            maxOutputTokens: 900,
-            temperature: 0.6,
-          },
-        }),
+      const result: any = await Promise.race([
+        model.generateContent(`User (${userName}) asks: ${userPrompt}`),
         timeout,
       ]);
 
-      if (response.text && response.text.trim() !== '') {
-        return response.text;
+      const text = result?.response?.text();
+      if (text && text.trim() !== '') {
+        return text;
       }
     } catch (err: any) {
       lastModelError = err?.message || String(err);
-      // If error is quota limit on this key, throw it to trigger key rotation
       if (lastModelError.includes('quota') || lastModelError.includes('RESOURCE_EXHAUSTED') || lastModelError.includes('429')) {
         throw err;
       }
