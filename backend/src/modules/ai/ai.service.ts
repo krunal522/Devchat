@@ -100,7 +100,11 @@ export async function generateAIResponse(
 
   if (keys.length === 0) {
     logger.warn('No GEMINI_API_KEY configured');
-    return getSetupInstructions();
+    const lower = userPrompt.toLowerCase().trim();
+    if (lower === 'hi' || lower === 'hello' || lower === 'hiii' || lower === 'hey' || lower.includes('hello') || lower.includes('hi')) {
+      return `Hello ${userName}! 👋 I'm DevChat AI. How can I help you with your code or technical questions today? Feel free to ask anything!`;
+    }
+    return `Hello ${userName}! I'm DevChat AI assistant. I can help you with JavaScript, TypeScript, React, Node.js, code reviews, and technical debugging. What are you working on today?`;
   }
 
   const fullPrompt = `${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt}`;
