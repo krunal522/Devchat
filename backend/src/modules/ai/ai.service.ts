@@ -61,15 +61,7 @@ async function callGemini(apiKey: string, userPrompt: string, userName: string):
         systemInstruction: SYSTEM_INSTRUCTION,
       });
 
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Response timeout after 15s')), 15000)
-      );
-
-      const result: any = await Promise.race([
-        model.generateContent(`User (${userName}) asks: ${userPrompt}`),
-        timeout,
-      ]);
-
+      const result = await model.generateContent(`User (${userName}) asks: ${userPrompt}`);
       const text = result?.response?.text();
       if (text && text.trim() !== '') {
         return text;
