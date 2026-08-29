@@ -13,10 +13,10 @@ import './Header.css';
 
 export function formatLastSeenText(isOnline: boolean, lastSeenAt?: string | Date): string {
   if (isOnline) return '🟢 Active now';
-  if (!lastSeenAt) return 'Offline';
+  if (!lastSeenAt) return 'Last seen recently';
 
   const date = new Date(lastSeenAt);
-  if (isNaN(date.getTime())) return 'Offline';
+  if (isNaN(date.getTime())) return 'Last seen recently';
 
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -45,8 +45,10 @@ export function formatLastSeenText(isOnline: boolean, lastSeenAt?: string | Date
     return `Last seen yesterday at ${timeStr}`;
   }
 
-  // Anything older (2+ days) → just say Offline, no ugly dates
-  return 'Offline';
+  // Older dates (e.g. "Last seen Aug 22 at 10:25 AM")
+  const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `Last seen ${dateStr} at ${timeStr}`;
 }
 
 export function Header() {
