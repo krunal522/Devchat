@@ -45,7 +45,8 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         attachments,
       });
 
-      // Broadcast to channel room AND directly to every member's user room
+      // Broadcast to all clients, channel room, AND user rooms
+      io.emit('message:new', message);
       io.to(`channel:${channelId}`).emit('message:new', message);
 
       try {

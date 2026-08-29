@@ -285,8 +285,21 @@ export async function getChannelMembers(channelId: string) {
 }
 
 export async function getOrCreateDMChannel(userId1: string, userId2: string) {
-  // Check if a 1-to-1 DM channel already exists between these two users
-  const existingChannel = await prisma.channel.findFirst({
+  const sortedIds = [userId1, userId2].sort();
+  const canonicalSlug = `dm-${sortedIds[0]}-${sortedIds[1]}`;
+
+  // 1. Try to find canonical channel by unique deterministic slug
+  const existingBySlug = await prisma.channel.findFirst({
+    where: { slug: canonicalSlug },
+    select: CHANNEL_SELECT,
+  });
+
+  if (existingBySlug) {
+    return existingBySlug;
+  }
+
+  // 2. Fallback check by members
+  const existingByMembers = await prisma.channel.findFirst({
     where: {
       type: 'DIRECT',
       AND: [
@@ -297,11 +310,11 @@ export async function getOrCreateDMChannel(userId1: string, userId2: string) {
     select: CHANNEL_SELECT,
   });
 
-  if (existingChannel) {
-    return existingChannel;
+  if (existingByMembers) {
+    return existingByMembers;
   }
 
-  // Create new 1-to-1 DM channel
+  // 3. Create single canonical DM channel
   const user1 = await prisma.user.findUnique({ where: { id: userId1 }, select: { username: true } });
   const user2 = await prisma.user.findUnique({ where: { id: userId2 }, select: { username: true } });
 
@@ -309,28 +322,35 @@ export async function getOrCreateDMChannel(userId1: string, userId2: string) {
     throw ApiError.notFound('User not found');
   }
 
-  const channel = await prisma.$transaction(async (tx) => {
-    const dmChannel = await tx.channel.create({
-      data: {
-        name: `${user1.username}-${user2.username}`,
-        slug: `dm-${userId1.slice(0, 8)}-${userId2.slice(0, 8)}-${Date.now()}`,
-        type: 'DIRECT',
-        createdById: userId1,
-      },
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const dmChannel = await tx.channel.create({
+        data: {
+          name: `${user1.username}-${user2.username}`,
+          slug: canonicalSlug,
+          type: 'DIRECT',
+          createdById: userId1,
+        },
+        select: CHANNEL_SELECT,
+      });
+
+      await tx.channelMember.createMany({
+        data: [
+          { userId: userId1, channelId: dmChannel.id },
+          { userId: userId2, channelId: dmChannel.id },
+        ],
+      });
+
+      return dmChannel;
+    });
+  } catch (err) {
+    const fallback = await prisma.channel.findFirst({
+      where: { slug: canonicalSlug },
       select: CHANNEL_SELECT,
     });
-
-    await tx.channelMember.createMany({
-      data: [
-        { userId: userId1, channelId: dmChannel.id },
-        { userId: userId2, channelId: dmChannel.id },
-      ],
-    });
-
-    return dmChannel;
-  });
-
-  return channel;
+    if (fallback) return fallback;
+    throw err;
+  }
 }
 
 export async function getDMChannels(userId: string) {

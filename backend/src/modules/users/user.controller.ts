@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as userService from './user.service.js';
+import { getIO } from '../../sockets/index.js';
 
 export async function getUsers(req: Request, res: Response, next: NextFunction) {
   try {
@@ -32,6 +33,10 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
   try {
     const user = await userService.updateProfile(req.user!.userId, req.body);
     res.json({ success: true, data: user });
+
+    try {
+      getIO().emit('user:updated', user);
+    } catch {}
   } catch (error) {
     next(error);
   }
