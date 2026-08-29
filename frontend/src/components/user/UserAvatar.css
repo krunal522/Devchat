@@ -38,22 +38,36 @@
 /* ── Online Status Indicator ──────────── */
 .avatar__status {
   position: absolute;
-  bottom: -1px;
-  right: -1px;
-  border-radius: var(--radius-full);
+  bottom: 0;
+  right: 0;
+  border-radius: 50%;
   border: 2px solid #161822;
+  box-sizing: border-box;
+  z-index: 3;
 }
 
-.avatar--xs .avatar__status,
+.avatar--xs .avatar__status {
+  width: 8px;
+  height: 8px;
+  border-width: 1.5px;
+}
+
 .avatar--sm .avatar__status {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
 }
 
-.avatar--md .avatar__status,
+.avatar--md .avatar__status {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
+
 .avatar--lg .avatar__status {
-  width: 11px;
-  height: 11px;
+  width: 14px;
+  height: 14px;
+  border-width: 2.5px;
 }
 
 .avatar__status--online {
