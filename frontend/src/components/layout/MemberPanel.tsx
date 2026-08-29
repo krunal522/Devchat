@@ -47,10 +47,11 @@ export function MemberPanel() {
   if (!activeChannelId) return null;
   if (!isMemberPanelOpen && mobileView !== 'details') return null;
 
+  const safeMembers = Array.isArray(members) ? members : [];
   const isAdmin = activeChannel?.myRole === 'ADMIN' || activeChannel?.createdById === currentUserId;
   const isMemberOnline = (m: UserWithRole) => onlineUsers.has(m.id) || Boolean(m.isOnline);
-  const onlineMembers = members.filter(isMemberOnline);
-  const offlineMembers = members.filter((m) => !isMemberOnline(m));
+  const onlineMembers = safeMembers.filter(isMemberOnline);
+  const offlineMembers = safeMembers.filter((m) => !isMemberOnline(m));
 
   const handleClose = () => {
     toggleMemberPanel();
@@ -158,7 +159,7 @@ export function MemberPanel() {
         <span className="member-panel__hero-type">
           {activeChannel?.type === 'DIRECT'
             ? formatLastSeenText(isOtherUserOnline, lastSeenAt)
-            : `${members.length} Members`}
+            : `${safeMembers.length} Members`}
         </span>
 
         {activeChannel?.description && (

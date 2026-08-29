@@ -14,10 +14,11 @@ interface MentionPopupProps {
 export function MentionPopup({ users, filterText, onSelectUser, onClose }: MentionPopupProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const filteredUsers = users.filter(
+  const safeUsers = Array.isArray(users) ? users : [];
+  const filteredUsers = safeUsers.filter(
     (u) =>
-      u.username.toLowerCase().includes(filterText.toLowerCase()) ||
-      u.displayName.toLowerCase().includes(filterText.toLowerCase())
+      u.username?.toLowerCase().includes(filterText.toLowerCase()) ||
+      u.displayName?.toLowerCase().includes(filterText.toLowerCase())
   );
 
   useEffect(() => {

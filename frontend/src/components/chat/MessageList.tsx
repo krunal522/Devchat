@@ -86,12 +86,12 @@ export function MessageList() {
     scrollToBottomInstant();
     const t1 = requestAnimationFrame(scrollToBottomInstant);
     const t2 = setTimeout(scrollToBottomInstant, 50);
-    prevLengthRef.current = messages.length;
+    prevLengthRef.current = (messages || []).length;
     return () => {
       cancelAnimationFrame(t1);
       clearTimeout(t2);
     };
-  }, [activeChannelId, messages.length]);
+  }, [activeChannelId, (messages || []).length]);
 
   // When AI is typing, keep scrolled to bottom instantly & set safety timeout to hide loader after 15s max
   useEffect(() => {

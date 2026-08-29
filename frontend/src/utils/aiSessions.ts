@@ -23,7 +23,8 @@ export function groupMessagesIntoSessions(messagesList: Message[]): ChatSession[
 
     if (isUser) {
       // User prompt starts a new separate chat session!
-      const sessionTitle = msg.content.length > 55 ? `${msg.content.slice(0, 55)}...` : msg.content;
+      const contentText = msg.content || '';
+      const sessionTitle = contentText.length > 55 ? `${contentText.slice(0, 55)}...` : contentText;
       currentSession = {
         id: msg.id,
         title: sessionTitle || 'New Conversation',
