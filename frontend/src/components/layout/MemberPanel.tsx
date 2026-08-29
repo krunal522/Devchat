@@ -5,17 +5,21 @@ import { useUIStore } from '../../stores/uiStore';
 import { useToastStore } from '../../stores/toastStore';
 import { channelApi } from '../../services/channelApi';
 import { UserAvatar } from '../user/UserAvatar';
+import { usePresenceStore, useIsUserOnline } from '../../stores/presenceStore';
+import { formatLastSeenText } from './Header';
 import type { UserWithRole } from '../../types/user';
 import './MemberPanel.css';
 
 export function MemberPanel() {
   const activeChannelId = useChatStore((s) => s.activeChannelId);
   const activeChannel = useChatStore((s) => s.activeChannel);
+  const dmChannels = useChatStore((s) => s.dmChannels);
   const openDM = useChatStore((s) => s.openDM);
   const currentUserId = useAuthStore((s) => s.user?.id);
   const isMemberPanelOpen = useUIStore((s) => s.isMemberPanelOpen);
   const toggleMemberPanel = useUIStore((s) => s.toggleMemberPanel);
   const setMobileView = useUIStore((s) => s.setMobileView);
+  const onlineUsers = usePresenceStore((s) => s.onlineUsers);
 
   const [members, setMembers] = useState<UserWithRole[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,9 +41,16 @@ export function MemberPanel() {
   if (!activeChannelId) return null;
   if (!isMemberPanelOpen && mobileView !== 'details') return null;
 
+  const dmInfo = dmChannels.find((d) => d.id === activeChannel?.id);
+  const otherUserId = activeChannel?.type === 'DIRECT' ? (dmInfo?.otherUser?.id || activeChannel?.createdBy?.id) : undefined;
+  const isOtherUserOnline = useIsUserOnline(otherUserId) || Boolean(dmInfo?.otherUser?.isOnline);
+  const avatarUrl = dmInfo?.otherUser?.avatarUrl || activeChannel?.createdBy?.avatarUrl;
+  const lastSeenAt = dmInfo?.otherUser?.lastSeenAt || (activeChannel?.createdBy as any)?.lastSeenAt;
+
   const isAdmin = activeChannel?.myRole === 'ADMIN' || activeChannel?.createdById === currentUserId;
-  const onlineMembers = members.filter((m) => m.isOnline);
-  const offlineMembers = members.filter((m) => !m.isOnline);
+  const isMemberOnline = (m: UserWithRole) => onlineUsers.has(m.id) || Boolean(m.isOnline);
+  const onlineMembers = members.filter(isMemberOnline);
+  const offlineMembers = members.filter((m) => !isMemberOnline(m));
 
   const handleClose = () => {
     toggleMemberPanel();
@@ -132,14 +143,22 @@ export function MemberPanel() {
       <div className="member-panel__hero">
         <div className="member-panel__hero-avatar">
           {activeChannel?.type === 'DIRECT' ? (
-            <UserAvatar displayName={activeChannel.name} size="lg" isOnline showStatus />
+            <UserAvatar
+              src={avatarUrl}
+              displayName={activeChannel.name}
+              size="lg"
+              isOnline={isOtherUserOnline}
+              showStatus
+            />
           ) : (
             <div className="member-panel__hash-lg">#</div>
           )}
         </div>
         <h2 className="member-panel__hero-name">{activeChannel?.name || 'Channel'}</h2>
         <span className="member-panel__hero-type">
-          {activeChannel?.type === 'DIRECT' ? 'Direct Conversation' : `${members.length} Members`}
+          {activeChannel?.type === 'DIRECT'
+            ? formatLastSeenText(isOtherUserOnline, lastSeenAt)
+            : `${members.length} Members`}
         </span>
 
         {activeChannel?.description && (
