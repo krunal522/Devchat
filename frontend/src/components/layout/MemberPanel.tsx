@@ -38,14 +38,14 @@ export function MemberPanel() {
       .finally(() => setIsLoading(false));
   }, [activeChannelId]);
 
-  if (!activeChannelId) return null;
-  if (!isMemberPanelOpen && mobileView !== 'details') return null;
-
   const dmInfo = dmChannels.find((d) => d.id === activeChannel?.id);
   const otherUserId = activeChannel?.type === 'DIRECT' ? (dmInfo?.otherUser?.id || activeChannel?.createdBy?.id) : undefined;
   const isOtherUserOnline = useIsUserOnline(otherUserId) || Boolean(dmInfo?.otherUser?.isOnline);
   const avatarUrl = dmInfo?.otherUser?.avatarUrl || activeChannel?.createdBy?.avatarUrl;
   const lastSeenAt = dmInfo?.otherUser?.lastSeenAt || (activeChannel?.createdBy as any)?.lastSeenAt;
+
+  if (!activeChannelId) return null;
+  if (!isMemberPanelOpen && mobileView !== 'details') return null;
 
   const isAdmin = activeChannel?.myRole === 'ADMIN' || activeChannel?.createdById === currentUserId;
   const isMemberOnline = (m: UserWithRole) => onlineUsers.has(m.id) || Boolean(m.isOnline);
