@@ -185,25 +185,23 @@ export function Header() {
           )}
 
           <div className="chat-header__details">
-            <div className="chat-header__primary-line">
+            <div className="chat-header__title-row">
               <h2 className="chat-header__name">{channel?.name || 'Select a channel'}</h2>
               {isDirect && channel?.description && (
                 <span className="chat-header__handle">{channel.description}</span>
               )}
-              {isDirect && <span className="chat-header__dot-separator">•</span>}
-              {isDirect ? (
+            </div>
+            {isDirect ? (
+              presenceStatusText && (
                 <span className={`chat-header__subtext ${isOtherUserOnline ? 'chat-header__subtext--online' : ''}`}>
                   {presenceStatusText}
                 </span>
-              ) : (
-                channel?.description && (
-                  <>
-                    <span className="chat-header__dot-separator">•</span>
-                    <span className="chat-header__subtext">{channel.description}</span>
-                  </>
-                )
-              )}
-            </div>
+              )
+            ) : (
+              channel?.description && (
+                <span className="chat-header__subtext">{channel.description}</span>
+              )
+            )}
           </div>
         </div>
 
