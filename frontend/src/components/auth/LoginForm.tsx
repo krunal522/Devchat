@@ -95,9 +95,18 @@ export function LoginForm() {
     try {
       await login(userEmail, 'Password123');
     } catch (err: any) {
-      setErrors({
-        identifier: 'Demo login failed. Please try again.',
-      });
+      const serverMsg = err.response?.data?.error?.message;
+      if (serverMsg) {
+        setErrors({ identifier: serverMsg });
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout') || !err.response) {
+        setErrors({
+          identifier: 'Render backend is waking up (cold start). Please click 1-Click Sign In again in 5s!',
+        });
+      } else {
+        setErrors({
+          identifier: 'Demo login failed. Please try again.',
+        });
+      }
     } finally {
       setDemoLoading(null);
     }
