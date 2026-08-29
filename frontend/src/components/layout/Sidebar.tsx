@@ -71,8 +71,20 @@ export function Sidebar() {
     };
 
     fetchOnlineUsers();
-    const interval = setInterval(fetchOnlineUsers, 30000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchOnlineUsers, 3000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchOnlineUsers();
+        loadDMChannels();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   const workspaceMembers = useWorkspaceStore((s) => s.members);

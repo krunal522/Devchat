@@ -46,8 +46,8 @@ export function initSocket(token: string): Socket {
     upgrade: true,
     reconnection: true,
     reconnectionAttempts: 100,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
+    reconnectionDelay: 300,
+    reconnectionDelayMax: 1500,
     timeout: 20000,
     forceNew: true,
   });

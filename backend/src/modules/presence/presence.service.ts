@@ -121,11 +121,12 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
 export async function getOnlineUsers(): Promise<string[]> {
   const onlineSet = new Set<string>();
 
-  // 1. Memory sockets (active connections on current process)
-  for (const [userId, sockets] of memorySockets.entries()) {
-    if (sockets.size > 0) {
-      onlineSet.add(userId);
-    }
+  // 1. Memory sockets & active grace period timers
+  for (const userId of memorySockets.keys()) {
+    onlineSet.add(userId);
+  }
+  for (const userId of offlineTimers.keys()) {
+    onlineSet.add(userId);
   }
 
   // 2. Redis online set (across distributed backend workers)
