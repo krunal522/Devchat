@@ -88,32 +88,41 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
  * Get all currently online users
  */
 export async function getOnlineUsers(): Promise<string[]> {
-  // Primary: use in-memory socket map (most accurate — reflects active WS connections)
-  const memoryUserIds = Array.from(memorySockets.keys());
-  if (memoryUserIds.length > 0) return memoryUserIds;
+  const onlineSet = new Set<string>();
 
-  // Secondary: try Redis
+  // 1. Memory sockets (active connections on current process)
+  for (const [userId, sockets] of memorySockets.entries()) {
+    if (sockets.size > 0) {
+      onlineSet.add(userId);
+    }
+  }
+
+  // 2. Redis online set (across distributed backend workers)
   try {
     if (redis.status === 'ready') {
       const redisUsers = await redis.smembers(RedisKeys.onlineUsers);
-      if (redisUsers && redisUsers.length > 0) return redisUsers;
+      if (redisUsers && Array.isArray(redisUsers)) {
+        redisUsers.forEach((id) => onlineSet.add(id));
+      }
     }
   } catch (err) {}
 
-  // Tertiary: DB fallback (only return users that connected in last 5 minutes)
+  // 3. Database isOnline flag (for active users logged in across nodes/sessions)
   try {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const dbOnlineUsers = await prisma.user.findMany({
       where: {
-        isOnline: true,
-        lastSeenAt: { gte: fiveMinutesAgo },
+        OR: [
+          { isOnline: true },
+          { lastSeenAt: { gte: fiveMinutesAgo } },
+        ],
       },
       select: { id: true },
     });
-    return dbOnlineUsers.map((u) => u.id);
-  } catch {
-    return [];
-  }
+    dbOnlineUsers.forEach((u) => onlineSet.add(u.id));
+  } catch (err) {}
+
+  return Array.from(onlineSet);
 }
 
 /**
@@ -121,24 +130,15 @@ export async function getOnlineUsers(): Promise<string[]> {
  */
 export async function checkOnlineStatus(userIds: string[]): Promise<Record<string, boolean>> {
   const status: Record<string, boolean> = {};
+  if (!userIds || userIds.length === 0) return status;
 
-  try {
-    if (redis.status === 'ready') {
-      const pipeline = redis.pipeline();
-      userIds.forEach((id) => pipeline.sismember(RedisKeys.onlineUsers, id));
-      const results = await pipeline.exec();
+  const onlineList = await getOnlineUsers();
+  const onlineSet = new Set(onlineList);
 
-      userIds.forEach((id, index) => {
-        status[id] = Boolean(results?.[index]?.[1]);
-      });
-      return status;
-    }
-  } catch (err) {}
-
-  // Fallback to in-memory socket map
   userIds.forEach((id) => {
-    status[id] = memorySockets.has(id) && (memorySockets.get(id)?.size || 0) > 0;
+    status[id] = onlineSet.has(id);
   });
+
   return status;
 }
 

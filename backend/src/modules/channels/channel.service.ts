@@ -3,6 +3,7 @@ import { redis, RedisKeys } from '../../config/redis.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { slugify } from '../../utils/helpers.js';
 import type { CreateChannelInput, UpdateChannelInput } from './channel.schema.js';
+import { getOnlineUsers as getPresenceOnlineUsers } from '../presence/presence.service.js';
 
 const CHANNEL_SELECT = {
   id: true,
@@ -272,26 +273,14 @@ export async function getChannelMembers(channelId: string) {
     orderBy: [{ role: 'asc' }, { user: { displayName: 'asc' } }],
   });
 
-  // Enrich with Redis online status (safely handle Redis offline)
-  const userIds = members.map((m) => m.user.id);
-  const onlineStatuses = await Promise.all(
-    userIds.map(async (id, i) => {
-      try {
-        if (redis.status === 'ready') {
-          return Boolean(await redis.sismember(RedisKeys.onlineUsers, id));
-        }
-      } catch {
-        // Redis offline
-      }
-      return Boolean(members[i].user.isOnline);
-    })
-  );
+  const onlineUserIds = await getPresenceOnlineUsers();
+  const onlineSet = new Set(onlineUserIds);
 
-  return members.map((member, i) => ({
+  return members.map((member) => ({
     ...member.user,
     role: member.role,
     joinedAt: member.joinedAt,
-    isOnline: Boolean(onlineStatuses[i]),
+    isOnline: onlineSet.has(member.user.id),
   }));
 }
 
@@ -397,29 +386,18 @@ export async function getDMChannels(userId: string) {
     }
   }
 
-  // Get online status from Redis and format response
-  return Promise.all(
-    uniqueChannels.map(async (channel) => {
-      const otherUser = channel.members.find((m) => m.user.id !== userId)?.user;
-      const isOnline = otherUser
-        ? await (async () => {
-            try {
-              if (redis.status === 'ready') {
-                return Boolean(await redis.sismember(RedisKeys.onlineUsers, otherUser.id));
-              }
-            } catch {
-              // Redis offline
-            }
-            return Boolean(otherUser.isOnline);
-          })()
-        : false;
+  const onlineUserIds = await getPresenceOnlineUsers();
+  const onlineSet = new Set(onlineUserIds);
 
-      return {
-        id: channel.id,
-        otherUser: otherUser ? { ...otherUser, isOnline } : null,
-        lastMessage: channel.messages[0] || null,
-        updatedAt: channel.updatedAt,
-      };
-    })
-  );
+  return uniqueChannels.map((channel) => {
+    const otherUser = channel.members.find((m) => m.user.id !== userId)?.user;
+    const isOnline = otherUser ? onlineSet.has(otherUser.id) : false;
+
+    return {
+      id: channel.id,
+      otherUser: otherUser ? { ...otherUser, isOnline } : null,
+      lastMessage: channel.messages[0] || null,
+      updatedAt: channel.updatedAt,
+    };
+  });
 }
