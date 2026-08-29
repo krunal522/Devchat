@@ -85,10 +85,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await authApi.getMe();
       initSocket(token);
       set({ user, isAuthenticated: true, isLoading: false });
-    } catch {
+    } catch (err) {
+      console.warn('Authentication check failed:', err);
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       set({ user: null, isAuthenticated: false, isLoading: false });
+    } finally {
+      set({ isLoading: false });
     }
   },
 

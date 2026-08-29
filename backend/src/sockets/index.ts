@@ -23,13 +23,13 @@ export function getIO(): Server {
 export function initializeSocket(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin: true,
+      origin: (_origin, callback) => callback(null, true),
       methods: ['GET', 'POST'],
       credentials: true,
     },
     pingTimeout: 60000,
     pingInterval: 25000,
-    transports: ['polling', 'websocket'],
+    transports: ['websocket', 'polling'],
     allowUpgrades: true,
   });
 

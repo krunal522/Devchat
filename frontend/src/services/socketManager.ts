@@ -19,6 +19,8 @@ import { useUIStore } from '../stores/uiStore';
 import { notificationService } from './notificationService';
 import type { Message } from '../types/message';
 
+import { userApi } from './userApi';
+
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://devchat-war7.onrender.com';
 
 let socket: Socket | null = null;
@@ -36,14 +38,17 @@ export function initSocket(token: string): Socket {
   }
 
   socket = io(SOCKET_URL, {
-    auth: { token },
-    transports: ['polling', 'websocket'],
+    auth: (cb) => {
+      const activeToken = localStorage.getItem('accessToken') || token;
+      cb({ token: activeToken });
+    },
+    transports: ['websocket', 'polling'],
     upgrade: true,
     reconnection: true,
-    reconnectionAttempts: 50,
+    reconnectionAttempts: 100,
     reconnectionDelay: 1000,
-    reconnectionDelayMax: 10000,
-    timeout: 30000,
+    reconnectionDelayMax: 5000,
+    timeout: 20000,
     forceNew: true,
   });
 
@@ -93,16 +98,12 @@ function attachListeners(sock: Socket): void {
       }
     });
 
-    // Also fetch online users via REST immediately after connection
-    // This guarantees green dots show even if presence:online_users socket event is missed
-    const token = localStorage.getItem('accessToken') || '';
-    fetch(`${SOCKET_URL}/api/users/online`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((json) => {
-        if (json?.data && Array.isArray(json.data)) {
-          usePresenceStore.getState().setOnlineUsers(json.data);
+    // Fetch online users via REST immediately after connection
+    userApi
+      .getOnlineUsers()
+      .then((userIds) => {
+        if (userIds && Array.isArray(userIds) && userIds.length > 0) {
+          usePresenceStore.getState().setOnlineUsers(userIds);
         }
       })
       .catch(() => {});
