@@ -18,7 +18,7 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRY: z.string().default('30d'),
 
   RATE_LIMIT_WINDOW_MS: z.preprocess((val) => (val ? Number(val) : 900000), z.number().default(900000)),
-  RATE_LIMIT_MAX_REQUESTS: z.preprocess((val) => (val ? Number(val) : 100), z.number().default(100)),
+  RATE_LIMIT_MAX_REQUESTS: z.preprocess((val) => (val ? Number(val) : 10000), z.number().default(10000)),
 
   GEMINI_API_KEY: z.string().optional().default(''),
   GEMINI_API_KEY_2: z.string().optional().default(''),
@@ -39,7 +39,7 @@ export const env = parsed.success
       JWT_ACCESS_EXPIRY: '7d',
       JWT_REFRESH_EXPIRY: '30d',
       RATE_LIMIT_WINDOW_MS: 900000,
-      RATE_LIMIT_MAX_REQUESTS: 100,
+      RATE_LIMIT_MAX_REQUESTS: 10000,
       GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
       GEMINI_API_KEY_2: process.env.GEMINI_API_KEY_2 || '',
     };

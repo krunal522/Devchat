@@ -71,7 +71,7 @@ export function Sidebar() {
     };
 
     fetchOnlineUsers();
-    const interval = setInterval(fetchOnlineUsers, 3000);
+    const interval = setInterval(fetchOnlineUsers, 5000);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {

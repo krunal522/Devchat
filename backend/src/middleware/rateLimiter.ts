@@ -6,7 +6,7 @@ import { env } from '../config/env.js';
  */
 export const apiLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
-  max: env.NODE_ENV === 'development' ? 10000 : env.RATE_LIMIT_MAX_REQUESTS,
+  max: 10000, // 10,000 requests per 15 minutes for real-time web app
   standardHeaders: true,
   legacyHeaders: false,
   message: {
