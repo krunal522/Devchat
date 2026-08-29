@@ -286,6 +286,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
           },
         }));
         await get().loadMessages(dm.id);
+        // Ensure socket joins this DM channel room
+        getSocket()?.emit('channel:join', dm.id);
       } else {
         await get().setActiveChannel(dmChannel.id);
       }
