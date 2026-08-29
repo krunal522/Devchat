@@ -21,7 +21,15 @@ export const usePresenceStore = create<PresenceState>((set) => ({
   typingUsers: {},
 
   setOnlineUsers: (userIds) => {
-    set({ onlineUsers: new Set(userIds) });
+    const finalSet = new Set(userIds);
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const u = JSON.parse(storedUser);
+        if (u?.id) finalSet.add(u.id);
+      }
+    } catch {}
+    set({ onlineUsers: finalSet });
   },
 
   addOnlineUser: (userId) => {

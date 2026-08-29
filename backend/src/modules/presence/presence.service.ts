@@ -45,14 +45,10 @@ export async function setOnline(userId: string, socketId: string): Promise<void>
 export async function removeSocket(userId: string, socketId: string): Promise<boolean> {
   let remainingSockets = 0;
 
-  // Always remove from in-memory map
   if (memorySockets.has(userId)) {
     const userSet = memorySockets.get(userId)!;
     userSet.delete(socketId);
     remainingSockets = userSet.size;
-    if (remainingSockets === 0) {
-      memorySockets.delete(userId);
-    }
   }
 
   try {
@@ -70,14 +66,16 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
       clearTimeout(offlineTimers.get(userId)!);
     }
 
-    // 5-second grace period before marking offline on server (prevents brief Render proxy drops from flipping status)
+    // 15-second grace period before marking offline on server (prevents brief Render proxy drops from flipping status)
     const timer = setTimeout(async () => {
       offlineTimers.delete(userId);
 
-      // Re-verify if user reconnected during the grace period
+      // Re-verify if user reconnected with a new socket during grace period
       if (memorySockets.has(userId) && (memorySockets.get(userId)?.size || 0) > 0) {
-        return;
+        return; // User reconnected! Do NOT mark offline.
       }
+
+      memorySockets.delete(userId);
 
       try {
         if (redis.status === 'ready') {
@@ -86,17 +84,28 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
       } catch (err) {}
 
       try {
-        await prisma.user.update({
+        const updatedUser = await prisma.user.update({
           where: { id: userId },
           data: {
             isOnline: false,
             lastSeenAt: new Date(),
           },
+          select: { username: true },
         });
+
+        // Broadcast offline status via Socket.io
+        try {
+          const { getIO } = await import('../../sockets/index.js');
+          getIO().emit('user:offline', {
+            userId,
+            username: updatedUser.username,
+            lastSeen: new Date().toISOString(),
+          });
+        } catch {}
       } catch (err) {}
 
-      logger.debug(`User ${userId} went offline (after grace period)`);
-    }, 5000);
+      logger.debug(`User ${userId} went offline (after 15s grace period)`);
+    }, 15000);
 
     offlineTimers.set(userId, timer);
     return false;
