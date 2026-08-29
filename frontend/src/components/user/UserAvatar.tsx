@@ -27,7 +27,8 @@ export const UserAvatar = memo(function UserAvatar({
   isAI,
 }: UserAvatarProps) {
   const [imgError, setImgError] = useState(false);
-  const isAIBot = isAI || displayName?.toLowerCase().includes('devchat ai') || displayName?.toLowerCase().includes('devchat_ai');
+  const safeName = typeof displayName === 'string' ? displayName : '';
+  const isAIBot = isAI || safeName.toLowerCase().includes('devchat ai') || safeName.toLowerCase().includes('devchat_ai');
 
   if (isAIBot) {
     const pixelSize = SIZE_PX_MAP[size] || 36;

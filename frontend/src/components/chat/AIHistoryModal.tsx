@@ -137,7 +137,7 @@ export function AIHistoryModal({ isOpen, onClose, channelId, onSelectMessage }: 
                     </div>
                     <div className="ai-history-session-meta">
                       <span className="ai-history-session-badge">
-                        {session.messages.length} {session.messages.length === 1 ? 'msg' : 'msgs'}
+                        {(session.messages || []).length} {(session.messages || []).length === 1 ? 'msg' : 'msgs'}
                       </span>
                       <span className="ai-history-session-time">
                         {formatMessageTime(session.startTime)}

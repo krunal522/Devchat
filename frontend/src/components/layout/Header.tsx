@@ -69,7 +69,8 @@ export function Header() {
 
   const isDirect = channel?.type === 'DIRECT';
   const dmInfo = dmChannels.find((d) => d.id === channel?.id);
-  const isAIChat = isDirect && (channel?.name?.toLowerCase().includes('devchat ai') || dmInfo?.otherUser?.username === 'devchat_ai' || (channel?.createdBy as any)?.username === 'devchat_ai');
+  const channelNameLower = typeof channel?.name === 'string' ? channel.name.toLowerCase() : '';
+  const isAIChat = isDirect && (channelNameLower.includes('devchat ai') || dmInfo?.otherUser?.username === 'devchat_ai' || (channel?.createdBy as any)?.username === 'devchat_ai');
 
   // Derive otherUserId: prefer dmInfo.otherUser (DM store), fallback to channel.createdBy (built from setActiveChannel)
   const otherUserId = isDirect

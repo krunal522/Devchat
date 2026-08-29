@@ -47,7 +47,7 @@ export function ThreadDrawer() {
   // Scroll to bottom when new reply is added
   useEffect(() => {
     repliesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [replies.length]);
+  }, [(replies || []).length]);
 
   const handleSendReply = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +58,8 @@ export function ThreadDrawer() {
   };
 
   if (!activeThreadMessage) return null;
+
+  const safeReplies = Array.isArray(replies) ? replies : [];
 
   return (
     <div className="thread-drawer-overlay">
@@ -91,7 +93,7 @@ export function ThreadDrawer() {
           {/* Replies Divider */}
           <div className="thread-drawer__divider">
             <span>
-              {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+              {safeReplies.length} {safeReplies.length === 1 ? 'reply' : 'replies'}
             </span>
             <div className="thread-drawer__divider-line" />
           </div>

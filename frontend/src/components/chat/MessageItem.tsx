@@ -28,12 +28,15 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
   const authorAvatar = message.user?.avatarUrl;
   const isOwnMessage = currentUserId === authorId;
 
+  const displayNameLower = typeof message.user?.displayName === 'string' ? message.user.displayName.toLowerCase() : '';
+  const usernameLower = typeof message.user?.username === 'string' ? message.user.username.toLowerCase() : '';
+
   const isAIMessage =
     message.user?.username === 'devchat_ai' ||
     message.user?.id === 'devchat-ai-bot-id' ||
-    message.user?.displayName?.toLowerCase().includes('devchat ai') ||
-    message.user?.displayName?.toLowerCase().includes('ai') ||
-    message.user?.username?.toLowerCase().includes('devchat_ai');
+    displayNameLower.includes('devchat ai') ||
+    displayNameLower.includes('ai') ||
+    usernameLower.includes('devchat_ai');
 
   const isAuthorSelf = Boolean(currentUserId && authorId === currentUserId);
   const isOnlineHook = useIsUserOnline(authorId);
@@ -41,15 +44,16 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
 
   const { editMessage, deleteMessage, toggleReaction } = useSocketActions();
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(message.content);
+  const [editContent, setEditContent] = useState(message.content || '');
   const [showActions, setShowActions] = useState(false);
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [lightboxAttachment, setLightboxAttachment] = useState<{ url: string; name: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const channelNameLower = typeof activeChannel?.name === 'string' ? activeChannel.name.toLowerCase() : '';
   const isAIChat =
     activeChannel?.type === 'DIRECT' &&
-    (activeChannel?.name?.toLowerCase().includes('devchat ai') ||
+    (channelNameLower.includes('devchat ai') ||
       (activeChannel?.createdBy as any)?.username === 'devchat_ai');
 
   const canEditOrDelete = isOwnMessage;
