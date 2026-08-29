@@ -56,6 +56,7 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
                   parentId: isAIMentioned ? message.id : req.body.parentId,
                 });
 
+                io.emit('message:new', aiMessage);
                 io.to(`channel:${channelId}`).emit('message:new', aiMessage);
                 members.forEach((m) => {
                   io.to(`user:${m.userId}`).emit('message:new', aiMessage);

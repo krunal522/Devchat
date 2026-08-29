@@ -106,7 +106,8 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
                   parentId: isAIMentioned ? message.id : parentId,
                 });
 
-                // Broadcast AI message to channel and member user rooms
+                // Broadcast AI message to all clients, channel room, and member user rooms
+                io.emit('message:new', aiMessage);
                 io.to(`channel:${channelId}`).emit('message:new', aiMessage);
                 channelMembers.forEach((m) => {
                   io.to(`user:${m.userId}`).emit('message:new', aiMessage);
