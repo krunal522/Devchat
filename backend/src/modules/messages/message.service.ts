@@ -54,13 +54,22 @@ const MESSAGE_SELECT = {
 } as const;
 
 export async function sendMessage(userId: string, channelId: string, input: SendMessageInput) {
-  // Verify user is a member of the channel
-  const membership = await prisma.channelMember.findUnique({
-    where: { userId_channelId: { userId, channelId } },
-  });
+  // Ensure AI Bot is automatically a member of any channel it posts to
+  if (userId === 'devchat-ai-bot-id') {
+    await prisma.channelMember.upsert({
+      where: { userId_channelId: { userId: 'devchat-ai-bot-id', channelId } },
+      create: { userId: 'devchat-ai-bot-id', channelId, role: 'MEMBER' },
+      update: {},
+    });
+  } else {
+    // Verify user is a member of the channel
+    const membership = await prisma.channelMember.findUnique({
+      where: { userId_channelId: { userId, channelId } },
+    });
 
-  if (!membership) {
-    throw ApiError.forbidden('You are not a member of this channel');
+    if (!membership) {
+      throw ApiError.forbidden('You are not a member of this channel');
+    }
   }
 
   // Verify parent message exists if replying

@@ -44,18 +44,28 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
               const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || 'Hello AI';
 
               io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
-              const aiReplyText = await generateAIResponse(cleanPrompt, senderName);
-              io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
-
-              const aiMessage = await messageService.sendMessage(AI_BOT_ID, channelId, {
-                content: aiReplyText,
-                parentId: isAIMentioned ? message.id : req.body.parentId,
-              });
-
-              io.to(`channel:${channelId}`).emit('message:new', aiMessage);
               members.forEach((m) => {
-                io.to(`user:${m.userId}`).emit('message:new', aiMessage);
+                io.to(`user:${m.userId}`).emit('ai:typing:start', { channelId });
               });
+
+              try {
+                const aiReplyText = await generateAIResponse(cleanPrompt, senderName);
+
+                const aiMessage = await messageService.sendMessage(AI_BOT_ID, channelId, {
+                  content: aiReplyText,
+                  parentId: isAIMentioned ? message.id : req.body.parentId,
+                });
+
+                io.to(`channel:${channelId}`).emit('message:new', aiMessage);
+                members.forEach((m) => {
+                  io.to(`user:${m.userId}`).emit('message:new', aiMessage);
+                });
+              } finally {
+                io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
+                members.forEach((m) => {
+                  io.to(`user:${m.userId}`).emit('ai:typing:stop', { channelId });
+                });
+              }
             }
           } catch (aiErr) {
             logger.error(`Error in REST AI Bot response: ${aiErr}`);
