@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useUIStore } from '../../stores/uiStore';
 import { getSocket } from '../../services/socketManager';
-import { messageApi } from '../../services/messageApi';
 import { useSocketActions } from '../../hooks/useSocket';
 import { MessageItem } from './MessageItem';
 import { AITypingBubble } from './AITypingBubble';
@@ -111,36 +110,6 @@ export function MessageList() {
     if (!activeChannelId) return;
     getSocket()?.emit('channel:join', activeChannelId);
   }, [activeChannelId]);
-
-  // ─── REST polling fallback for DM channels (3s) ──────────────────────────────
-  // If the socket misses a message delivery, polling catches it within 3 seconds
-  useEffect(() => {
-    if (!activeChannelId || !activeChannel || activeChannel.type !== 'DIRECT' || isAIChat) return;
-
-    const poll = async () => {
-      try {
-        const data = await messageApi.getMessages(activeChannelId);
-        const store = useChatStore.getState();
-        const existing = store.messages[activeChannelId] || [];
-        const existingIds = new Set(existing.map((m: any) => m.id));
-        let added = false;
-        for (const msg of data.messages) {
-          if (!existingIds.has(msg.id)) {
-            store.addMessage(msg);
-            added = true;
-          }
-        }
-        if (added) {
-          scrollToBottomInstant();
-        }
-      } catch {
-        // silently ignore poll errors
-      }
-    };
-
-    const interval = setInterval(poll, 3000);
-    return () => clearInterval(interval);
-  }, [activeChannelId, activeChannel, isAIChat]);
 
   // Handle scroll events: load more at top
   const handleScroll = () => {

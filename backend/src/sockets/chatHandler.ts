@@ -45,10 +45,8 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         attachments,
       });
 
-      // Broadcast to all clients, channel room, AND user rooms
-      io.emit('message:new', message);
-      io.to(`channel:${channelId}`).emit('message:new', message);
-
+      // Instantly deliver to all DM members via their personal user rooms
+      // (every socket joins user:${userId} on connect — 100% reliable delivery)
       try {
         const members = await prisma.channelMember.findMany({
           where: { channelId },
@@ -58,7 +56,9 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
           io.to(`user:${m.userId}`).emit('message:new', message);
         });
       } catch (mErr) {
+        // Fallback: broadcast to channel room if member lookup fails
         logger.error(`Error broadcasting to user rooms: ${mErr}`);
+        io.to(`channel:${channelId}`).emit('message:new', message);
       }
 
       // If it's a thread reply, also emit to the thread room

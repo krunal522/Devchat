@@ -137,19 +137,8 @@ function attachListeners(sock: Socket): void {
     useChatStore.getState().updateUserLastSeen(data.userId, lastSeenTime);
   });
 
-const processedMessageIds = new Set<string>();
-
   // ── Messages ──────────────────────────────────────────────────────────────
   sock.on('message:new', async (message: Message) => {
-    if (processedMessageIds.has(message.id)) {
-      return;
-    }
-    processedMessageIds.add(message.id);
-    if (processedMessageIds.size > 200) {
-      const first = processedMessageIds.values().next().value;
-      if (first) processedMessageIds.delete(first);
-    }
-
     const chatStore = useChatStore.getState();
     chatStore.addMessage(message);
 
