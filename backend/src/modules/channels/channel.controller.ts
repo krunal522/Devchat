@@ -138,11 +138,19 @@ export async function getDMChannels(req: Request, res: Response, next: NextFunct
 
 export async function getOrCreateDMChannel(req: Request, res: Response, next: NextFunction) {
   try {
+    const otherUserId = req.params.userId as string;
     const channel = await channelService.getOrCreateDMChannel(
       req.user!.userId,
-      req.params.userId as string
+      otherUserId
     );
     res.json({ success: true, data: channel });
+
+    // Tell BOTH users to join the DM channel socket room immediately
+    try {
+      const io = getIO();
+      io.to(`user:${req.user!.userId}`).emit('dm:join_room', { channelId: channel.id });
+      io.to(`user:${otherUserId}`).emit('dm:join_room', { channelId: channel.id });
+    } catch {}
   } catch (error) {
     next(error);
   }

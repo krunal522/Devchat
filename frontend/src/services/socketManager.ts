@@ -161,6 +161,8 @@ const processedMessageIds = new Set<string>();
     // If this is a DM channel and not currently loaded in dmChannels state, refresh DM channels list
     const isDMInStore = chatStore.dmChannels.some((d) => d.id === message.channelId);
     if (!isDMInStore) {
+      // New DM channel - join the socket room and refresh DM list
+      sock.emit('channel:join', message.channelId);
       await chatStore.loadDMChannels();
     }
 
@@ -221,6 +223,15 @@ const processedMessageIds = new Set<string>();
     // Notify user
     useToastStore.getState().addToast({ title: 'Channel Removed', message: 'You have been removed from a channel.', type: 'warning' });
     useChatStore.getState().loadChannels();
+  });
+
+  // ─── DM Room Auto-Join ──────────────────────────────────────────────────────
+  // Server emits this when a new DM channel is created, so this user's socket joins the room
+  sock.on('dm:join_room', (data: { channelId: string }) => {
+    if (data?.channelId) {
+      sock.emit('channel:join', data.channelId);
+      useChatStore.getState().loadDMChannels();
+    }
   });
 
 

@@ -68,4 +68,12 @@ export function registerChannelHandlers(io: Server, socket: Socket): void {
       username: data.username,
     });
   });
+  // ─── DM Room Auto-Join (emitted by server) ────────────
+  // When backend creates a DM channel, it tells both users to join that room
+  socket.on('dm:join_room', (data: { channelId: string }) => {
+    if (data?.channelId) {
+      socket.join(`channel:${data.channelId}`);
+      logger.debug(`User ${username} auto-joined DM room: channel:${data.channelId}`);
+    }
+  });
 }
