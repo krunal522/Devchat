@@ -22,8 +22,23 @@ interface MessageItemProps {
 export const MessageItem = memo(function MessageItem({ message }: MessageItemProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const openThread = useChatStore((s) => s.openThread);
+  const activeChannel = useChatStore((s) => s.activeChannel);
   const authorId = message.user?.id;
-  const isOnline = useIsUserOnline(authorId);
+  const authorName = message.user?.displayName || 'Unknown';
+  const authorAvatar = message.user?.avatarUrl;
+  const isOwnMessage = currentUserId === authorId;
+
+  const isAIMessage =
+    message.user?.username === 'devchat_ai' ||
+    message.user?.id === 'devchat-ai-bot-id' ||
+    message.user?.displayName?.toLowerCase().includes('devchat ai') ||
+    message.user?.displayName?.toLowerCase().includes('ai') ||
+    message.user?.username?.toLowerCase().includes('devchat_ai');
+
+  const isAuthorSelf = Boolean(currentUserId && authorId === currentUserId);
+  const isOnlineHook = useIsUserOnline(authorId);
+  const isOnline = isAIMessage || isAuthorSelf || isOnlineHook;
+
   const { editMessage, deleteMessage, toggleReaction } = useSocketActions();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
@@ -31,18 +46,6 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [lightboxAttachment, setLightboxAttachment] = useState<{ url: string; name: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  const authorName = message.user?.displayName || 'Unknown';
-  const authorAvatar = message.user?.avatarUrl;
-
-  const activeChannel = useChatStore((s) => s.activeChannel);
-  const isOwnMessage = currentUserId === authorId;
-  const isAIMessage =
-    message.user?.username === 'devchat_ai' ||
-    message.user?.id === 'devchat-ai-bot-id' ||
-    message.user?.displayName?.toLowerCase().includes('devchat ai') ||
-    message.user?.displayName?.toLowerCase().includes('ai') ||
-    message.user?.username?.toLowerCase().includes('devchat_ai');
 
   const isAIChat =
     activeChannel?.type === 'DIRECT' &&

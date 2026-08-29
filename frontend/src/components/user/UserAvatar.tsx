@@ -56,10 +56,10 @@ export const UserAvatar = memo(function UserAvatar({
       ) : (
         <div className="avatar__fallback">{initials}</div>
       )}
-      {showStatus && (
+      {showStatus && isOnline && (
         <span
-          className={`avatar__status ${isOnline ? 'avatar__status--online' : 'avatar__status--offline'}`}
-          aria-label={isOnline ? 'Online' : 'Offline'}
+          className="avatar__status avatar__status--online"
+          aria-label="Online"
         />
       )}
     </div>
