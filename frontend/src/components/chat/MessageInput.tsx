@@ -368,7 +368,7 @@ export function MessageInput() {
   if (!activeChannelId) return null;
 
   const channelName = activeChannel?.type === 'DIRECT'
-    ? activeChannel.name
+    ? activeChannel?.name || 'user'
     : `#${activeChannel?.name || 'channel'}`;
 
   const hasInput = Boolean(content.trim()) || attachments.length > 0;

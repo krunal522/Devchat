@@ -42,9 +42,14 @@ export class ErrorBoundary extends Component<Props, State> {
         >
           <span style={{ fontSize: '3rem' }}>⚠️</span>
           <h2>Something went wrong</h2>
-          <p style={{ color: 'var(--text-secondary, #9ca3af)', maxWidth: '400px' }}>
+          <p style={{ color: 'var(--text-secondary, #9ca3af)', maxWidth: '500px' }}>
             {this.state.error?.message || 'An unexpected error occurred in DevChat'}
           </p>
+          {this.state.error?.stack && (
+            <pre style={{ textAlign: 'left', fontSize: '0.75rem', background: '#0d0e12', padding: '0.75rem', borderRadius: '6px', maxWidth: '90vw', overflowX: 'auto', color: '#ff6b6b' }}>
+              {this.state.error.stack.split('\n').slice(0, 4).join('\n')}
+            </pre>
+          )}
           <button
             onClick={() => {
               this.setState({ hasError: false, error: null });
