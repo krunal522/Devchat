@@ -153,44 +153,46 @@ export function MessageList() {
     );
   }
 
+  // ChatGPT-style Starter Welcome Hero (Centered layout when session is clean)
+  if (isAIChat && displayMessages.length === 0) {
+    return (
+      <div className="message-list message-list--starter" ref={containerRef}>
+        <div className="message-list__starter-hero">
+          <div className="message-list__starter-icon-wrapper">
+            <AILogoIcon size={48} />
+          </div>
+          <h2 className="message-list__starter-title">How can I help you today?</h2>
+          <p className="message-list__starter-sub">
+            Ask any technical questions, debug errors, or generate production-ready code.
+          </p>
+
+          <div className="message-list__starter-grid">
+            {AI_STARTER_PROMPTS.map((card, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className="message-list__starter-card"
+                onClick={() => handlePromptClick(card.prompt)}
+              >
+                <div className="message-list__starter-card-top">
+                  <span className="message-list__starter-card-icon">{card.icon}</span>
+                  <span className="message-list__starter-card-title">{card.title}</span>
+                </div>
+                <p className="message-list__starter-card-desc">{card.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Group messages with date separators
   let lastDate = '';
 
   return (
     <div className="message-list" ref={containerRef} onScroll={handleScroll}>
       <div className="message-list__inner">
-        {/* DevChat AI Starter Hero (Shown only for AI chat when session is clean) */}
-        {isAIChat && displayMessages.length === 0 && (
-          <div className="message-list__channel-start-header">
-            <div className="message-list__starter-hero">
-              <div className="message-list__starter-icon-wrapper">
-                <AILogoIcon size={48} />
-              </div>
-              <h2 className="message-list__starter-title">How can I help you today?</h2>
-              <p className="message-list__starter-sub">
-                Ask any technical questions, debug errors, or generate production-ready code.
-              </p>
-
-              <div className="message-list__starter-grid">
-                {AI_STARTER_PROMPTS.map((card, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    className="message-list__starter-card"
-                    onClick={() => handlePromptClick(card.prompt)}
-                  >
-                    <div className="message-list__starter-card-top">
-                      <span className="message-list__starter-card-icon">{card.icon}</span>
-                      <span className="message-list__starter-card-title">{card.title}</span>
-                    </div>
-                    <p className="message-list__starter-card-desc">{card.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
         {!isAIChat && hasMore && (
           <div className="message-list__load-more">
             <button className="message-list__load-btn" onClick={() => loadMoreMessages(activeChannelId)}>

@@ -157,6 +157,8 @@
   align-items: center;
   justify-content: center;
   padding: 2rem 1.5rem;
+  height: 100%;
+  width: 100%;
 }
 
 .message-list__starter-hero {
@@ -331,3 +333,5 @@
   color: #ffffff;
   font-weight: 600;
 }
+
+
