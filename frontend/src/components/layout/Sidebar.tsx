@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
-import { usePresenceStore } from '../../stores/presenceStore';
+import { usePresenceStore, useIsUserOnline } from '../../stores/presenceStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { UserAvatar } from '../user/UserAvatar';
@@ -13,7 +13,46 @@ import { WorkspaceSelector } from '../workspace/WorkspaceSelector';
 import { channelApi } from '../../services/channelApi';
 import { userApi } from '../../services/userApi';
 import { AILogoIcon } from '../ui/AILogoIcon';
+import type { DMChannel } from '../../types/channel';
 import './Sidebar.css';
+
+function SidebarDMItem({
+  dm,
+  isActive,
+  unread,
+  onSelect,
+}: {
+  dm: DMChannel;
+  isActive: boolean;
+  unread: number;
+  onSelect: () => void;
+}) {
+  const otherUserId = dm.otherUser?.id;
+  const realTimeIsOnline = useIsUserOnline(otherUserId);
+  const isAI = dm.otherUser?.username === 'devchat_ai' || dm.otherUser?.id === 'devchat-ai-bot-id';
+  const isOnline = isAI ? true : realTimeIsOnline || Boolean(dm.otherUser?.isOnline);
+
+  return (
+    <button
+      className={`sidebar__item ${isActive ? 'sidebar__item--active' : ''} ${unread > 0 ? 'sidebar__item--unread' : ''}`}
+      onClick={onSelect}
+    >
+      <UserAvatar
+        src={dm.otherUser?.avatarUrl}
+        displayName={dm.otherUser?.displayName || dm.otherUser?.username || '?'}
+        size="xs"
+        isOnline={isOnline}
+        showStatus
+      />
+      <span className="sidebar__item-name">
+        {dm.otherUser?.displayName || dm.otherUser?.username || 'Unknown'}
+      </span>
+      {unread > 0 && (
+        <span className="sidebar__unread-badge">{unread > 99 ? '99+' : unread}</span>
+      )}
+    </button>
+  );
+}
 
 export function Sidebar() {
   const channels = useChatStore((s) => s.channels);
@@ -217,38 +256,15 @@ export function Sidebar() {
             </div>
 
             <div className="sidebar__list">
-              {filteredDMChannels.map((dm) => {
-                const unread = unreadCounts[dm.id] || 0;
-                const isActive = activeChannelId === dm.id;
-
-                return (
-                  <button
-                    key={dm.id}
-                    className={`sidebar__item ${isActive ? 'sidebar__item--active' : ''} ${unread > 0 ? 'sidebar__item--unread' : ''}`}
-                    onClick={() => handleSelectChannel(dm.id)}
-                  >
-                    <UserAvatar
-                      src={dm.otherUser?.avatarUrl}
-                      displayName={dm.otherUser?.displayName || '?'}
-                      size="xs"
-                      isOnline={
-                        dm.otherUser?.username === 'devchat_ai' || dm.otherUser?.id === 'devchat-ai-bot-id'
-                          ? true
-                          : dm.otherUser
-                          ? onlineUsers.has(dm.otherUser.id) || Boolean(dm.otherUser.isOnline)
-                          : false
-                      }
-                      showStatus
-                    />
-                    <span className="sidebar__item-name">
-                      {dm.otherUser?.displayName || 'Unknown'}
-                    </span>
-                    {unread > 0 && (
-                      <span className="sidebar__unread-badge">{unread > 99 ? '99+' : unread}</span>
-                    )}
-                  </button>
-                );
-              })}
+              {filteredDMChannels.map((dm) => (
+                <SidebarDMItem
+                  key={dm.id}
+                  dm={dm}
+                  isActive={activeChannelId === dm.id}
+                  unread={unreadCounts[dm.id] || 0}
+                  onSelect={() => handleSelectChannel(dm.id)}
+                />
+              ))}
             </div>
           </div>
         </div>

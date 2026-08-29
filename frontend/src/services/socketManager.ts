@@ -147,12 +147,13 @@ function attachListeners(sock: Socket): void {
       useUIStore.getState().setAITypingChannelId(null);
     }
 
-    // If this is a DM channel and not currently loaded in dmChannels state, refresh DM channels list
+    // Auto-join socket room for this DM channel & refresh DM channels list
+    sock.emit('channel:join', message.channelId);
     const isDMInStore = chatStore.dmChannels.some((d) => d.id === message.channelId);
     if (!isDMInStore) {
-      // New DM channel - join the socket room and refresh DM list
-      sock.emit('channel:join', message.channelId);
       await chatStore.loadDMChannels();
+    } else {
+      chatStore.loadDMChannels();
     }
 
     const currentUserId = useAuthStore.getState().user?.id;
