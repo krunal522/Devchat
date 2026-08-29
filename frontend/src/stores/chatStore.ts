@@ -184,7 +184,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const rawChannel: any = await channelApi.getChannel(channelId);
           if (rawChannel && rawChannel.type === 'DIRECT') {
             const currentUserId = useAuthStore.getState().user?.id;
-            const members = await channelApi.getMembers(channelId);
+            const rawMembers = await channelApi.getMembers(channelId);
+            const members = Array.isArray(rawMembers) ? rawMembers : [];
             const otherMember = members.find((m) => m.id !== currentUserId) || members[0];
             channel = {
               ...rawChannel,
@@ -301,11 +302,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set((state) => {
         const currentMsgs = state.messages[channelId] || [];
         const pendingTemp = currentMsgs.filter((m) => m.id.startsWith('temp-'));
-        const merged = [...data.messages, ...pendingTemp];
+        const serverMsgs = Array.isArray(data?.messages) ? data.messages : [];
+        const merged = [...serverMsgs, ...pendingTemp];
         return {
           messages: { ...state.messages, [channelId]: merged },
-          hasMore: { ...state.hasMore, [channelId]: data.hasMore },
-          cursors: { ...state.cursors, [channelId]: data.nextCursor },
+          hasMore: { ...state.hasMore, [channelId]: Boolean(data?.hasMore) },
+          cursors: { ...state.cursors, [channelId]: data?.nextCursor || null },
           isLoadingMessages: false,
         };
       });
@@ -321,13 +323,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     try {
       const data = await messageApi.getMessages(channelId, cursors[channelId]!);
+      const serverMsgs = Array.isArray(data?.messages) ? data.messages : [];
       set((state) => ({
         messages: {
           ...state.messages,
-          [channelId]: [...data.messages, ...(state.messages[channelId] || [])],
+          [channelId]: [...serverMsgs, ...(state.messages[channelId] || [])],
         },
-        hasMore: { ...state.hasMore, [channelId]: data.hasMore },
-        cursors: { ...state.cursors, [channelId]: data.nextCursor },
+        hasMore: { ...state.hasMore, [channelId]: Boolean(data?.hasMore) },
+        cursors: { ...state.cursors, [channelId]: data?.nextCursor || null },
       }));
     } catch (error) {
       console.error('Failed to load more messages:', error);
