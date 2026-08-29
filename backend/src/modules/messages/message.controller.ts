@@ -17,6 +17,8 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
     // Asynchronously handle Socket broadcast and AI bot auto-response
     try {
       const io = getIO();
+      io.to(`channel:${channelId}`).emit('message:new', message);
+      io.emit('message:new', message);
 
       const members = await prisma.channelMember.findMany({
         where: { channelId },

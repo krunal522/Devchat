@@ -231,7 +231,13 @@ export function Sidebar() {
                       src={dm.otherUser?.avatarUrl}
                       displayName={dm.otherUser?.displayName || '?'}
                       size="xs"
-                      isOnline={dm.otherUser ? onlineUsers.has(dm.otherUser.id) : false}
+                      isOnline={
+                        dm.otherUser?.username === 'devchat_ai' || dm.otherUser?.id === 'devchat-ai-bot-id'
+                          ? true
+                          : dm.otherUser
+                          ? onlineUsers.has(dm.otherUser.id) || Boolean(dm.otherUser.isOnline)
+                          : false
+                      }
                       showStatus
                     />
                     <span className="sidebar__item-name">

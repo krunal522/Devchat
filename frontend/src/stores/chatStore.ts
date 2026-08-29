@@ -228,10 +228,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     }
 
-    // Load messages if not cached
-    if (!messages[channelId]) {
-      await loadMessages(channelId);
-    }
+    // Always load full message history from server when activating channel
+    await loadMessages(channelId);
   },
 
   deleteChannel: async (channelId: string) => {
@@ -300,12 +298,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isLoadingMessages: true });
     try {
       const data = await messageApi.getMessages(channelId);
-      set((state) => ({
-        messages: { ...state.messages, [channelId]: data.messages },
-        hasMore: { ...state.hasMore, [channelId]: data.hasMore },
-        cursors: { ...state.cursors, [channelId]: data.nextCursor },
-        isLoadingMessages: false,
-      }));
+      set((state) => {
+        const currentMsgs = state.messages[channelId] || [];
+        const pendingTemp = currentMsgs.filter((m) => m.id.startsWith('temp-'));
+        const merged = [...data.messages, ...pendingTemp];
+        return {
+          messages: { ...state.messages, [channelId]: merged },
+          hasMore: { ...state.hasMore, [channelId]: data.hasMore },
+          cursors: { ...state.cursors, [channelId]: data.nextCursor },
+          isLoadingMessages: false,
+        };
+      });
     } catch (error) {
       console.error('Failed to load messages:', error);
       set({ isLoadingMessages: false });

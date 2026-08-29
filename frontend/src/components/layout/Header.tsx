@@ -76,8 +76,9 @@ export function Header() {
     ? (dmInfo?.otherUser?.id || (channel?.createdBy?.id !== currentUserId ? channel?.createdBy?.id : undefined))
     : undefined;
 
-  // Always use LIVE presenceStore — never use stale DB isOnline field
-  const isOtherUserOnline = useIsUserOnline(otherUserId);
+  const isOtherUserOnline = isAIChat
+    ? true
+    : (otherUserId ? useIsUserOnline(otherUserId) : false) || Boolean(dmInfo?.otherUser?.isOnline || (channel?.createdBy as any)?.isOnline);
   const lastSeenAt = dmInfo?.otherUser?.lastSeenAt || (channel?.createdBy as any)?.lastSeenAt;
 
   const [, setTick] = useState(0);
