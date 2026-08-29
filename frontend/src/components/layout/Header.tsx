@@ -71,8 +71,13 @@ export function Header() {
   const dmInfo = dmChannels.find((d) => d.id === channel?.id);
   const isAIChat = isDirect && (channel?.name?.toLowerCase().includes('devchat ai') || dmInfo?.otherUser?.username === 'devchat_ai' || (channel?.createdBy as any)?.username === 'devchat_ai');
 
-  const otherUserId = isDirect ? (dmInfo?.otherUser?.id || channel?.createdBy?.id) : undefined;
-  const isOtherUserOnline = useIsUserOnline(otherUserId) || Boolean(dmInfo?.otherUser?.isOnline);
+  // Derive otherUserId: prefer dmInfo.otherUser (DM store), fallback to channel.createdBy (built from setActiveChannel)
+  const otherUserId = isDirect
+    ? (dmInfo?.otherUser?.id || (channel?.createdBy?.id !== currentUserId ? channel?.createdBy?.id : undefined))
+    : undefined;
+
+  // Always use LIVE presenceStore — never use stale DB isOnline field
+  const isOtherUserOnline = useIsUserOnline(otherUserId);
   const lastSeenAt = dmInfo?.otherUser?.lastSeenAt || (channel?.createdBy as any)?.lastSeenAt;
 
   const [, setTick] = useState(0);

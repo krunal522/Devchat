@@ -231,11 +231,7 @@ export function Sidebar() {
                       src={dm.otherUser?.avatarUrl}
                       displayName={dm.otherUser?.displayName || '?'}
                       size="xs"
-                      isOnline={
-                        dm.otherUser
-                          ? onlineUsers.has(dm.otherUser.id) || dm.otherUser.isOnline
-                          : false
-                      }
+                      isOnline={dm.otherUser ? onlineUsers.has(dm.otherUser.id) : false}
                       showStatus
                     />
                     <span className="sidebar__item-name">
