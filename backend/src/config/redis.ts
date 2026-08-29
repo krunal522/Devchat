@@ -3,26 +3,35 @@ import { env } from './env.js';
 import { logger } from '../utils/logger.js';
 
 function createRedisClient(name: string): Redis {
+  let hasConnectedOnce = false;
+
   const client = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
     enableOfflineQueue: false,
     retryStrategy(times: number) {
-      // Reconnect with capped backoff up to 10s
-      const delay = Math.min(times * 1000, 10000);
+      // In production without external REDIS_URL, stop retrying after 3 attempts to prevent log spam
+      if (env.NODE_ENV === 'production' && (!process.env.REDIS_URL || process.env.REDIS_URL.includes('localhost'))) {
+        if (times > 3) return null;
+      }
+      const delay = Math.min(times * 2000, 30000);
       return delay;
     },
   });
 
   client.on('connect', () => {
+    hasConnectedOnce = true;
     logger.info(`✅ Redis ${name} connected`);
   });
 
-  client.on('error', (err: Error) => {
-    // Silent warn on missing redis during offline local dev
+  client.on('error', () => {
+    // Silent handling for offline mode
   });
 
   client.on('close', () => {
-    logger.warn(`Redis ${name} connection closed`);
+    if (hasConnectedOnce) {
+      logger.warn(`Redis ${name} connection closed`);
+      hasConnectedOnce = false;
+    }
   });
 
   return client;
