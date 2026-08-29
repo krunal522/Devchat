@@ -2,13 +2,20 @@ import { prisma } from '../../config/database.js';
 import { redis, RedisKeys } from '../../config/redis.js';
 import { logger } from '../../utils/logger.js';
 
-// In-Memory fallback to track active sockets per user when Redis is not running
+// Timers to debounce user:offline during temporary Render network/proxy socket reconnects
+const offlineTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const memorySockets = new Map<string, Set<string>>();
 
 /**
  * Mark a user as online — supports multiple socket connections (tabs)
  */
 export async function setOnline(userId: string, socketId: string): Promise<void> {
+  // Cancel pending offline timer if user reconnected during grace period
+  if (offlineTimers.has(userId)) {
+    clearTimeout(offlineTimers.get(userId)!);
+    offlineTimers.delete(userId);
+  }
+
   // Always update in-memory map
   if (!memorySockets.has(userId)) {
     memorySockets.set(userId, new Set());
@@ -59,29 +66,44 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
   }
 
   if (remainingSockets === 0) {
-    // No more active socket connections — user is TRULY offline
-    try {
-      if (redis.status === 'ready') {
-        await redis.srem(RedisKeys.onlineUsers, userId);
+    if (offlineTimers.has(userId)) {
+      clearTimeout(offlineTimers.get(userId)!);
+    }
+
+    // 5-second grace period before marking offline on server (prevents brief Render proxy drops from flipping status)
+    const timer = setTimeout(async () => {
+      offlineTimers.delete(userId);
+
+      // Re-verify if user reconnected during the grace period
+      if (memorySockets.has(userId) && (memorySockets.get(userId)?.size || 0) > 0) {
+        return;
       }
-    } catch (err) {}
 
-    try {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          isOnline: false,
-          lastSeenAt: new Date(),
-        },
-      });
-    } catch (err) {}
+      try {
+        if (redis.status === 'ready') {
+          await redis.srem(RedisKeys.onlineUsers, userId);
+        }
+      } catch (err) {}
 
-    logger.debug(`User ${userId} went offline`);
-    return true; // User went offline
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            isOnline: false,
+            lastSeenAt: new Date(),
+          },
+        });
+      } catch (err) {}
+
+      logger.debug(`User ${userId} went offline (after grace period)`);
+    }, 5000);
+
+    offlineTimers.set(userId, timer);
+    return false;
   }
 
   logger.debug(`User ${userId} disconnected socket ${socketId}, ${remainingSockets} remaining`);
-  return false; // User still has active connections
+  return false;
 }
 
 /**
