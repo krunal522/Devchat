@@ -33,12 +33,13 @@ export function useSocketActions() {
       const activeChannel = useChatStore.getState().activeChannel;
 
       const dmInfo = dmChannels.find((d) => d.id === channelId);
+      const channelNameLower = typeof activeChannel?.name === 'string' ? activeChannel.name.toLowerCase() : '';
       const isAIChat =
         activeChannel?.type === 'DIRECT' &&
-        (activeChannel?.name?.toLowerCase().includes('devchat ai') ||
+        (channelNameLower.includes('devchat ai') ||
           dmInfo?.otherUser?.username === 'devchat_ai' ||
           (activeChannel?.createdBy as any)?.username === 'devchat_ai');
-      const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
+      const isAIMentioned = Boolean(content && typeof content === 'string' && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content));
 
       if (isAIChat || isAIMentioned) {
         useUIStore.getState().setAITypingChannelId(channelId);
