@@ -5,6 +5,7 @@ import { useSocketActions } from '../../hooks/useSocket';
 import { MessageItem } from './MessageItem';
 import { AITypingBubble } from './AITypingBubble';
 import { AILogoIcon } from '../ui/AILogoIcon';
+import { UserAvatar } from '../user/UserAvatar';
 import { groupMessagesIntoSessions } from '../../utils/aiSessions';
 import { formatDateSeparator } from '../../utils/formatDate';
 import './MessageList.css';
@@ -152,35 +153,72 @@ export function MessageList() {
     );
   }
 
-  // ChatGPT-style Starter Welcome Hero when session is clean / 0 messages
+  // Empty State Handling
   if (displayMessages.length === 0) {
-    return (
-      <div className="message-list message-list--starter" ref={containerRef}>
-        <div className="message-list__starter-hero">
-          <div className="message-list__starter-icon-wrapper">
-            <AILogoIcon size={48} />
-          </div>
-          <h2 className="message-list__starter-title">How can I help you today?</h2>
-          <p className="message-list__starter-sub">
-            Ask any technical questions, debug errors, or generate production-ready code.
-          </p>
+    if (isAIChat) {
+      return (
+        <div className="message-list message-list--starter" ref={containerRef}>
+          <div className="message-list__starter-hero">
+            <div className="message-list__starter-icon-wrapper">
+              <AILogoIcon size={48} />
+            </div>
+            <h2 className="message-list__starter-title">How can I help you today?</h2>
+            <p className="message-list__starter-sub">
+              Ask any technical questions, debug errors, or generate production-ready code.
+            </p>
 
-          <div className="message-list__starter-grid">
-            {AI_STARTER_PROMPTS.map((card, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className="message-list__starter-card"
-                onClick={() => handlePromptClick(card.prompt)}
-              >
-                <div className="message-list__starter-card-top">
-                  <span className="message-list__starter-card-icon">{card.icon}</span>
-                  <span className="message-list__starter-card-title">{card.title}</span>
-                </div>
-                <p className="message-list__starter-card-desc">{card.desc}</p>
-              </button>
-            ))}
+            <div className="message-list__starter-grid">
+              {AI_STARTER_PROMPTS.map((card, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className="message-list__starter-card"
+                  onClick={() => handlePromptClick(card.prompt)}
+                >
+                  <div className="message-list__starter-card-top">
+                    <span className="message-list__starter-card-icon">{card.icon}</span>
+                    <span className="message-list__starter-card-title">{card.title}</span>
+                  </div>
+                  <p className="message-list__starter-card-desc">{card.desc}</p>
+                </button>
+              ))}
+            </div>
           </div>
+        </div>
+      );
+    }
+
+    // Regular Workspace Channel or DM Empty State
+    return (
+      <div className="message-list message-list--empty-channel" ref={containerRef}>
+        <div className="message-list__empty-channel-hero">
+          {activeChannel?.type === 'DIRECT' ? (
+            <>
+              <UserAvatar
+                src={dmInfo?.otherUser?.avatarUrl || activeChannel?.createdBy?.avatarUrl}
+                displayName={activeChannel?.name || '?'}
+                size="lg"
+                isOnline={Boolean(dmInfo?.otherUser?.isOnline)}
+                showStatus
+              />
+              <h2 className="message-list__empty-channel-title">
+                {activeChannel?.name || 'Direct Message'}
+              </h2>
+              <p className="message-list__empty-channel-sub">
+                This is the start of your direct message history with {activeChannel?.name}.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="message-list__empty-hash-badge">#</div>
+              <h2 className="message-list__empty-channel-title">
+                Welcome to #{activeChannel?.name || 'channel'}!
+              </h2>
+              <p className="message-list__empty-channel-sub">
+                {activeChannel?.description || `This is the start of the #${activeChannel?.name} channel.`}
+              </p>
+            </>
+          )}
         </div>
       </div>
     );
