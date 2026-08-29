@@ -38,8 +38,6 @@
 /* ── Online Status Indicator ──────────── */
 .avatar__status {
   position: absolute;
-  bottom: 0;
-  right: 0;
   border-radius: 50%;
   border: 2px solid #161822;
   box-sizing: border-box;
@@ -49,24 +47,32 @@
 .avatar--xs .avatar__status {
   width: 8px;
   height: 8px;
+  bottom: 0;
+  right: 0;
   border-width: 1.5px;
 }
 
 .avatar--sm .avatar__status {
   width: 10px;
   height: 10px;
+  bottom: 0;
+  right: 0;
   border-width: 1.5px;
 }
 
 .avatar--md .avatar__status {
   width: 12px;
   height: 12px;
+  bottom: 1px;
+  right: 1px;
   border-width: 2px;
 }
 
 .avatar--lg .avatar__status {
   width: 14px;
   height: 14px;
+  bottom: 2px;
+  right: 2px;
   border-width: 2.5px;
 }
 

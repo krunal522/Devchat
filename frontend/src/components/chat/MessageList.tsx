@@ -153,83 +153,72 @@ export function MessageList() {
     );
   }
 
-  // Empty State Handling
-  if (displayMessages.length === 0) {
-    if (isAIChat) {
-      return (
-        <div className="message-list message-list--starter" ref={containerRef}>
-          <div className="message-list__starter-hero">
-            <div className="message-list__starter-icon-wrapper">
-              <AILogoIcon size={48} />
-            </div>
-            <h2 className="message-list__starter-title">How can I help you today?</h2>
-            <p className="message-list__starter-sub">
-              Ask any technical questions, debug errors, or generate production-ready code.
-            </p>
-
-            <div className="message-list__starter-grid">
-              {AI_STARTER_PROMPTS.map((card, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className="message-list__starter-card"
-                  onClick={() => handlePromptClick(card.prompt)}
-                >
-                  <div className="message-list__starter-card-top">
-                    <span className="message-list__starter-card-icon">{card.icon}</span>
-                    <span className="message-list__starter-card-title">{card.title}</span>
-                  </div>
-                  <p className="message-list__starter-card-desc">{card.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Regular Workspace Channel or DM Empty State
-    return (
-      <div className="message-list message-list--empty-channel" ref={containerRef}>
-        <div className="message-list__empty-channel-hero">
-          {activeChannel?.type === 'DIRECT' ? (
-            <>
-              <UserAvatar
-                src={dmInfo?.otherUser?.avatarUrl || activeChannel?.createdBy?.avatarUrl}
-                displayName={activeChannel?.name || '?'}
-                size="lg"
-                isOnline={Boolean(dmInfo?.otherUser?.isOnline)}
-                showStatus
-              />
-              <h2 className="message-list__empty-channel-title">
-                {activeChannel?.name || 'Direct Message'}
-              </h2>
-              <p className="message-list__empty-channel-sub">
-                This is the start of your direct message history with {activeChannel?.name}.
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="message-list__empty-hash-badge">#</div>
-              <h2 className="message-list__empty-channel-title">
-                Welcome to #{activeChannel?.name || 'channel'}!
-              </h2>
-              <p className="message-list__empty-channel-sub">
-                {activeChannel?.description || `This is the start of the #${activeChannel?.name} channel.`}
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   // Group messages with date separators
   let lastDate = '';
 
   return (
     <div className="message-list" ref={containerRef} onScroll={handleScroll}>
       <div className="message-list__inner">
+        {/* Slack / Discord Style Channel & DM Start Header */}
+        {!hasMore && (
+          <div className="message-list__channel-start-header">
+            {isAIChat && displayMessages.length === 0 ? (
+              <div className="message-list__starter-hero">
+                <div className="message-list__starter-icon-wrapper">
+                  <AILogoIcon size={48} />
+                </div>
+                <h2 className="message-list__starter-title">How can I help you today?</h2>
+                <p className="message-list__starter-sub">
+                  Ask any technical questions, debug errors, or generate production-ready code.
+                </p>
+
+                <div className="message-list__starter-grid">
+                  {AI_STARTER_PROMPTS.map((card, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="message-list__starter-card"
+                      onClick={() => handlePromptClick(card.prompt)}
+                    >
+                      <div className="message-list__starter-card-top">
+                        <span className="message-list__starter-card-icon">{card.icon}</span>
+                        <span className="message-list__starter-card-title">{card.title}</span>
+                      </div>
+                      <p className="message-list__starter-card-desc">{card.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : !isAIChat ? (
+              activeChannel?.type === 'DIRECT' ? (
+                <div className="message-list__dm-start">
+                  <div className="message-list__dm-avatar-wrapper">
+                    <UserAvatar
+                      src={dmInfo?.otherUser?.avatarUrl || activeChannel?.createdBy?.avatarUrl}
+                      displayName={activeChannel?.name || '?'}
+                      size="lg"
+                      isOnline={Boolean(dmInfo?.otherUser?.isOnline)}
+                      showStatus
+                    />
+                  </div>
+                  <h1 className="message-list__start-title">{activeChannel?.name}</h1>
+                  <p className="message-list__start-sub">
+                    This is the very beginning of your direct message history with <strong className="message-list__highlight">{activeChannel?.name}</strong>.
+                  </p>
+                </div>
+              ) : (
+                <div className="message-list__channel-start">
+                  <div className="message-list__hash-badge">#</div>
+                  <h1 className="message-list__start-title">Welcome to #{activeChannel?.name}!</h1>
+                  <p className="message-list__start-sub">
+                    {activeChannel?.description || `This is the start of the #${activeChannel?.name} channel.`}
+                  </p>
+                </div>
+              )
+            ) : null}
+          </div>
+        )}
+
         {!isAIChat && hasMore && (
           <div className="message-list__load-more">
             <button className="message-list__load-btn" onClick={() => loadMoreMessages(activeChannelId)}>
