@@ -46,6 +46,7 @@ interface ChatState {
   loadMessages: (channelId: string) => Promise<void>;
   loadMoreMessages: (channelId: string) => Promise<void>;
   addMessage: (message: Message) => void;
+  mergeServerMessages: (channelId: string, messages: Message[]) => void;
   updateMessage: (message: Message) => void;
   removeMessage: (messageId: string, channelId: string) => void;
   addChannel: (channel: Channel) => void;
@@ -414,6 +415,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: {
           ...state.messages,
           [message.channelId]: [...existing, message],
+        },
+      };
+    });
+  },
+
+  mergeServerMessages: (channelId: string, serverMsgs: Message[]) => {
+    set((state) => {
+      const existing = state.messages[channelId] || [];
+      const existingIds = new Set(existing.map((m) => m.id));
+      const hasNew = serverMsgs.some((m) => !existingIds.has(m.id));
+      if (!hasNew) return state;
+
+      const pendingTemp = existing.filter((m) => m.id.startsWith('temp-'));
+      const merged = [...serverMsgs, ...pendingTemp];
+
+      return {
+        messages: {
+          ...state.messages,
+          [channelId]: merged,
         },
       };
     });

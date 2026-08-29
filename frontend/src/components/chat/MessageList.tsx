@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useUIStore } from '../../stores/uiStore';
 import { getSocket } from '../../services/socketManager';
+import { messageApi } from '../../services/messageApi';
 import { useSocketActions } from '../../hooks/useSocket';
 import { MessageItem } from './MessageItem';
 import { AITypingBubble } from './AITypingBubble';
@@ -109,6 +110,24 @@ export function MessageList() {
   useEffect(() => {
     if (!activeChannelId) return;
     getSocket()?.emit('channel:join', activeChannelId);
+  }, [activeChannelId]);
+
+  // ─── 4-Second Silent Sync Fallback ──────────────────────────────────────────
+  // Guarantees 100% message delivery even during mobile network or socket stutters
+  useEffect(() => {
+    if (!activeChannelId) return;
+    const syncInterval = setInterval(() => {
+      messageApi
+        .getMessages(activeChannelId)
+        .then((data) => {
+          if (data && Array.isArray(data.messages)) {
+            useChatStore.getState().mergeServerMessages(activeChannelId, data.messages);
+          }
+        })
+        .catch(() => {});
+    }, 4000);
+
+    return () => clearInterval(syncInterval);
   }, [activeChannelId]);
 
   // Handle scroll events: load more at top

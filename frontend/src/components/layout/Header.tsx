@@ -92,7 +92,7 @@ export function Header() {
       if (Array.isArray(ids) && ids.length > 0) {
         usePresenceStore.getState().setOnlineUsers(ids);
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, [otherUserId, isAIChat]);
 
   const handleClearChat = () => {
@@ -125,8 +125,8 @@ export function Header() {
   const presenceStatusText = isAIChat
     ? '🟢 Active now (24/7 AI)'
     : isDirect
-    ? formatLastSeenText(isOtherUserOnline, lastSeenAt)
-    : undefined;
+      ? formatLastSeenText(isOtherUserOnline, lastSeenAt)
+      : undefined;
 
   // Keyboard shortcut (Ctrl+K or Cmd+K) for search
   useEffect(() => {
