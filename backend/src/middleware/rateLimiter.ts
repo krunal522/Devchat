@@ -23,7 +23,7 @@ export const apiLimiter = rateLimit({
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: env.NODE_ENV === 'development' ? 1000 : 10, // 1000 in dev, 10 in prod
+  max: 500, // 500 authentication requests per 15 minutes
   standardHeaders: true,
   legacyHeaders: false,
   message: {
