@@ -112,8 +112,8 @@ export function MessageList() {
     getSocket()?.emit('channel:join', activeChannelId);
   }, [activeChannelId]);
 
-  // ─── 4-Second Silent Sync Fallback ──────────────────────────────────────────
-  // Guarantees 100% message delivery even during mobile network or socket stutters
+  // ─── 30-Second Silent Sync Safety Net ──────────────────────────────────────
+  // WebSocket handles real-time delivery. This only catches dropped frames.
   useEffect(() => {
     if (!activeChannelId) return;
     const syncInterval = setInterval(() => {
@@ -125,7 +125,7 @@ export function MessageList() {
           }
         })
         .catch(() => {});
-    }, 4000);
+    }, 30000);
 
     return () => clearInterval(syncInterval);
   }, [activeChannelId]);

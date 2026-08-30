@@ -139,23 +139,27 @@ function attachListeners(sock: Socket): void {
 
   // ── Messages ──────────────────────────────────────────────────────────────
   sock.on('message:new', async (message: Message) => {
+    // 1. Ensure socket is in this room so future messages arrive
+    sock.emit('channel:join', message.channelId);
+
     const chatStore = useChatStore.getState();
+
+    // 2. Add message to store INSTANTLY — no API calls before this
     chatStore.addMessage(message);
 
-    // If message is from AI Bot, ensure typing indicator is turned off
+    // 3. Clear AI typing indicator if needed
     if (message.user?.id === 'devchat-ai-bot-id' || message.user?.username === 'devchat_ai') {
       useUIStore.getState().setAITypingChannelId(null);
     }
 
-    // Auto-join socket room for this DM channel & refresh DM channels list
-    sock.emit('channel:join', message.channelId);
+    // 4. Only refresh DM channel list if this is a brand-new DM not yet in store
     const isDMInStore = chatStore.dmChannels.some((d) => d.id === message.channelId);
     if (!isDMInStore) {
-      await chatStore.loadDMChannels();
-    } else {
+      // New unknown DM — silently refresh list in background (does NOT block message display)
       chatStore.loadDMChannels();
     }
 
+    // 5. Notifications for messages from other users
     const currentUserId = useAuthStore.getState().user?.id;
     const currentUsername = useAuthStore.getState().user?.username;
 
