@@ -56,6 +56,7 @@ interface ChatState {
   openDM: (targetUserId: string) => Promise<void>;
   updateUserLastSeen: (userId: string, lastSeenAt: string) => void;
   clearChannelMessages: (channelId: string) => void;
+  bumpDMChannel: (channelId: string) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -103,6 +104,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
         [channelId]: 0,
       },
     }));
+  },
+
+  bumpDMChannel: (channelId: string) => {
+    set((state) => {
+      const idx = state.dmChannels.findIndex((d) => d.id === channelId);
+      if (idx <= 0) return state; // already at top or not found
+      const updated = [...state.dmChannels];
+      const [dm] = updated.splice(idx, 1);
+      updated.unshift(dm);
+      return { dmChannels: updated };
+    });
   },
 
   loadChannels: async () => {

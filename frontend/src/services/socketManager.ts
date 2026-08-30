@@ -143,8 +143,9 @@ function attachListeners(sock: Socket): void {
     sock.emit('channel:join', message.channelId);
 
     const chatStore = useChatStore.getState();
+    const currentUserId = useAuthStore.getState().user?.id;
 
-    // 2. Add message to store INSTANTLY — no API calls before this
+    // 2. Add message to store INSTANTLY — this triggers unread badge immediately
     chatStore.addMessage(message);
 
     // 3. Clear AI typing indicator if needed
@@ -152,15 +153,17 @@ function attachListeners(sock: Socket): void {
       useUIStore.getState().setAITypingChannelId(null);
     }
 
-    // 4. Only refresh DM channel list if this is a brand-new DM not yet in store
+    // 4. Handle DM channel ordering (WhatsApp-style: newest message at top)
     const isDMInStore = chatStore.dmChannels.some((d) => d.id === message.channelId);
     if (!isDMInStore) {
-      // New unknown DM — silently refresh list in background (does NOT block message display)
+      // Brand new DM — fetch it so it appears in sidebar
       chatStore.loadDMChannels();
+    } else if (message.user?.id !== currentUserId) {
+      // Existing DM with incoming message — bump to top of list without API call
+      chatStore.bumpDMChannel(message.channelId);
     }
 
     // 5. Notifications for messages from other users
-    const currentUserId = useAuthStore.getState().user?.id;
     const currentUsername = useAuthStore.getState().user?.username;
 
     if (currentUserId && message.user?.id !== currentUserId) {
