@@ -134,13 +134,18 @@ export function Sidebar() {
     ? publicChannels.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : publicChannels;
 
-  // Deduplicate active DM channels by target recipient user ID (Exclude AI bot to prevent duplicate UI entries)
+  // Deduplicate active DM channels by target recipient user ID (Exclude AI bot, self-DMs, and null otherUser)
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const uniqueDMMap = new Map<string, typeof dmChannels[0]>();
   dmChannels.forEach((dm) => {
-    const targetId = dm.otherUser?.id || dm.id;
-    if (targetId === 'devchat-ai-bot-id' || dm.otherUser?.username === 'devchat_ai') {
-      return;
-    }
+    // Skip if no otherUser (malformed DM channel)
+    if (!dm.otherUser) return;
+    // Skip AI bot
+    if (dm.otherUser.username === 'devchat_ai' || dm.otherUser.id === 'devchat-ai-bot-id') return;
+    // Skip self-DMs (where otherUser is the current user — happens with duplicate channel entries)
+    if (dm.otherUser.id === currentUserId) return;
+
+    const targetId = dm.otherUser.id;
     if (!uniqueDMMap.has(targetId)) {
       uniqueDMMap.set(targetId, dm);
     }

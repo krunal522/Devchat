@@ -396,14 +396,11 @@ export async function getDMChannels(userId: string) {
 
   for (const ch of channels) {
     const other = ch.members.find((m) => m.user.id !== userId)?.user;
-    if (other) {
-      if (!seenUserIds.has(other.id)) {
-        seenUserIds.add(other.id);
-        uniqueChannels.push(ch);
-      }
-    } else {
+    if (other && !seenUserIds.has(other.id)) {
+      seenUserIds.add(other.id);
       uniqueChannels.push(ch);
     }
+    // Skip channels where otherUser is null (self-DM or malformed channel)
   }
 
   const onlineUserIds = await getPresenceOnlineUsers();
