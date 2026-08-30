@@ -38,6 +38,7 @@ export function registerChannelHandlers(io: Server, socket: Socket): void {
   // ─── Join All User's Channels ─────────────────────
   socket.on('channel:join_all', async (callback?: Function) => {
     try {
+      // Join ALL channels including DMs (type: DIRECT)
       const memberships = await prisma.channelMember.findMany({
         where: { userId },
         select: { channelId: true },
@@ -46,7 +47,10 @@ export function registerChannelHandlers(io: Server, socket: Socket): void {
       const channelIds = memberships.map((m) => m.channelId);
       channelIds.forEach((id) => socket.join(`channel:${id}`));
 
-      logger.debug(`User ${username} joined ${channelIds.length} channel rooms`);
+      // Always join personal user room for direct notifications
+      socket.join(`user:${userId}`);
+
+      logger.debug(`User ${username} joined ${channelIds.length} channel rooms (incl. DMs)`);
       callback?.({ success: true, channelIds });
     } catch (error: any) {
       logger.error(`Error joining all channels: ${error.message}`);

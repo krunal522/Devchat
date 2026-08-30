@@ -91,12 +91,23 @@ function attachListeners(sock: Socket): void {
     if (currentUser?.id) {
       usePresenceStore.getState().addOnlineUser(currentUser.id);
     }
-    // Join all channel rooms once connected
-    sock.emit('channel:join_all', (res: { success: boolean; channelIds?: string[] }) => {
-      if (res?.success) {
-        console.log(`[Socket] Joined ${res.channelIds?.length ?? 0} rooms`);
+
+    // Re-join ALL channel and DM rooms (important for Render cold-start reconnects)
+    const rejoinAllRooms = () => {
+      // Join all channel rooms
+      sock.emit('channel:join_all', (res: { success: boolean; channelIds?: string[] }) => {
+        if (res?.success) {
+          console.log(`[Socket] Joined ${res.channelIds?.length ?? 0} channel rooms`);
+        }
+      });
+      // Re-join active channel room explicitly
+      const activeChannelId = useChatStore.getState().activeChannelId;
+      if (activeChannelId) {
+        sock.emit('channel:join', activeChannelId);
       }
-    });
+    };
+
+    rejoinAllRooms();
 
     // Fetch online users via REST immediately after connection
     userApi
@@ -107,6 +118,16 @@ function attachListeners(sock: Socket): void {
         }
       })
       .catch(() => {});
+  });
+
+  // Re-join all rooms on reconnect (Render spins down — rooms are lost on cold start)
+  sock.on('reconnect', (attemptNumber: number) => {
+    console.log('[Socket] Reconnected after', attemptNumber, 'attempts — re-joining rooms');
+    sock.emit('channel:join_all');
+    const activeChannelId = useChatStore.getState().activeChannelId;
+    if (activeChannelId) sock.emit('channel:join', activeChannelId);
+    // Reload DM list to catch any missed messages during disconnect
+    useChatStore.getState().loadDMChannels();
   });
 
   sock.on('disconnect', (reason) => {
