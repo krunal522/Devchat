@@ -29,7 +29,7 @@ export function initializeSocket(httpServer: HttpServer): Server {
     },
     pingTimeout: 30000,
     pingInterval: 15000,
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
     allowUpgrades: true,
   });
 

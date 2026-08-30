@@ -42,12 +42,12 @@ export function initSocket(token: string): Socket {
       const activeToken = localStorage.getItem('accessToken') || token;
       cb({ token: activeToken });
     },
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
     upgrade: true,
     reconnection: true,
-    reconnectionAttempts: 100,
-    reconnectionDelay: 300,
-    reconnectionDelayMax: 1500,
+    reconnectionAttempts: 200,
+    reconnectionDelay: 200,
+    reconnectionDelayMax: 1000,
     timeout: 20000,
     forceNew: true,
   });
