@@ -1,6 +1,7 @@
 import { prisma } from '../../config/database.js';
 import { redis, RedisKeys } from '../../config/redis.js';
 import { ApiError } from '../../utils/ApiError.js';
+import { logger } from '../../utils/logger.js';
 import { slugify } from '../../utils/helpers.js';
 import type { CreateChannelInput, UpdateChannelInput } from './channel.schema.js';
 import { getOnlineUsers as getPresenceOnlineUsers } from '../presence/presence.service.js';
