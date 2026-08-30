@@ -72,9 +72,18 @@ export function Header() {
   const channelNameLower = typeof channel?.name === 'string' ? channel.name.toLowerCase() : '';
   const isAIChat = isDirect && (channelNameLower.includes('devchat ai') || dmInfo?.otherUser?.username === 'devchat_ai' || (channel?.createdBy as any)?.username === 'devchat_ai');
 
-  // Derive otherUserId: prefer dmInfo.otherUser (DM store), fallback to channel.createdBy (built from setActiveChannel)
+  // Find the other user from channel members if available
+  const memberOther = (channel as any)?.members?.find((m: any) => {
+    const mId = m.userId || m.user?.id;
+    return mId && mId !== currentUserId;
+  });
+  const memberOtherUserId = memberOther?.user?.id || memberOther?.userId;
+
+  // Derive otherUserId with all fallback mechanisms
   const otherUserId = isDirect
-    ? (dmInfo?.otherUser?.id || (channel?.createdBy?.id !== currentUserId ? channel?.createdBy?.id : undefined))
+    ? (dmInfo?.otherUser?.id ||
+       (channel?.createdBy?.id && channel.createdBy.id !== currentUserId ? channel.createdBy.id : undefined) ||
+       memberOtherUserId)
     : undefined;
 
   const realTimeIsOnline = useIsUserOnline(otherUserId);
