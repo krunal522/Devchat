@@ -288,18 +288,8 @@ export async function getOrCreateDMChannel(userId1: string, userId2: string) {
   const sortedIds = [userId1, userId2].sort();
   const canonicalSlug = `dm-${sortedIds[0]}-${sortedIds[1]}`;
 
-  // 1. Try to find canonical channel by unique deterministic slug
-  const existingBySlug = await prisma.channel.findFirst({
-    where: { slug: canonicalSlug },
-    select: CHANNEL_SELECT,
-  });
-
-  if (existingBySlug) {
-    return existingBySlug;
-  }
-
-  // 2. Fallback check by members
-  const existingByMembers = await prisma.channel.findFirst({
+  // Find all existing DM channels between these two users
+  const allExisting = await prisma.channel.findMany({
     where: {
       type: 'DIRECT',
       AND: [
@@ -308,49 +298,69 @@ export async function getOrCreateDMChannel(userId1: string, userId2: string) {
       ],
     },
     select: CHANNEL_SELECT,
+    orderBy: { createdAt: 'asc' },
   });
 
-  if (existingByMembers) {
-    return existingByMembers;
-  }
+  let canonical = allExisting.find((c) => c.slug === canonicalSlug) || allExisting[0];
 
-  // 3. Create single canonical DM channel
-  const user1 = await prisma.user.findUnique({ where: { id: userId1 }, select: { username: true } });
-  const user2 = await prisma.user.findUnique({ where: { id: userId2 }, select: { username: true } });
+  if (!canonical) {
+    const user1 = await prisma.user.findUnique({ where: { id: userId1 }, select: { username: true } });
+    const user2 = await prisma.user.findUnique({ where: { id: userId2 }, select: { username: true } });
 
-  if (!user1 || !user2) {
-    throw ApiError.notFound('User not found');
-  }
+    if (!user1 || !user2) {
+      throw ApiError.notFound('User not found');
+    }
 
-  try {
-    return await prisma.$transaction(async (tx) => {
-      const dmChannel = await tx.channel.create({
-        data: {
-          name: `${user1.username}-${user2.username}`,
-          slug: canonicalSlug,
-          type: 'DIRECT',
-          createdById: userId1,
-        },
+    try {
+      canonical = await prisma.$transaction(async (tx) => {
+        const dmChannel = await tx.channel.create({
+          data: {
+            name: `${user1.username}-${user2.username}`,
+            slug: canonicalSlug,
+            type: 'DIRECT',
+            createdById: userId1,
+          },
+          select: CHANNEL_SELECT,
+        });
+
+        await tx.channelMember.createMany({
+          data: [
+            { userId: userId1, channelId: dmChannel.id },
+            { userId: userId2, channelId: dmChannel.id },
+          ],
+        });
+
+        return dmChannel;
+      });
+    } catch (err) {
+      const fallback = await prisma.channel.findFirst({
+        where: { slug: canonicalSlug },
         select: CHANNEL_SELECT,
       });
-
-      await tx.channelMember.createMany({
-        data: [
-          { userId: userId1, channelId: dmChannel.id },
-          { userId: userId2, channelId: dmChannel.id },
-        ],
-      });
-
-      return dmChannel;
-    });
-  } catch (err) {
-    const fallback = await prisma.channel.findFirst({
-      where: { slug: canonicalSlug },
-      select: CHANNEL_SELECT,
-    });
-    if (fallback) return fallback;
-    throw err;
+      if (fallback) canonical = fallback;
+      else throw err;
+    }
   }
+
+  // Cleanup legacy duplicate channels if any exist
+  if (allExisting.length > 1) {
+    const duplicateIds = allExisting.filter((c) => c.id !== canonical.id).map((c) => c.id);
+    if (duplicateIds.length > 0) {
+      try {
+        await prisma.message.updateMany({
+          where: { channelId: { in: duplicateIds } },
+          data: { channelId: canonical.id },
+        });
+        await prisma.channelMember.deleteMany({ where: { channelId: { in: duplicateIds } } });
+        await prisma.channel.deleteMany({ where: { id: { in: duplicateIds } } });
+        logger.info(`Merged ${duplicateIds.length} duplicate DM channels into ${canonical.id}`);
+      } catch (e) {
+        logger.error('Error cleaning up duplicate DM channels:', e);
+      }
+    }
+  }
+
+  return canonical;
 }
 
 export async function getDMChannels(userId: string) {
@@ -390,23 +400,43 @@ export async function getDMChannels(userId: string) {
     orderBy: { updatedAt: 'desc' },
   });
 
-  // Deduplicate by recipient user ID so each contact is returned at most once
-  const seenUserIds = new Set<string>();
-  const uniqueChannels: typeof channels = [];
-
-  for (const ch of channels) {
-    const other = ch.members.find((m) => m.user.id !== userId)?.user;
-    if (other && !seenUserIds.has(other.id)) {
-      seenUserIds.add(other.id);
-      uniqueChannels.push(ch);
-    }
-    // Skip channels where otherUser is null (self-DM or malformed channel)
-  }
-
   const onlineUserIds = await getPresenceOnlineUsers();
   const onlineSet = new Set(onlineUserIds);
 
-  return uniqueChannels.map((channel) => {
+  const mapByRecipient = new Map<string, typeof channels[0]>();
+  const duplicateIdsToDelete: string[] = [];
+
+  for (const ch of channels) {
+    const other = ch.members.find((m) => m.user.id !== userId)?.user;
+    if (!other || other.id === userId) continue;
+
+    if (!mapByRecipient.has(other.id)) {
+      mapByRecipient.set(other.id, ch);
+    } else {
+      // Duplicate channel detected for same contact
+      const primary = mapByRecipient.get(other.id)!;
+      if (ch.id !== primary.id) {
+        duplicateIdsToDelete.push(ch.id);
+      }
+    }
+  }
+
+  // Merge and delete duplicate channels in background
+  if (duplicateIdsToDelete.length > 0) {
+    const primaryId = Array.from(mapByRecipient.values())[0]?.id;
+    if (primaryId) {
+      prisma.message.updateMany({
+        where: { channelId: { in: duplicateIdsToDelete } },
+        data: { channelId: primaryId },
+      }).then(() => {
+        return prisma.channelMember.deleteMany({ where: { channelId: { in: duplicateIdsToDelete } } });
+      }).then(() => {
+        return prisma.channel.deleteMany({ where: { id: { in: duplicateIdsToDelete } } });
+      }).catch((err) => logger.error('Error cleaning up duplicate DMs in getDMChannels:', err));
+    }
+  }
+
+  return Array.from(mapByRecipient.values()).map((channel) => {
     const otherUser = channel.members.find((m) => m.user.id !== userId)?.user;
     const isOnline = otherUser ? onlineSet.has(otherUser.id) : false;
 

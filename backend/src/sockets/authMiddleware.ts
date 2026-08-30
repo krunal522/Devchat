@@ -17,12 +17,21 @@ export function authenticateSocket(socket: Socket, next: (err?: Error) => void):
       return next(new Error('Authentication required'));
     }
 
-    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as AuthPayload;
+    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as any;
+
+    const userId = decoded.userId || decoded.id || decoded.sub;
+    const email = decoded.email || '';
+    const username = decoded.username || '';
+
+    if (!userId) {
+      logger.warn(`Socket auth failed: No userId in token payload [${socket.id}]`);
+      return next(new Error('Invalid token payload'));
+    }
 
     // Attach user data to socket for use in handlers
-    socket.data.userId = decoded.userId;
-    socket.data.email = decoded.email;
-    socket.data.username = decoded.username;
+    socket.data.userId = userId;
+    socket.data.email = email;
+    socket.data.username = username;
 
     next();
   } catch (error) {

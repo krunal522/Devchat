@@ -21,31 +21,36 @@ export const usePresenceStore = create<PresenceState>((set) => ({
   typingUsers: {},
 
   setOnlineUsers: (userIds) => {
-    const finalSet = new Set(userIds);
+    const validIds = (Array.isArray(userIds) ? userIds : []).filter(Boolean).map((id) => String(id).trim());
+    const finalSet = new Set(validIds);
     try {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const u = JSON.parse(storedUser);
-        if (u?.id) finalSet.add(u.id);
+        if (u?.id) finalSet.add(String(u.id).trim());
       }
     } catch {}
     set({ onlineUsers: finalSet });
   },
 
   addOnlineUser: (userId) => {
+    if (!userId) return;
+    const cleanId = String(userId).trim();
     set((state) => {
-      if (state.onlineUsers.has(userId)) return state; // no-op if already present
+      if (state.onlineUsers.has(cleanId)) return state;
       const updated = new Set(state.onlineUsers);
-      updated.add(userId);
+      updated.add(cleanId);
       return { onlineUsers: updated };
     });
   },
 
   removeOnlineUser: (userId) => {
+    if (!userId) return;
+    const cleanId = String(userId).trim();
     set((state) => {
-      if (!state.onlineUsers.has(userId)) return state; // no-op if not present
+      if (!state.onlineUsers.has(cleanId)) return state;
       const updated = new Set(state.onlineUsers);
-      updated.delete(userId);
+      updated.delete(cleanId);
       return { onlineUsers: updated };
     });
   },
@@ -58,7 +63,7 @@ export const usePresenceStore = create<PresenceState>((set) => ({
         return { typingUsers: { ...state.typingUsers, [channelId]: [...current, { userId, username }] } };
       } else {
         const filtered = current.filter((t) => t.userId !== userId);
-        if (filtered.length === current.length) return state; // no-op
+        if (filtered.length === current.length) return state;
         return { typingUsers: { ...state.typingUsers, [channelId]: filtered } };
       }
     });
@@ -70,5 +75,6 @@ export const usePresenceStore = create<PresenceState>((set) => ({
  * Use: const isOnline = useIsUserOnline(userId)
  */
 export function useIsUserOnline(userId: string | undefined): boolean {
-  return usePresenceStore((s) => (userId ? s.onlineUsers.has(userId) : false));
+  const cleanId = userId ? String(userId).trim() : '';
+  return usePresenceStore((s) => (cleanId ? s.onlineUsers.has(cleanId) : false));
 }
