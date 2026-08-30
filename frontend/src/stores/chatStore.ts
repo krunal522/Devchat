@@ -371,8 +371,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         useUIStore.getState().setAITypingChannelId(null);
       }
 
+      const currentUserId = useAuthStore.getState().user?.id;
+      const isOwnMessage = Boolean(currentUserId && message.user?.id === currentUserId);
+
       const newUnreads = { ...state.unreadCounts };
-      if (!isCurrentlyActive && !message.id.startsWith('temp-')) {
+      if (!isCurrentlyActive && !isOwnMessage && !message.id.startsWith('temp-')) {
         newUnreads[message.channelId] = (newUnreads[message.channelId] || 0) + 1;
       }
 
