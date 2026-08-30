@@ -102,7 +102,7 @@ export function Sidebar() {
       userApi
         .getOnlineUsers()
         .then((userIds) => {
-          if (userIds && Array.isArray(userIds) && userIds.length > 0) {
+          if (Array.isArray(userIds)) {
             usePresenceStore.getState().setOnlineUsers(userIds);
           }
         })
@@ -110,7 +110,7 @@ export function Sidebar() {
     };
 
     fetchOnlineUsers();
-    const interval = setInterval(fetchOnlineUsers, 5000);
+    const interval = setInterval(fetchOnlineUsers, 3000);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
