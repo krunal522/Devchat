@@ -27,9 +27,9 @@ export function initializeSocket(httpServer: HttpServer): Server {
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    pingTimeout: 30000,
-    pingInterval: 15000,
-    transports: ['polling', 'websocket'],
+    pingTimeout: 20000,
+    pingInterval: 5000,
+    transports: ['websocket', 'polling'],
     allowUpgrades: true,
   });
 
@@ -49,33 +49,36 @@ export function initializeSocket(httpServer: HttpServer): Server {
   io.use(authenticateSocket);
 
   // Connection handler
-  io.on('connection', async (socket: Socket) => {
+  io.on('connection', (socket: Socket) => {
     const userId = socket.data.userId;
     const username = socket.data.username;
 
     logger.info(`🔌 User connected: ${username} (${userId}) [${socket.id}]`);
 
-    // Set user online
-    await presenceService.setOnline(userId, socket.id);
-
-    // Broadcast online status to all connected users
-    io.emit('user:online', {
-      userId,
-      username,
-    });
-
-    // Join user to their personal room (for DMs and notifications)
+    // ⚡ CRITICAL: Join personal room & register handlers FIRST — synchronously, zero delay
+    // user:${userId} room must exist BEFORE any message can be delivered to this user
     socket.join(`user:${userId}`);
 
-    // Register event handlers
+    // Register all event handlers immediately
     registerChatHandlers(io, socket);
     registerChannelHandlers(io, socket);
     registerPresenceHandlers(io, socket);
     registerTypingHandlers(io, socket);
 
-    // Send current online users to the newly connected client
-    const onlineUsers = await presenceService.getOnlineUsers();
-    socket.emit('presence:online_users', onlineUsers);
+    // ── Background work: DB updates & broadcasts (non-blocking) ──────────────
+    // These are slow (Neon cloud DB ~1-2s) so run AFTER socket is fully ready
+    presenceService.setOnline(userId, socket.id).then(() => {
+      // Broadcast online status only after DB confirms online
+      io.emit('user:online', { userId, username });
+    }).catch(() => {
+      // Broadcast even if DB update fails
+      io.emit('user:online', { userId, username });
+    });
+
+    // Send current online users to the newly connected client (background)
+    presenceService.getOnlineUsers().then((onlineUsers) => {
+      socket.emit('presence:online_users', onlineUsers);
+    }).catch(() => {});
 
     // Disconnect handler
     socket.on('disconnect', async (reason) => {

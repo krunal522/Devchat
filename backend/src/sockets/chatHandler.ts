@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { prisma } from '../config/database.js';
 import * as messageService from '../modules/messages/message.service.js';
 import { AI_BOT_ID, generateAIResponse } from '../modules/ai/ai.service.js';
+import { cacheGetMembers, cacheSetMembers } from './channelMemberCache.js';
 
 interface SendMessagePayload {
   channelId: string;
@@ -26,6 +27,29 @@ interface DeleteMessagePayload {
   messageId: string;
 }
 
+export async function broadcastMessageToChannel(io: Server, channelId: string, message: any, memberUserIds?: string[]) {
+  // If we already know member IDs (passed from send handler), emit to user rooms INSTANTLY
+  if (memberUserIds && memberUserIds.length > 0) {
+    memberUserIds.forEach((uid) => {
+      io.to(`user:${uid}`).emit('message:new', message);
+    });
+    // Also emit to channel room for anyone else joined
+    io.to(`channel:${channelId}`).emit('message:new', message);
+    return;
+  }
+
+  // Fallback: emit to channel room + fetch member user rooms asynchronously
+  io.to(`channel:${channelId}`).emit('message:new', message);
+  prisma.channelMember
+    .findMany({ where: { channelId }, select: { userId: true } })
+    .then((members) => {
+      members.forEach((m) => {
+        io.to(`user:${m.userId}`).emit('message:new', message);
+      });
+    })
+    .catch(() => {});
+}
+
 export function registerChatHandlers(io: Server, socket: Socket): void {
   const userId = socket.data.userId;
 
@@ -39,63 +63,78 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         return;
       }
 
-      const message = await messageService.sendMessage(userId, channelId, {
-        content: content ? content.trim() : '',
-        parentId,
-        attachments,
+      // ⚡ FAST PATH: Check in-memory cache first — skip DB query if warm!
+      const cachedMembers = cacheGetMembers(channelId);
+
+      let message: any;
+      let memberUserIds: string[];
+
+      if (cachedMembers) {
+        // ✅ Cache HIT: Only 1 DB call (message save) — no members query needed!
+        message = await messageService.sendMessage(userId, channelId, {
+          content: content ? content.trim() : '',
+          parentId,
+          attachments,
+          skipMembershipCheck: true,
+        });
+        memberUserIds = cachedMembers;
+      } else {
+        // ⚠️ Cache MISS (first message in channel): 2 parallel DB calls, then warm cache
+        const [savedMessage, members] = await Promise.all([
+          messageService.sendMessage(userId, channelId, {
+            content: content ? content.trim() : '',
+            parentId,
+            attachments,
+            skipMembershipCheck: true,
+          }),
+          prisma.channelMember.findMany({ where: { channelId }, select: { userId: true } }),
+        ]);
+        message = savedMessage;
+        memberUserIds = members.map((m) => m.userId);
+        // Warm the cache for all future messages in this channel
+        cacheSetMembers(channelId, memberUserIds);
+      }
+
+      // ⚡ INSTANT BROADCAST: emit to channel room + ALL user rooms simultaneously
+      io.to(`channel:${channelId}`).emit('message:new', message);
+      memberUserIds.forEach((uid) => {
+        io.to(`user:${uid}`).emit('message:new', message);
       });
 
-      // Broadcast to channel room, member user rooms, and global fallback
-      io.to(`channel:${channelId}`).emit('message:new', message);
-      io.emit('message:new', message);
-      try {
-        const members = await prisma.channelMember.findMany({
-          where: { channelId },
-          select: { userId: true },
-        });
-        members.forEach((m) => {
-          io.to(`user:${m.userId}`).emit('message:new', message);
-        });
-      } catch (mErr) {
-        logger.error(`Error broadcasting to user rooms: ${mErr}`);
-      }
+      // Acknowledge success to sender instantly
+      callback?.({ success: true, data: message });
 
       // If it's a thread reply, also emit to the thread room
       if (parentId) {
         io.to(`thread:${parentId}`).emit('thread:new_reply', message);
       }
 
-      // Acknowledge success to sender
-      callback?.({ success: true, data: message });
-
-      logger.debug(`Message sent by ${userId} to channel ${channelId}`);
-
       // 🤖 AI Assistant Auto-Response Trigger
       if (userId !== AI_BOT_ID) {
         setTimeout(async () => {
           try {
-            const channel = await prisma.channel.findUnique({
-              where: { id: channelId },
-              include: { members: true },
-            });
-
-            const isDMWithAI = channel?.type === 'DIRECT' && channel.members.some((m) => m.userId === AI_BOT_ID);
+            const isDMWithAI = memberUserIds.includes(AI_BOT_ID);
             const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
 
-            if (isDMWithAI || isAIMentioned) {
+            // Check if it's a DIRECT channel with AI (use cached members list)
+            let isDMTypeWithAI = false;
+            if (isDMWithAI) {
+              const channel = await prisma.channel.findUnique({
+                where: { id: channelId },
+                select: { type: true },
+              });
+              isDMTypeWithAI = channel?.type === 'DIRECT';
+            }
+
+            if (isDMTypeWithAI || isAIMentioned) {
               const senderUser = await prisma.user.findUnique({ where: { id: userId } });
               const senderName = senderUser?.displayName || senderUser?.username || 'Developer';
               const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || 'Hello AI';
 
-              const channelMembers = await prisma.channelMember.findMany({
-                where: { channelId },
-                select: { userId: true },
-              });
-
               // 🔴 Emit AI typing start to channel room AND user rooms
               io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
-              channelMembers.forEach((m) => {
-                io.to(`user:${m.userId}`).emit('ai:typing:start', { channelId });
+              memberUserIds.forEach((uid) => {
+                io.to(`user:${uid}`).emit('ai:typing:start', { channelId });
               });
 
               try {
@@ -106,17 +145,13 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
                   parentId: isAIMentioned ? message.id : parentId,
                 });
 
-                // Broadcast AI message to all clients, channel room, and member user rooms
-                io.emit('message:new', aiMessage);
-                io.to(`channel:${channelId}`).emit('message:new', aiMessage);
-                channelMembers.forEach((m) => {
-                  io.to(`user:${m.userId}`).emit('message:new', aiMessage);
-                });
+                // Broadcast AI message using deduplicated room emitter
+                await broadcastMessageToChannel(io, channelId, aiMessage);
               } finally {
                 // 🟢 Always stop typing indicator in both channel room AND user rooms!
                 io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
-                channelMembers.forEach((m) => {
-                  io.to(`user:${m.userId}`).emit('ai:typing:stop', { channelId });
+                memberUserIds.forEach((uid) => {
+                  io.to(`user:${uid}`).emit('ai:typing:stop', { channelId });
                 });
               }
             }

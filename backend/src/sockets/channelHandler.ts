@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { logger } from '../utils/logger.js';
 import { prisma } from '../config/database.js';
+import { cacheSetMembers, cacheAddMember } from './channelMemberCache.js';
 
 export function registerChannelHandlers(io: Server, socket: Socket): void {
   const userId = socket.data.userId;
@@ -13,8 +14,6 @@ export function registerChannelHandlers(io: Server, socket: Socket): void {
 
       // Join the Socket.io room for this channel
       socket.join(`channel:${channelId}`);
-
-      logger.debug(`User ${username} (${userId}) joined socket channel room: ${channelId}`);
       callback?.({ success: true });
     } catch (error: any) {
       logger.error(`Error joining channel room: ${error.message}`);
@@ -26,8 +25,6 @@ export function registerChannelHandlers(io: Server, socket: Socket): void {
   socket.on('channel:leave', async (channelId: string, callback?: Function) => {
     try {
       socket.leave(`channel:${channelId}`);
-
-      logger.debug(`User ${username} left channel room ${channelId}`);
       callback?.({ success: true });
     } catch (error: any) {
       logger.error(`Error leaving channel: ${error.message}`);
@@ -45,12 +42,14 @@ export function registerChannelHandlers(io: Server, socket: Socket): void {
       });
 
       const channelIds = memberships.map((m) => m.channelId);
-      channelIds.forEach((id) => socket.join(`channel:${id}`));
+      channelIds.forEach((id) => {
+        socket.join(`channel:${id}`);
+        // ⚡ Warm up member cache: record this user as member of each channel
+        cacheAddMember(id, userId);
+      });
 
       // Always join personal user room for direct notifications
       socket.join(`user:${userId}`);
-
-      logger.debug(`User ${username} joined ${channelIds.length} channel rooms (incl. DMs)`);
       callback?.({ success: true, channelIds });
     } catch (error: any) {
       logger.error(`Error joining all channels: ${error.message}`);
@@ -77,7 +76,6 @@ export function registerChannelHandlers(io: Server, socket: Socket): void {
   socket.on('dm:join_room', (data: { channelId: string }) => {
     if (data?.channelId) {
       socket.join(`channel:${data.channelId}`);
-      logger.debug(`User ${username} auto-joined DM room: channel:${data.channelId}`);
     }
   });
 }

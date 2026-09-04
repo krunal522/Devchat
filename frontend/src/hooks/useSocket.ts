@@ -75,21 +75,7 @@ export function useSocketActions() {
 
       const socket = getSocket();
       if (socket && socket.connected) {
-        socket.emit('channel:join', channelId);
-
-        // Use acknowledgment callback — if no ack in 5s (Render cold start), fall back to REST
-        const ackTimeout = setTimeout(async () => {
-          console.warn('[Socket] No ack for message:send — falling back to REST');
-          try {
-            const msg = await messageApi.sendMessage(channelId, content, parentId, attachments as any);
-            useChatStore.getState().addMessage(msg);
-          } catch (err) {
-            console.error('REST fallback also failed:', err);
-          }
-        }, 5000);
-
         socket.emit('message:send', { channelId, content, parentId, attachments }, (res: any) => {
-          clearTimeout(ackTimeout);
           if (res?.error) {
             console.error('[Socket] message:send error:', res.error);
           }

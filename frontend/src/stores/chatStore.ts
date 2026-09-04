@@ -183,6 +183,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           createdById: '',
           createdAt: dm.updatedAt,
           updatedAt: dm.updatedAt,
+          otherUser: dm.otherUser,
           createdBy: {
             id: dm.otherUser.id,
             username: dm.otherUser.username,
@@ -191,7 +192,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           },
           _count: { members: 2, messages: 0 },
           isMember: true,
-        };
+        } as any;
       } else {
         try {
           const rawChannel: any = await channelApi.getChannel(channelId);
@@ -224,6 +225,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       activeChannelId: channelId,
       activeChannel: channel,
       activeSessionId: null,
+      isLoadingMessages: !state.messages[channelId] || state.messages[channelId].length === 0,
       unreadCounts: {
         ...state.unreadCounts,
         [channelId]: 0,
@@ -267,56 +269,95 @@ export const useChatStore = create<ChatState>((set, get) => ({
   openDM: async (targetUserId: string) => {
     try {
       const dmChannel = await channelApi.getOrCreateDM(targetUserId);
-      await get().loadDMChannels();
 
-      const dm = get().dmChannels.find((d) => d.id === dmChannel.id);
-      if (dm && dm.otherUser) {
-        const otherUser = dm.otherUser;
-        set((state) => ({
-          activeChannelId: dm.id,
-          activeChannel: {
-            id: dm.id,
-            name: otherUser.displayName || otherUser.username,
-            slug: dm.id,
-            description: `@${otherUser.username}`,
-            type: 'DIRECT',
-            createdById: '',
-            createdAt: dm.updatedAt,
-            updatedAt: dm.updatedAt,
-            createdBy: {
-              id: otherUser.id,
-              username: otherUser.username,
-              displayName: otherUser.displayName,
-              avatarUrl: otherUser.avatarUrl,
-            },
-            _count: { members: 2, messages: 0 },
-            isMember: true,
-          },
-          unreadCounts: {
-            ...state.unreadCounts,
-            [dm.id]: 0,
-          },
-        }));
-        await get().loadMessages(dm.id);
-        // Ensure socket joins this DM channel room
-        getSocket()?.emit('channel:join', dm.id);
-      } else {
-        await get().setActiveChannel(dmChannel.id);
+      // Try to get otherUser from existing dmChannels store first (fast path)
+      let otherUser = get().dmChannels.find((d) => d.id === dmChannel.id)?.otherUser;
+
+      // If not found, fetch from the members list
+      if (!otherUser) {
+        const currentUserId = useAuthStore.getState().user?.id;
+        try {
+          const rawMembers = await channelApi.getMembers(dmChannel.id);
+          const members = Array.isArray(rawMembers) ? rawMembers : [];
+          const found = members.find((m: any) => m.id !== currentUserId) || members[0];
+          if (found) {
+            otherUser = {
+              id: found.id,
+              username: found.username,
+              displayName: found.displayName,
+              avatarUrl: found.avatarUrl ?? null,
+              isOnline: false,
+              lastSeenAt: found.lastSeenAt || new Date().toISOString(),
+            };
+          }
+        } catch {}
       }
+
+      // INSTANTLY open the chat view without waiting for sidebar refresh
+      set((state) => ({
+        activeChannelId: dmChannel.id,
+        activeChannel: {
+          id: dmChannel.id,
+          name: otherUser?.displayName || otherUser?.username || 'Direct Message',
+          slug: dmChannel.id,
+          description: otherUser ? `@${otherUser.username}` : '',
+          type: 'DIRECT',
+          createdById: '',
+          createdAt: dmChannel.createdAt || new Date().toISOString(),
+          updatedAt: dmChannel.updatedAt || new Date().toISOString(),
+          otherUser: otherUser || undefined,
+          createdBy: otherUser ? {
+            id: otherUser.id,
+            username: otherUser.username,
+            displayName: otherUser.displayName,
+            avatarUrl: otherUser.avatarUrl ?? null,
+          } : { id: '', username: '', displayName: '', avatarUrl: null },
+          _count: { members: 2, messages: 0 },
+          isMember: true,
+        } as any,
+        unreadCounts: { ...state.unreadCounts, [dmChannel.id]: 0 },
+      }));
+
+      // Load messages and join socket room
+      getSocket()?.emit('channel:join', dmChannel.id);
+      await get().loadMessages(dmChannel.id);
+
+      // Refresh sidebar DM list in background (non-blocking)
+      get().loadDMChannels().catch(() => {});
     } catch (error) {
       console.error('Failed to open DM:', error);
     }
   },
 
   loadMessages: async (channelId: string) => {
-    set({ isLoadingMessages: true });
+    const existing = get().messages[channelId];
+    if (!existing || existing.length === 0) {
+      set({ isLoadingMessages: true });
+    }
     try {
       const data = await messageApi.getMessages(channelId);
       set((state) => {
         const currentMsgs = state.messages[channelId] || [];
         const pendingTemp = currentMsgs.filter((m) => m.id.startsWith('temp-'));
         const serverMsgs = Array.isArray(data?.messages) ? data.messages : [];
-        const merged = [...serverMsgs, ...pendingTemp];
+
+        // Deduplicate messages preserving optimistic ones
+        const msgMap = new Map<string, Message>();
+        serverMsgs.forEach((m) => msgMap.set(m.id, m));
+        pendingTemp.forEach((temp) => {
+          const normTemp = (temp.content || '').trim();
+          const hasServerMatch = serverMsgs.some(
+            (sm) => sm.user?.id === temp.user?.id && (sm.content || '').trim() === normTemp
+          );
+          if (!hasServerMatch) {
+            msgMap.set(temp.id, temp);
+          }
+        });
+
+        const merged = Array.from(msgMap.values()).sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+
         return {
           messages: { ...state.messages, [channelId]: merged },
           hasMore: { ...state.hasMore, [channelId]: Boolean(data?.hasMore) },
@@ -351,19 +392,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   addMessage: (message: Message) => {
-    const currentActiveId = get().activeChannelId;
-    const isCurrentlyActive = currentActiveId === message.channelId;
-
     set((state) => {
-      let existing = state.messages[message.channelId] || [];
+      const currentUserId = useAuthStore.getState().user?.id;
+      const currentActiveId = state.activeChannelId;
+      const activeChannel = state.activeChannel;
+
+      const targetChannelId = message.channelId;
+
+      const isCurrentlyActive = currentActiveId === targetChannelId;
+      let existing = state.messages[targetChannelId] || [];
       if (existing.some((m) => m.id === message.id)) {
         return state;
       }
 
       // If adding real server message, deduplicate/replace matching optimistic message
       if (!message.id.startsWith('temp-')) {
+        const normContent = (message.content || '').trim();
         existing = existing.filter(
-          (m) => !(m.id.startsWith('temp-') && m.user?.id === message.user?.id && m.content === message.content)
+          (m) => !(m.id.startsWith('temp-') && m.user?.id === message.user?.id && (m.content || '').trim() === normContent)
         );
       }
 
@@ -371,17 +417,68 @@ export const useChatStore = create<ChatState>((set, get) => ({
         useUIStore.getState().setAITypingChannelId(null);
       }
 
-      const currentUserId = useAuthStore.getState().user?.id;
       const isOwnMessage = Boolean(currentUserId && message.user?.id === currentUserId);
+      const isLoaded = Boolean(state.messages[targetChannelId] && state.messages[targetChannelId].length > 0);
 
       const newUnreads = { ...state.unreadCounts };
       if (!isCurrentlyActive && !isOwnMessage && !message.id.startsWith('temp-')) {
-        newUnreads[message.channelId] = (newUnreads[message.channelId] || 0) + 1;
+        newUnreads[targetChannelId] = (newUnreads[targetChannelId] || 0) + 1;
       }
 
-      if (message.parentId) {
+      const nextSessionId = state.activeSessionId === 'new' ? null : state.activeSessionId;
+
+      // Update DM channels list (WhatsApp style: bump / add DM channel to top instantly)
+      let newDmChannels = state.dmChannels;
+      const isDMMessage =
+        activeChannel?.type === 'DIRECT' ||
+        state.dmChannels.some((d) => d.id === targetChannelId) ||
+        (!state.channels.some((c) => c.id === targetChannelId) && targetChannelId !== 'devchat-ai-channel');
+
+      if (isDMMessage) {
+        const existingDMIdx = state.dmChannels.findIndex(
+          (d) => d.id === targetChannelId || (d.otherUser?.id && message.user?.id && d.otherUser.id === message.user.id)
+        );
+
+        const lastMsgObj = {
+          content: message.content || '',
+          createdAt: message.createdAt || new Date().toISOString(),
+          user: { username: message.user?.username || '' },
+        };
+
+        if (existingDMIdx >= 0) {
+          const updatedDMs = [...state.dmChannels];
+          const [targetDM] = updatedDMs.splice(existingDMIdx, 1);
+          const updatedTargetDM = {
+            ...targetDM,
+            id: targetChannelId,
+            lastMessage: lastMsgObj,
+            updatedAt: message.createdAt || new Date().toISOString(),
+          };
+          updatedDMs.unshift(updatedTargetDM);
+          newDmChannels = updatedDMs;
+        } else if (!isOwnMessage && message.user?.id && message.user.id !== currentUserId) {
+          const newDMItem: DMChannel = {
+            id: targetChannelId,
+            otherUser: {
+              id: message.user.id,
+              username: message.user.username,
+              displayName: message.user.displayName,
+              avatarUrl: message.user.avatarUrl ?? null,
+              isOnline: true,
+              lastSeenAt: new Date().toISOString(),
+            },
+            lastMessage: lastMsgObj,
+            updatedAt: message.createdAt || new Date().toISOString(),
+          };
+          newDmChannels = [newDMItem, ...state.dmChannels];
+        }
+      }
+
+      const updatedMsg = { ...message, channelId: targetChannelId };
+
+      if (updatedMsg.parentId) {
         const updatedExisting = existing.map((m) => {
-          if (m.id === message.parentId) {
+          if (m.id === updatedMsg.parentId) {
             return {
               ...m,
               _count: {
@@ -395,7 +492,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         const activeThread = state.activeThreadMessage;
         const updatedActiveThread =
-          activeThread && activeThread.id === message.parentId
+          activeThread && activeThread.id === updatedMsg.parentId
             ? {
                 ...activeThread,
                 _count: {
@@ -406,30 +503,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
             : activeThread;
 
         const currentReplies = state.activeThreadReplies || [];
-        const isCurrentThread = activeThread && activeThread.id === message.parentId;
+        const isCurrentThread = activeThread && activeThread.id === updatedMsg.parentId;
         const updatedReplies = isCurrentThread
-          ? [...currentReplies.filter((r) => r.id !== message.id), message]
+          ? [...currentReplies.filter((r) => r.id !== updatedMsg.id), updatedMsg]
           : currentReplies;
 
         return {
           unreadCounts: newUnreads,
+          dmChannels: newDmChannels,
           activeThreadMessage: updatedActiveThread,
           activeThreadReplies: updatedReplies,
           messages: {
             ...state.messages,
-            [message.channelId]: updatedExisting,
+            [targetChannelId]: updatedExisting,
           },
         };
       }
 
-      const nextSessionId = state.activeSessionId === 'new' ? null : state.activeSessionId;
-
       return {
         unreadCounts: newUnreads,
+        dmChannels: newDmChannels,
         activeSessionId: nextSessionId,
         messages: {
           ...state.messages,
-          [message.channelId]: [...existing, message],
+          [targetChannelId]: [...existing, updatedMsg],
         },
       };
     });
@@ -438,11 +535,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
   mergeServerMessages: (channelId: string, serverMsgs: Message[]) => {
     set((state) => {
       const existing = state.messages[channelId] || [];
+
+      // Filter out any temp message whose content matches a server message from the same user
+      const pendingTemp = existing.filter((m) => {
+        if (!m.id.startsWith('temp-')) return false;
+        const tempContent = (m.content || '').trim();
+        const hasServerMatch = serverMsgs.some(
+          (sm) => sm.user?.id === m.user?.id && (sm.content || '').trim() === tempContent
+        );
+        return !hasServerMatch;
+      });
+
       const existingIds = new Set(existing.map((m) => m.id));
       const hasNew = serverMsgs.some((m) => !existingIds.has(m.id));
-      if (!hasNew) return state;
+      const existingTempCount = existing.filter((m) => m.id.startsWith('temp-')).length;
 
-      const pendingTemp = existing.filter((m) => m.id.startsWith('temp-'));
+      if (!hasNew && pendingTemp.length === existingTempCount) {
+        return state;
+      }
+
       const merged = [...serverMsgs, ...pendingTemp];
 
       return {

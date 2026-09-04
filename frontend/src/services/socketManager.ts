@@ -21,7 +21,8 @@ import type { Message } from '../types/message';
 
 import { userApi } from './userApi';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://devchat-war7.onrender.com';
+// Always connect to local backend in development
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:3001';
 
 let socket: Socket | null = null;
 let listenersAttached = false;
@@ -37,19 +38,19 @@ export function initSocket(token: string): Socket {
     listenersAttached = false;
   }
 
+  console.log('[Socket] Connecting to:', SOCKET_URL);
+
   socket = io(SOCKET_URL, {
     auth: (cb) => {
       const activeToken = localStorage.getItem('accessToken') || token;
       cb({ token: activeToken });
     },
-    transports: ['polling', 'websocket'],
-    upgrade: true,
+    transports: ['websocket'],
     reconnection: true,
     reconnectionAttempts: 200,
-    reconnectionDelay: 200,
-    reconnectionDelayMax: 1000,
-    timeout: 20000,
-    forceNew: true,
+    reconnectionDelay: 100,
+    reconnectionDelayMax: 500,
+    timeout: 10000,
   });
 
   attachListeners(socket);
@@ -159,35 +160,32 @@ function attachListeners(sock: Socket): void {
   });
 
   // ── Messages ──────────────────────────────────────────────────────────────
-  sock.on('message:new', async (message: Message) => {
-    // 1. Ensure socket is in this room so future messages arrive
-    sock.emit('channel:join', message.channelId);
-
+  sock.on('message:new', (message: Message) => {
     const chatStore = useChatStore.getState();
     const currentUserId = useAuthStore.getState().user?.id;
 
-    // 2. Add message to store INSTANTLY — this triggers unread badge immediately
+    // ⚡ Add message to store INSTANTLY — zero blocking operations before this
     chatStore.addMessage(message);
 
-    // 3. Clear AI typing indicator if needed
+    // Clear AI typing indicator if needed
     if (message.user?.id === 'devchat-ai-bot-id' || message.user?.username === 'devchat_ai') {
       useUIStore.getState().setAITypingChannelId(null);
     }
 
-    // 4. Handle DM channel ordering (WhatsApp-style: newest message at top)
+    // Join channel room if not already in it (non-blocking socket emit — no API call)
+    // Only refresh DM list from server if this channel is completely unknown to us
     const isDMInStore = chatStore.dmChannels.some((d) => d.id === message.channelId);
     if (!isDMInStore) {
-      // Brand new DM — fetch it so it appears in sidebar
-      chatStore.loadDMChannels();
-    } else if (message.user?.id !== currentUserId) {
-      // Existing DM with incoming message — bump to top of list without API call
-      chatStore.bumpDMChannel(message.channelId);
+      sock.emit('channel:join', message.channelId);
+      // Defer DM list sync to next tick so it NEVER blocks instant message rendering
+      setTimeout(() => {
+        useChatStore.getState().loadDMChannels().catch(() => {});
+      }, 0);
     }
 
-    // 5. Notifications for messages from other users
-    const currentUsername = useAuthStore.getState().user?.username;
-
+    // Notifications for messages from other users only
     if (currentUserId && message.user?.id !== currentUserId) {
+      const currentUsername = useAuthStore.getState().user?.username;
       const isMentioned = currentUsername && message.content.includes(`@${currentUsername}`);
       const isCurrentChannel = chatStore.activeChannelId === message.channelId;
 

@@ -41,6 +41,15 @@ async function start(): Promise<void> {
             data: { isOnline: false },
           });
           logger.info('✅ Cleared stale online presence flags');
+
+          // ⚡ NEON DB KEEPALIVE: Ping every 25s to prevent serverless cold starts
+          // Without this, first message after idle period takes 2-5 seconds (Neon compute wakeup)
+          setInterval(async () => {
+            try {
+              await prisma.$queryRaw`SELECT 1`;
+            } catch {}
+          }, 25000);
+          logger.info('✅ DB keepalive started (prevents Neon cold starts)');
         } catch (err) {
           logger.warn('Could not reset isOnline flags:', err);
         }
