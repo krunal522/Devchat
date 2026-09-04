@@ -49,21 +49,27 @@ export function Header() {
 
   // Find the other user from channel members if available
   const memberOther = (channel as any)?.members?.find((m: any) => {
-    const mId = m.userId || m.user?.id;
+    const mId = m.userId || m.user?.id || m.id;
     return mId && mId !== currentUserId;
   });
-  const memberOtherUserId = memberOther?.user?.id || memberOther?.userId;
+  const memberOtherUserId = memberOther?.user?.id || memberOther?.userId || memberOther?.id;
+
+  // Resolve the actual DM recipient object with all fallback mechanisms
+  const otherUserObj =
+    (channel as any)?.otherUser ||
+    dmInfo?.otherUser ||
+    (channel?.createdBy?.id && channel.createdBy.id !== currentUserId ? channel.createdBy : undefined) ||
+    memberOther?.user ||
+    memberOther;
 
   // Derive otherUserId with all fallback mechanisms
   const otherUserId = isDirect
-    ? (dmInfo?.otherUser?.id ||
-       (channel?.createdBy?.id && channel.createdBy.id !== currentUserId ? channel.createdBy.id : undefined) ||
-       memberOtherUserId)
+    ? (otherUserObj?.id || memberOtherUserId)
     : undefined;
 
   const realTimeIsOnline = useIsUserOnline(otherUserId);
-  const isOtherUserOnline = isAIChat ? true : realTimeIsOnline;
-  const lastSeenAt = dmInfo?.otherUser?.lastSeenAt || (channel?.createdBy as any)?.lastSeenAt;
+  const isOtherUserOnline = isAIChat ? true : (realTimeIsOnline || Boolean(otherUserObj?.isOnline));
+  const lastSeenAt = otherUserObj?.lastSeenAt || (channel?.createdBy as any)?.lastSeenAt;
 
   const [, setTick] = useState(0);
 

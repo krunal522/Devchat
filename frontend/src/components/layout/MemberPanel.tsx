@@ -52,10 +52,15 @@ export function MemberPanel() {
   }, [activeChannelId]);
 
   const dmInfo = dmChannels.find((d) => d.id === activeChannel?.id);
-  const otherUserId = activeChannel?.type === 'DIRECT' ? (dmInfo?.otherUser?.id || activeChannel?.createdBy?.id) : undefined;
-  const isOtherUserOnline = useIsUserOnline(otherUserId) || Boolean(dmInfo?.otherUser?.isOnline);
-  const avatarUrl = dmInfo?.otherUser?.avatarUrl || activeChannel?.createdBy?.avatarUrl;
-  const lastSeenAt = dmInfo?.otherUser?.lastSeenAt || (activeChannel?.createdBy as any)?.lastSeenAt;
+  const otherUserObj =
+    (activeChannel as any)?.otherUser ||
+    dmInfo?.otherUser ||
+    (activeChannel?.createdBy?.id && activeChannel.createdBy.id !== currentUserId ? activeChannel.createdBy : undefined);
+
+  const otherUserId = activeChannel?.type === 'DIRECT' ? (otherUserObj?.id || activeChannel?.createdBy?.id) : undefined;
+  const isOtherUserOnline = useIsUserOnline(otherUserId) || Boolean(otherUserObj?.isOnline);
+  const avatarUrl = otherUserObj?.avatarUrl || activeChannel?.createdBy?.avatarUrl;
+  const lastSeenAt = otherUserObj?.lastSeenAt || (activeChannel?.createdBy as any)?.lastSeenAt;
 
   if (!activeChannelId) return null;
   if (!isMemberPanelOpen && mobileView !== 'details') return null;
