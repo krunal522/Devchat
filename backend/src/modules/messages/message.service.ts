@@ -305,6 +305,22 @@ export async function deleteMessage(userId: string, messageId: string) {
   return { deleted: true, channelId: message.channelId };
 }
 
+export async function clearChannelMessages(userId: string, channelId: string) {
+  const membership = await prisma.channelMember.findUnique({
+    where: { userId_channelId: { userId, channelId } },
+  });
+
+  if (!membership) {
+    throw ApiError.forbidden('You are not a member of this channel');
+  }
+
+  await prisma.message.deleteMany({
+    where: { channelId },
+  });
+
+  return { success: true, channelId };
+}
+
 export async function toggleReaction(userId: string, messageId: string, emoji: string) {
   // 1. Check if user already reacted with THIS EXACT emoji
   const existingSameEmoji = await prisma.reaction.findUnique({

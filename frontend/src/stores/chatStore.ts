@@ -733,11 +733,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
   },
 
-  clearChannelMessages: (channelId: string) => {
+  clearChannelMessages: async (channelId: string) => {
     set((state) => ({
       messages: { ...state.messages, [channelId]: [] },
       hasMore: { ...state.hasMore, [channelId]: false },
       cursors: { ...state.cursors, [channelId]: null },
     }));
+
+    try {
+      await messageApi.clearChannelMessages(channelId);
+    } catch (err) {
+      console.error('Failed to delete channel messages on server:', err);
+    }
   },
 }));

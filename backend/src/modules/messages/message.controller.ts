@@ -129,6 +129,17 @@ export async function deleteMessage(req: Request, res: Response, next: NextFunct
   }
 }
 
+export async function clearChannelMessages(req: Request, res: Response, next: NextFunction) {
+  try {
+    const channelId = req.params.channelId as string;
+    const userId = req.user!.userId;
+    const result = await messageService.clearChannelMessages(userId, channelId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function toggleReaction(req: Request, res: Response, next: NextFunction) {
   try {
     const { emoji } = req.body;

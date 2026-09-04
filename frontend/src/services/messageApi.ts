@@ -46,6 +46,10 @@ export const messageApi = {
     await api.delete(`/messages/${messageId}`);
   },
 
+  clearChannelMessages: async (channelId: string): Promise<void> => {
+    await api.delete(`/channels/${channelId}/messages/clear`);
+  },
+
   getThreadMessages: async (
     messageId: string
   ): Promise<{ parent: Message; replies: Message[] }> => {

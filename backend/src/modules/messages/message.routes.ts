@@ -20,6 +20,12 @@ router.post(
   messageController.sendMessage
 );
 
+router.delete(
+  '/channels/:channelId/messages/clear',
+  authenticate,
+  messageController.clearChannelMessages
+);
+
 // Global message search
 router.get(
   '/messages/search',
