@@ -13,6 +13,9 @@ import type { User } from '../../types/user';
 import '../ui/FileIcon.css';
 import './MessageInput.css';
 
+/**
+ * MessageInput.tsx — Enterprise Multi-file Batch Composer
+ */
 export function MessageInput() {
   const activeChannelId = useChatStore((s) => s.activeChannelId);
   const activeChannel = useChatStore((s) => s.activeChannel);
