@@ -18,6 +18,9 @@ const USER_SELECT = {
 
 export async function getUsers() {
   return prisma.user.findMany({
+    where: {
+      username: { not: 'devchat_ai' },
+    },
     select: USER_SELECT,
     orderBy: { displayName: 'asc' },
   });
@@ -64,6 +67,7 @@ export async function searchUsers(query: string, excludeUserId?: string) {
   return prisma.user.findMany({
     where: {
       AND: [
+        { username: { not: 'devchat_ai' } },
         excludeUserId ? { id: { not: excludeUserId } } : {},
         {
           OR: [

@@ -94,6 +94,15 @@ export function AddMemberModal({ isOpen, onClose, channelId, channelName }: AddM
   };
 
   const filteredUsers = allUsers.filter((u) => {
+    // Exclude DevChat AI bot user from candidate list
+    const isAIBot =
+      u.username === 'devchat_ai' ||
+      u.id === 'devchat-ai-bot-id' ||
+      u.displayName?.toLowerCase().includes('devchat ai') ||
+      u.email?.includes('devchat.ai');
+
+    if (isAIBot) return false;
+
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
