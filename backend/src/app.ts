@@ -59,7 +59,7 @@ app.use(compression());
 app.use('/api', apiLimiter);
 
 // ─── Health Check ───────────────────────────────────────
-app.get('/api/health', (_req, res) => {
+app.get(['/health', '/api/health'], (_req, res) => {
   res.json({
     success: true,
     data: {

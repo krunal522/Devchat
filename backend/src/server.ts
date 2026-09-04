@@ -50,6 +50,13 @@ async function start(): Promise<void> {
             });
           }, 25000);
           logger.info('✅ DB keepalive started (prevents Neon cold starts)');
+
+          // ⚡ RENDER SELF-PING KEEPALIVE: Ping /health every 4 minutes to prevent Render free-tier sleep
+          const renderUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${env.PORT}`;
+          setInterval(() => {
+            fetch(`${renderUrl}/health`).catch(() => {});
+          }, 4 * 60 * 1000);
+          logger.info('✅ Render keepalive self-ping worker started (prevents Render sleep mode)');
         } catch (err) {
           logger.warn('Could not reset isOnline flags:', err);
         }
