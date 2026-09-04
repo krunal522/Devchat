@@ -164,7 +164,8 @@ export function MessageList() {
     );
   }
 
-  if (isLoading) {
+  // Only show skeleton loader if loading AND no messages exist in store yet
+  if (isLoading && displayMessages.length === 0) {
     return (
       <div className="message-list">
         <div className="message-list__skeleton">

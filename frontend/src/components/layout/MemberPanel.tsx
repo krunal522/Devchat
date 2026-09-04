@@ -19,7 +19,7 @@ import { useToastStore } from '../../stores/toastStore';
 import { channelApi } from '../../services/channelApi';
 import { UserAvatar } from '../user/UserAvatar';
 import { usePresenceStore, useIsUserOnline } from '../../stores/presenceStore';
-import { formatLastSeenText } from './Header';
+import { formatLastSeenText } from '../../utils/formatPresence';
 import type { UserWithRole } from '../../types/user';
 import './MemberPanel.css';
 

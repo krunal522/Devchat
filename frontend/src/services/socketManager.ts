@@ -139,6 +139,22 @@ function attachListeners(sock: Socket): void {
     console.warn('[Socket] Connection error:', err.message);
   });
 
+  // ── AI Typing Indicator ──────────────────────────────────────────────────
+  sock.on('ai:typing:start', (data: { channelId: string }) => {
+    if (data?.channelId) {
+      useUIStore.getState().setAITypingChannelId(data.channelId);
+    }
+  });
+
+  sock.on('ai:typing:stop', (data: { channelId: string }) => {
+    if (data?.channelId) {
+      const current = useUIStore.getState().aiTypingChannelId;
+      if (current === data.channelId) {
+        useUIStore.getState().setAITypingChannelId(null);
+      }
+    }
+  });
+
   // ── Presence ──────────────────────────────────────────────────────────────
   sock.on('presence:online_users', (userIds: string[]) => {
     usePresenceStore.getState().setOnlineUsers(userIds);

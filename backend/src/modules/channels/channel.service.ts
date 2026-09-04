@@ -289,7 +289,30 @@ export async function getOrCreateDMChannel(userId1: string, userId2: string) {
   const sortedIds = [userId1, userId2].sort();
   const canonicalSlug = `dm-${sortedIds[0]}-${sortedIds[1]}`;
 
-  // Find all existing DM channels between these two users
+  // If one of the users is AI Bot, ensure AI Bot system user exists in DB first
+  if (userId1 === AI_BOT_ID || userId2 === AI_BOT_ID) {
+    await getOrCreateAIBotUser();
+  }
+
+  // 1. FAST LOOKUP by canonical slug first (guarantees matching unique constraint)
+  let canonical = await prisma.channel.findUnique({
+    where: { slug: canonicalSlug },
+    select: CHANNEL_SELECT,
+  });
+
+  if (canonical) {
+    // Ensure both users are registered as channel members
+    await prisma.channelMember.createMany({
+      data: [
+        { userId: userId1, channelId: canonical.id },
+        { userId: userId2, channelId: canonical.id },
+      ],
+      skipDuplicates: true,
+    });
+    return canonical;
+  }
+
+  // 2. Secondary lookup for existing DM channels between these users
   const allExisting = await prisma.channel.findMany({
     where: {
       type: 'DIRECT',
@@ -302,7 +325,7 @@ export async function getOrCreateDMChannel(userId1: string, userId2: string) {
     orderBy: { createdAt: 'asc' },
   });
 
-  let canonical = allExisting.find((c) => c.slug === canonicalSlug) || allExisting[0];
+  canonical = allExisting.find((c) => c.slug === canonicalSlug) || allExisting[0];
 
   if (!canonical) {
     const user1 = await prisma.user.findUnique({ where: { id: userId1 }, select: { username: true } });
@@ -329,6 +352,7 @@ export async function getOrCreateDMChannel(userId1: string, userId2: string) {
             { userId: userId1, channelId: dmChannel.id },
             { userId: userId2, channelId: dmChannel.id },
           ],
+          skipDuplicates: true,
         });
 
         return dmChannel;
@@ -338,10 +362,29 @@ export async function getOrCreateDMChannel(userId1: string, userId2: string) {
         where: { slug: canonicalSlug },
         select: CHANNEL_SELECT,
       });
-      if (fallback) canonical = fallback;
-      else throw err;
+      if (fallback) {
+        canonical = fallback;
+        await prisma.channelMember.createMany({
+          data: [
+            { userId: userId1, channelId: fallback.id },
+            { userId: userId2, channelId: fallback.id },
+          ],
+          skipDuplicates: true,
+        });
+      } else {
+        throw err;
+      }
     }
   }
+
+  // Ensure members exist for canonical
+  await prisma.channelMember.createMany({
+    data: [
+      { userId: userId1, channelId: canonical.id },
+      { userId: userId2, channelId: canonical.id },
+    ],
+    skipDuplicates: true,
+  });
 
   // Cleanup legacy duplicate channels if any exist
   if (allExisting.length > 1) {
