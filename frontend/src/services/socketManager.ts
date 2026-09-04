@@ -21,8 +21,11 @@ import type { Message } from '../types/message';
 
 import { userApi } from './userApi';
 
-// Always connect to local backend in development
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:3001';
+// Connect to configured backend URL (falls back to local in development)
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  import.meta.env.VITE_SOCKET_BASE_URL ||
+  'http://localhost:3001';
 
 let socket: Socket | null = null;
 let listenersAttached = false;
@@ -45,7 +48,7 @@ export function initSocket(token: string): Socket {
       const activeToken = localStorage.getItem('accessToken') || token;
       cb({ token: activeToken });
     },
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 200,
     reconnectionDelay: 100,

@@ -45,7 +45,7 @@ function SidebarDMItem({
   const otherUserId = dm.otherUser?.id;
   const realTimeIsOnline = useIsUserOnline(otherUserId);
   const isAI = dm.otherUser?.username === 'devchat_ai' || dm.otherUser?.id === 'devchat-ai-bot-id';
-  const isOnline = isAI ? true : realTimeIsOnline;
+  const isOnline = isAI ? true : (realTimeIsOnline || Boolean(dm.otherUser?.isOnline));
 
   return (
     <button
@@ -134,13 +134,8 @@ export function Sidebar() {
     };
 
     fetchOnlineUsers();
-    // Silent REST fallback only when socket is disconnected — stops loop terminal log
-    const interval = setInterval(() => {
-      const sock = getSocket();
-      if (!sock || !sock.connected) {
-        fetchOnlineUsers();
-      }
-    }, 10000);
+    // Keep online presence synced every 8 seconds (lightweight <10ms endpoint)
+    const interval = setInterval(fetchOnlineUsers, 8000);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {

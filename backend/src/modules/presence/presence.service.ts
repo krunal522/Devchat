@@ -65,27 +65,40 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
   }
 
   if (remainingSockets === 0) {
-    if (offlineTimers.has(userId)) {
-      clearTimeout(offlineTimers.get(userId)!);
-      offlineTimers.delete(userId);
-    }
-
-    // ⚡ Mark offline in DB & Redis IMMEDIATELY
-    try {
-      if (redis.status === 'ready') {
-        await redis.srem(RedisKeys.onlineUsers, userId);
+    // ⚡ 3-second grace period debounce: prevents flickering offline during page reloads or transport upgrades
+    return new Promise<boolean>((resolve) => {
+      if (offlineTimers.has(userId)) {
+        clearTimeout(offlineTimers.get(userId)!);
       }
-    } catch (err) {}
 
-    try {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { isOnline: false, lastSeenAt: new Date() },
-      });
-    } catch (err) {}
+      const timer = setTimeout(async () => {
+        offlineTimers.delete(userId);
 
-    logger.debug(`User ${userId} marked offline immediately`);
-    return true;
+        // Verify user hasn't reconnected during grace period
+        if (memorySockets.has(userId) && (memorySockets.get(userId)?.size ?? 0) > 0) {
+          resolve(false);
+          return;
+        }
+
+        try {
+          if (redis.status === 'ready') {
+            await redis.srem(RedisKeys.onlineUsers, userId);
+          }
+        } catch (err) {}
+
+        try {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { isOnline: false, lastSeenAt: new Date() },
+          });
+        } catch (err) {}
+
+        logger.debug(`User ${userId} marked offline after grace period`);
+        resolve(true);
+      }, 3000);
+
+      offlineTimers.set(userId, timer);
+    });
   }
 
   logger.debug(`User ${userId} disconnected socket ${socketId}, ${remainingSockets} remaining`);
@@ -113,6 +126,18 @@ export async function getOnlineUsers(): Promise<string[]> {
         redisUsers.forEach((id) => onlineSet.add(id));
       }
     }
+  } catch (err) {}
+
+  // 3. Fallback to DB for active users (updated within last 60 seconds)
+  try {
+    const recentActive = await prisma.user.findMany({
+      where: {
+        isOnline: true,
+        lastSeenAt: { gte: new Date(Date.now() - 60000) },
+      },
+      select: { id: true },
+    });
+    recentActive.forEach((u) => onlineSet.add(u.id));
   } catch (err) {}
 
   return Array.from(onlineSet);
