@@ -181,34 +181,43 @@ export function MessageInput() {
 
   const handleUploadFiles = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
+    const fileList = Array.from(files);
     setIsUploading(true);
+    setUploadProgress({ current: 0, total: fileList.length });
 
     try {
-      const uploadedResults: UploadedFileResponse[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      let completedCount = 0;
+      // ⚡ High-speed parallel batch file uploads using Promise.all
+      const uploadPromises = fileList.map(async (file) => {
         const res = await messageApi.uploadFile(file);
-        uploadedResults.push(res);
-      }
+        completedCount++;
+        setUploadProgress({ current: completedCount, total: fileList.length });
+        return res;
+      });
+
+      const uploadedResults = await Promise.all(uploadPromises);
       setAttachments((prev) => [...prev, ...uploadedResults]);
+
       useToastStore.getState().addToast({
         type: 'success',
-        title: 'File Uploaded',
-        message: `Uploaded ${files.length} file(s)`,
+        title: 'Batch Upload Complete',
+        message: `Successfully attached ${uploadedResults.length} file(s)`,
       });
     } catch (err: any) {
+      console.error('Multi-file batch upload error:', err);
       useToastStore.getState().addToast({
         type: 'danger',
-        title: 'Upload Failed',
-        message: err.response?.data?.error?.message || 'Failed to upload file',
+        title: 'Upload Error',
+        message: err.response?.data?.error?.message || 'Some files failed to upload. Please try again.',
       });
     } finally {
       setIsUploading(false);
+      setUploadProgress(null);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
+    if (e.target.files && e.target.files.length > 0) {
       handleUploadFiles(e.target.files);
     }
     e.target.value = '';
@@ -390,6 +399,22 @@ export function MessageInput() {
         onChange={handleFileSelect}
         style={{ display: 'none' }}
       />
+      <input
+        type="file"
+        ref={photoInputRef}
+        multiple
+        accept="image/*,video/*"
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+      />
+      <input
+        type="file"
+        ref={docInputRef}
+        multiple
+        accept="*/*"
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+      />
 
       {/* Mention Auto-Complete Popover */}
       {mentionFilter !== null && (
@@ -442,7 +467,11 @@ export function MessageInput() {
           {isUploading && (
             <div className="attachment-chip attachment-chip--uploading">
               <span className="attachment-chip__spinner" />
-              <span>Uploading file...</span>
+              <span>
+                {uploadProgress
+                  ? `Uploading ${uploadProgress.current} of ${uploadProgress.total} file(s)...`
+                  : 'Uploading files...'}
+              </span>
             </div>
           )}
         </div>
@@ -605,8 +634,8 @@ export function MessageInput() {
       <AttachmentSheet
         isOpen={showAttachmentSheet}
         onClose={() => setShowAttachmentSheet(false)}
-        onSelectPhoto={() => fileInputRef.current?.click()}
-        onSelectDocument={() => fileInputRef.current?.click()}
+        onSelectPhoto={() => photoInputRef.current?.click()}
+        onSelectDocument={() => docInputRef.current?.click()}
       />
     </div>
   );
