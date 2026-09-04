@@ -175,6 +175,12 @@ function attachListeners(sock: Socket): void {
     useChatStore.getState().updateUserLastSeen(data.userId, lastSeenTime);
   });
 
+  sock.on('user:profile_updated', (data: { id: string; displayName?: string; avatarUrl?: string }) => {
+    if (data?.id) {
+      useChatStore.getState().updateUserInMessages(data.id, data);
+    }
+  });
+
   // ── Messages ──────────────────────────────────────────────────────────────
   sock.on('message:new', (message: Message) => {
     const chatStore = useChatStore.getState();

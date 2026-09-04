@@ -63,6 +63,7 @@ interface ChatState {
   mergeServerMessages: (channelId: string, messages: Message[]) => void;
   updateMessage: (message: Message) => void;
   updateMessageId: (channelId: string, oldId: string, newId: string) => void;
+  updateUserInMessages: (userId: string, updatedFields: Partial<{ displayName: string; avatarUrl: string | null }>) => void;
   removeMessage: (messageId: string, channelId: string) => void;
   addChannel: (channel: Channel) => void;
   createChannel: (data: { name: string; description?: string; type?: 'PUBLIC' | 'PRIVATE' }) => Promise<Channel>;
@@ -672,6 +673,57 @@ export const useChatStore = create<ChatState>((set, get) => ({
         },
         activeThreadMessage: updatedThreadMessage,
         activeThreadReplies: updatedThreadReplies,
+      };
+    });
+  },
+
+  updateUserInMessages: (userId: string, updatedFields: Partial<{ displayName: string; avatarUrl: string | null }>) => {
+    set((state) => {
+      const newMessages: Record<string, Message[]> = {};
+      for (const [channelId, msgs] of Object.entries(state.messages)) {
+        newMessages[channelId] = msgs.map((m) => {
+          if (m.user?.id === userId) {
+            return {
+              ...m,
+              user: {
+                ...m.user,
+                ...updatedFields,
+              },
+            };
+          }
+          return m;
+        });
+      }
+
+      const newDmChannels = state.dmChannels.map((d) => {
+        if (d.otherUser?.id === userId) {
+          return {
+            ...d,
+            otherUser: {
+              ...d.otherUser,
+              ...updatedFields,
+            },
+          };
+        }
+        return d;
+      });
+
+      let newActiveChannel = state.activeChannel;
+      if (state.activeChannel?.type === 'DIRECT' && (state.activeChannel as any)?.otherUser?.id === userId) {
+        newActiveChannel = {
+          ...state.activeChannel,
+          otherUser: {
+            ...(state.activeChannel as any).otherUser,
+            ...updatedFields,
+          },
+          ...(updatedFields.displayName ? { name: updatedFields.displayName } : {}),
+        } as any;
+      }
+
+      return {
+        messages: newMessages,
+        dmChannels: newDmChannels,
+        activeChannel: newActiveChannel,
       };
     });
   },

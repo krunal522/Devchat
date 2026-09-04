@@ -83,6 +83,18 @@ export async function broadcastMessageToChannel(io: Server, channelId: string, m
 export function registerChatHandlers(io: Server, socket: Socket): void {
   const userId = socket.data.userId;
 
+  // ─── Profile Updated ──────────────────────────────
+  socket.on('user:profile_updated', (data: { displayName?: string; avatarUrl?: string }) => {
+    if (data?.displayName) socket.data.displayName = data.displayName;
+    if (data?.avatarUrl !== undefined) socket.data.avatarUrl = data.avatarUrl;
+
+    socket.broadcast.emit('user:profile_updated', {
+      id: userId,
+      displayName: data.displayName,
+      avatarUrl: data.avatarUrl,
+    });
+  });
+
   // ─── Send Message ──────────────────────────────────
   socket.on('message:send', async (payload: SendMessagePayload, callback?: Function) => {
     try {

@@ -21,12 +21,14 @@ interface MessageItemProps {
 
 export const MessageItem = memo(function MessageItem({ message }: MessageItemProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const currentUserAvatar = useAuthStore((s) => s.user?.avatarUrl);
+  const currentUserDisplayName = useAuthStore((s) => s.user?.displayName);
   const openThread = useChatStore((s) => s.openThread);
   const activeChannel = useChatStore((s) => s.activeChannel);
   const authorId = message.user?.id;
-  const authorName = message.user?.displayName || 'Unknown';
-  const authorAvatar = message.user?.avatarUrl;
-  const isOwnMessage = currentUserId === authorId;
+  const isOwnMessage = Boolean(currentUserId && authorId === currentUserId);
+  const authorName = isOwnMessage && currentUserDisplayName ? currentUserDisplayName : (message.user?.displayName || 'Unknown');
+  const authorAvatar = isOwnMessage && currentUserAvatar !== undefined ? (currentUserAvatar || message.user?.avatarUrl) : message.user?.avatarUrl;
 
   const displayNameLower = typeof message.user?.displayName === 'string' ? message.user.displayName.toLowerCase() : '';
   const usernameLower = typeof message.user?.username === 'string' ? message.user.username.toLowerCase() : '';

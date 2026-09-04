@@ -15,11 +15,12 @@
 import { create } from 'zustand';
 import type { User } from '../types/user';
 import { authApi } from '../services/authApi';
-import { initSocket, destroySocket } from '../services/socketManager';
+import { initSocket, destroySocket, getSocket } from '../services/socketManager';
 import { notificationService } from '../services/notificationService';
 
 import { userApi } from '../services/userApi';
 import { useToastStore } from './toastStore';
+import { useChatStore } from './chatStore';
 
 interface AuthState {
   user: User | null;
@@ -44,6 +45,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   updateProfile: async (data) => {
     const updatedUser = await userApi.updateProfile(data);
     set({ user: updatedUser });
+    useChatStore.getState().updateUserInMessages(updatedUser.id, updatedUser);
+    getSocket()?.emit('user:profile_updated', updatedUser);
   },
 
   login: async (email, password) => {
