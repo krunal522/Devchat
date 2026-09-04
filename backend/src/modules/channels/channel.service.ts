@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger.js';
 import { slugify } from '../../utils/helpers.js';
 import type { CreateChannelInput, UpdateChannelInput } from './channel.schema.js';
 import { getOnlineUsers as getPresenceOnlineUsers } from '../presence/presence.service.js';
+import { AI_BOT_ID, getOrCreateAIBotUser } from '../ai/ai.service.js';
 
 const CHANNEL_SELECT = {
   id: true,
