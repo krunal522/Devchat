@@ -23,6 +23,7 @@ export function MessageInput() {
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
   const [attachments, setAttachments] = useState<UploadedFileResponse[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // Voice Recording State & Refs
@@ -38,6 +39,8 @@ export function MessageInput() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
