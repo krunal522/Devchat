@@ -184,7 +184,24 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
               const senderName = socket.data.displayName || socket.data.username || 'Developer';
               const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || 'Hello AI';
 
-              const aiReplyText = await generateAIResponse(cleanPrompt, senderName);
+              // ⚡ Fetch lean recent conversation history (last 5 messages) for multi-turn context
+              let history: Array<{ role: 'user' | 'model'; text: string }> = [];
+              try {
+                const recentMessages = await prisma.message.findMany({
+                  where: { channelId },
+                  orderBy: { createdAt: 'desc' },
+                  take: 5,
+                  select: { content: true, userId: true },
+                });
+                history = recentMessages.reverse().slice(0, -1).map((m) => ({
+                  role: m.userId === AI_BOT_ID ? ('model' as const) : ('user' as const),
+                  text: m.content,
+                }));
+              } catch {
+                // proceed without history if query fails
+              }
+
+              const aiReplyText = await generateAIResponse(cleanPrompt, senderName, history);
 
               // ⚡ 2. Instant broadcast to channel (0ms DB delay!)
               const instantAiId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

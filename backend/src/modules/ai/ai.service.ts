@@ -62,21 +62,39 @@ const SDK_MODELS = [
   'gemini-3.6-flash',
 ];
 
+export interface ChatHistoryMessage {
+  role: 'user' | 'model';
+  text: string;
+}
+
 // Helper: call Gemini REST API directly (100% reliable across all Node environments, zero thinking latency)
-async function callGeminiRest(apiKey: string, userPrompt: string, userName: string): Promise<string> {
+async function callGeminiRest(
+  apiKey: string,
+  userPrompt: string,
+  userName: string,
+  history: ChatHistoryMessage[] = []
+): Promise<string> {
   const cleanKey = apiKey.trim();
 
   for (const item of FAST_REST_MODELS) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${item.model}:generateContent?key=${cleanKey}`;
-      const payload: any = {
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt}` }],
-          },
-        ],
-      };
+
+      const contents: any[] = [];
+      if (history.length > 0) {
+        for (const h of history) {
+          contents.push({
+            role: h.role,
+            parts: [{ text: h.text }],
+          });
+        }
+      }
+      contents.push({
+        role: 'user',
+        parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt}` }],
+      });
+
+      const payload: any = { contents };
 
       if (item.budget !== undefined) {
         payload.generationConfig = {
@@ -115,12 +133,17 @@ async function callGeminiRest(apiKey: string, userPrompt: string, userName: stri
 }
 
 // Helper: call Gemini SDK with a specific API key
-async function callGemini(apiKey: string, userPrompt: string, userName: string): Promise<string> {
+async function callGemini(
+  apiKey: string,
+  userPrompt: string,
+  userName: string,
+  history: ChatHistoryMessage[] = []
+): Promise<string> {
   const cleanKey = apiKey.trim();
 
   // Try direct REST call first (fastest zero-latency path)
   try {
-    return await callGeminiRest(cleanKey, userPrompt, userName);
+    return await callGeminiRest(cleanKey, userPrompt, userName, history);
   } catch (restErr: any) {
     if (restErr?.message === 'RESOURCE_EXHAUSTED') throw restErr;
     logger.warn(`Gemini REST failed (${restErr?.message || restErr}) — trying GoogleGenerativeAI SDK fallback...`);
@@ -160,7 +183,8 @@ async function callGemini(apiKey: string, userPrompt: string, userName: string):
 
 export async function generateAIResponse(
   userPrompt: string,
-  userName: string = 'Developer'
+  userName: string = 'Developer',
+  history: ChatHistoryMessage[] = []
 ): Promise<string> {
   // Build list of all configured keys (filter empty)
   const keys = [env.GEMINI_API_KEY, env.GEMINI_API_KEY_2].filter(
@@ -179,7 +203,7 @@ export async function generateAIResponse(
     logger.info(`AI Request — trying key ${i + 1}/${keys.length} (${key.substring(0, 8)}...)`);
 
     try {
-      const text = await callGemini(key, userPrompt, userName);
+      const text = await callGemini(key, userPrompt, userName, history);
 
       if (text && text.trim() !== '') {
         logger.info(`AI Response generated with key ${i + 1} (${text.length} chars)`);
