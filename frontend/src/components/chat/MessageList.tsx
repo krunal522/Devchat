@@ -73,6 +73,9 @@ export function MessageList() {
     displayMessages = EMPTY_MESSAGES;
   }
 
+  const isMemberPanelOpen = useUIStore((s) => s.isMemberPanelOpen);
+  const mobileView = useUIStore((s) => s.mobileView);
+
   // Helper to force INSTANT scroll to absolute bottom of container (0ms delay)
   const scrollToBottomInstant = () => {
     const container = containerRef.current;
@@ -82,17 +85,34 @@ export function MessageList() {
     bottomRef.current?.scrollIntoView({ behavior: 'auto' });
   };
 
-  // INSTANT 0ms scroll on channel switch or history load — screen opens directly at bottom!
+  // INSTANT 0ms scroll on channel switch, message count change, OR member panel toggle!
   useLayoutEffect(() => {
     scrollToBottomInstant();
     const t1 = requestAnimationFrame(scrollToBottomInstant);
     const t2 = setTimeout(scrollToBottomInstant, 50);
+    const t3 = setTimeout(scrollToBottomInstant, 150);
+    const t4 = setTimeout(scrollToBottomInstant, 300);
     prevLengthRef.current = (messages || []).length;
     return () => {
       cancelAnimationFrame(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
     };
-  }, [activeChannelId, (messages || []).length]);
+  }, [activeChannelId, (messages || []).length, isMemberPanelOpen, mobileView]);
+
+  // Automatic ResizeObserver — auto-scroll to bottom whenever layout container resizes (panel toggle / window resize)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver(() => {
+      scrollToBottomInstant();
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   // When AI is typing, keep scrolled to bottom instantly & set safety timeout to hide loader after 15s max
   useEffect(() => {
