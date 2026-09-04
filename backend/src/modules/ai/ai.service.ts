@@ -42,32 +42,53 @@ Your responsibilities:
 - Explain concepts clearly with proper examples and markdown code blocks with language labels.
 - Support English, Hindi, and Hinglish naturally.
 - Format code inside markdown code blocks (e.g. \`\`\`tsx, \`\`\`typescript, \`\`\`python).
-- Be concise but comprehensive. Never fabricate facts.
+- Be concise, direct, and fast. Avoid unnecessary filler or lengthy preambles. Deliver high-value answers immediately. Never fabricate facts.
 
-Personality: Professional, helpful, friendly. Always ready to help with code, debugging, architecture, and tech explanations.`;
+Personality: Professional, direct, helpful, friendly.`;
 
-// Primary ultra-fast models verified working on Google Gemini API
-const MODELS_TO_TRY = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro'];
+// Active ultra-fast models on Google Gemini API
+const FAST_REST_MODELS = [
+  { model: 'gemini-3.1-flash-lite', budget: 0 },
+  { model: 'gemini-3.7-flash', budget: 0 },
+  { model: 'gemini-flash-latest', budget: 0 },
+  { model: 'gemini-3.1-flash-lite', budget: undefined },
+  { model: 'gemini-3.6-flash', budget: undefined },
+];
 
-// Helper: call Gemini REST API directly (100% reliable across all Node environments)
+const SDK_MODELS = [
+  'gemini-3.1-flash-lite',
+  'gemini-3.7-flash',
+  'gemini-flash-latest',
+  'gemini-3.6-flash',
+];
+
+// Helper: call Gemini REST API directly (100% reliable across all Node environments, zero thinking latency)
 async function callGeminiRest(apiKey: string, userPrompt: string, userName: string): Promise<string> {
   const cleanKey = apiKey.trim();
-  const models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'];
 
-  for (const modelName of models) {
+  for (const item of FAST_REST_MODELS) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${item.model}:generateContent?key=${cleanKey}`;
+      const payload: any = {
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt}` }],
+          },
+        ],
+      };
+
+      if (item.budget !== undefined) {
+        payload.generationConfig = {
+          thinkingConfig: { thinkingBudget: item.budget },
+          maxOutputTokens: 2048,
+        };
+      }
+
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt}` }],
-            },
-          ],
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -75,6 +96,7 @@ async function callGeminiRest(apiKey: string, userPrompt: string, userName: stri
         if (response.status === 429 || errText.includes('quota') || errText.includes('RESOURCE_EXHAUSTED')) {
           throw new Error('RESOURCE_EXHAUSTED');
         }
+        logger.warn(`REST model ${item.model} returned ${response.status}: ${errText.substring(0, 100)}`);
         continue;
       }
 
@@ -85,6 +107,7 @@ async function callGeminiRest(apiKey: string, userPrompt: string, userName: stri
       }
     } catch (err: any) {
       if (err?.message === 'RESOURCE_EXHAUSTED') throw err;
+      logger.warn(`REST error for ${item.model}: ${err?.message || err}`);
     }
   }
 
@@ -94,11 +117,8 @@ async function callGeminiRest(apiKey: string, userPrompt: string, userName: stri
 // Helper: call Gemini SDK with a specific API key
 async function callGemini(apiKey: string, userPrompt: string, userName: string): Promise<string> {
   const cleanKey = apiKey.trim();
-  const genAI = new GoogleGenerativeAI(cleanKey);
 
-  let lastModelError = '';
-
-  // Try direct REST call first (fastest & most reliable)
+  // Try direct REST call first (fastest zero-latency path)
   try {
     return await callGeminiRest(cleanKey, userPrompt, userName);
   } catch (restErr: any) {
@@ -106,7 +126,10 @@ async function callGemini(apiKey: string, userPrompt: string, userName: string):
     logger.warn(`Gemini REST failed (${restErr?.message || restErr}) — trying GoogleGenerativeAI SDK fallback...`);
   }
 
-  for (const modelName of MODELS_TO_TRY) {
+  const genAI = new GoogleGenerativeAI(cleanKey);
+  let lastModelError = '';
+
+  for (const modelName of SDK_MODELS) {
     try {
       let model;
       try {

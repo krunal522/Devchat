@@ -334,3 +334,26 @@
   opacity: 1 !important;
 }
 
+/* ── AI Typewriter Cursor ────────────────────── */
+.ai-streaming-cursor {
+  display: inline-block;
+  margin-left: 3px;
+  color: #818cf8;
+  font-weight: 900;
+  animation: aiCursorBlink 0.75s ease-in-out infinite;
+  vertical-align: baseline;
+  font-size: 0.95em;
+  line-height: 1;
+}
+
+@keyframes aiCursorBlink {
+  0%, 100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 0.15;
+    transform: scaleY(0.85);
+  }
+}
+

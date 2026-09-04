@@ -19,6 +19,14 @@ interface MessageItemProps {
   message: Message;
 }
 
+function getSafeStreamingMarkdown(content: string): string {
+  const fenceMatches = content.match(/```/g);
+  if (fenceMatches && fenceMatches.length % 2 !== 0) {
+    return content + '\n```';
+  }
+  return content;
+}
+
 export const MessageItem = memo(function MessageItem({ message }: MessageItemProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const currentUserAvatar = useAuthStore((s) => s.user?.avatarUrl);
@@ -59,6 +67,58 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
       (activeChannel?.createdBy as any)?.username === 'devchat_ai');
 
   const canEditOrDelete = isOwnMessage;
+
+  // ChatGPT-style streaming typewriter animation for newly arrived AI messages
+  const isFreshAIMessage = useRef(
+    isAIMessage &&
+    Boolean(message.content) &&
+    Date.now() - new Date(message.createdAt).getTime() < 10000
+  ).current;
+
+  const [displayedContent, setDisplayedContent] = useState(() =>
+    isFreshAIMessage ? '' : (message.content || '')
+  );
+  const [isStreaming, setIsStreaming] = useState(isFreshAIMessage);
+
+  useEffect(() => {
+    if (!isFreshAIMessage || !message.content) {
+      setDisplayedContent(message.content || '');
+      setIsStreaming(false);
+      return;
+    }
+
+    let currentIndex = 0;
+    const fullText = message.content;
+    const totalLength = fullText.length;
+    // Ultra-fast responsive streaming: ~6 to 25 characters per tick, 10ms tick (~350ms total)
+    const step = Math.max(6, Math.ceil(totalLength / 35));
+
+    const timer = setInterval(() => {
+      currentIndex = Math.min(currentIndex + step, totalLength);
+      setDisplayedContent(fullText.slice(0, currentIndex));
+
+      if (currentIndex >= totalLength) {
+        clearInterval(timer);
+        setIsStreaming(false);
+      }
+    }, 10);
+
+    return () => clearInterval(timer);
+  }, [message.content, isFreshAIMessage]);
+
+  // Keep chat pinned to bottom while AI response streams
+  useEffect(() => {
+    if (isStreaming) {
+      const container = document.querySelector('.message-list');
+      if (container) {
+        const threshold = 180;
+        const isNear = container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
+        if (isNear) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+    }
+  }, [displayedContent, isStreaming]);
 
   // Handle Escape key to close Lightbox
   useEffect(() => {
@@ -259,7 +319,20 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
               </div>
             </div>
           ) : (
-            message.content && <MarkdownRenderer content={message.content} />
+            message.content && (
+              <div
+                className="message__content-wrapper"
+                onClick={() => {
+                  if (isStreaming) {
+                    setDisplayedContent(message.content);
+                    setIsStreaming(false);
+                  }
+                }}
+              >
+                <MarkdownRenderer content={isStreaming ? getSafeStreamingMarkdown(displayedContent) : message.content} />
+                {isStreaming && <span className="ai-streaming-cursor">▋</span>}
+              </div>
+            )
           )}
 
           {/* Attachments Renderer */}

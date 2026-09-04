@@ -166,54 +166,78 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
 
       // 🤖 AI Assistant Auto-Response Trigger
       if (userId !== AI_BOT_ID) {
-        setTimeout(async () => {
-          try {
-            const isDMWithAI = memberUserIds.includes(AI_BOT_ID);
-            const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
+        // Fast in-memory check without DB query:
+        // Direct chat with AI has memberUserIds containing AI_BOT_ID and length <= 2
+        const isDMWithAI = memberUserIds.includes(AI_BOT_ID) && memberUserIds.length <= 2;
+        const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
 
-            // Check if it's a DIRECT channel with AI (use cached members list)
-            let isDMTypeWithAI = false;
-            if (isDMWithAI) {
-              const channel = await prisma.channel.findUnique({
-                where: { id: channelId },
-                select: { type: true },
-              });
-              isDMTypeWithAI = channel?.type === 'DIRECT';
-            }
+        if (isDMWithAI || isAIMentioned) {
+          // ⚡ 1. Emit AI typing start IMMEDIATELY (<1ms) so the user gets instant feedback
+          io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
+          memberUserIds.forEach((uid) => {
+            io.to(`user:${uid}`).emit('ai:typing:start', { channelId });
+          });
 
-            if (isDMTypeWithAI || isAIMentioned) {
-              const senderUser = await prisma.user.findUnique({ where: { id: userId } });
-              const senderName = senderUser?.displayName || senderUser?.username || 'Developer';
+          // Run AI generation asynchronously
+          (async () => {
+            try {
+              const senderName = socket.data.displayName || socket.data.username || 'Developer';
               const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || 'Hello AI';
 
-              // 🔴 Emit AI typing start to channel room AND user rooms
-              io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
-              memberUserIds.forEach((uid) => {
-                io.to(`user:${uid}`).emit('ai:typing:start', { channelId });
+              const aiReplyText = await generateAIResponse(cleanPrompt, senderName);
+
+              // ⚡ 2. Instant broadcast to channel (0ms DB delay!)
+              const instantAiId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+              const instantAiMessage = {
+                id: instantAiId,
+                content: aiReplyText,
+                channelId,
+                parentId: isAIMentioned ? instantMessage.id : parentId || null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                isEdited: false,
+                user: {
+                  id: AI_BOT_ID,
+                  username: 'devchat_ai',
+                  displayName: '🤖 DevChat AI',
+                  avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=DevChatAI',
+                },
+                reactions: [],
+                attachments: [],
+                _count: { replies: 0 },
+              };
+
+              // Broadcast AI message immediately over WebSockets
+              await broadcastMessageToChannel(io, channelId, instantAiMessage, memberUserIds);
+
+              // ⚡ 3. Background DB persistence (non-blocking)
+              messageService.sendMessage(AI_BOT_ID, channelId, {
+                content: aiReplyText,
+                parentId: isAIMentioned ? instantMessage.id : parentId,
+                skipMembershipCheck: true,
+              }).then((savedMessage) => {
+                if (savedMessage && savedMessage.id !== instantAiId) {
+                  io.to(`channel:${channelId}`).emit('message:saved', {
+                    tempId: instantAiId,
+                    realId: savedMessage.id,
+                    channelId,
+                  });
+                }
+              }).catch((err) => {
+                logger.error(`Background AI DB save error: ${err.message}`);
               });
 
-              try {
-                const aiReplyText = await generateAIResponse(cleanPrompt, senderName);
-
-                const aiMessage = await messageService.sendMessage(AI_BOT_ID, channelId, {
-                  content: aiReplyText,
-                  parentId: isAIMentioned ? instantMessage.id : parentId,
-                });
-
-                // Broadcast AI message using deduplicated room emitter
-                await broadcastMessageToChannel(io, channelId, aiMessage);
-              } finally {
-                // 🟢 Always stop typing indicator in both channel room AND user rooms!
-                io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
-                memberUserIds.forEach((uid) => {
-                  io.to(`user:${uid}`).emit('ai:typing:stop', { channelId });
-                });
-              }
+            } catch (aiErr) {
+              logger.error(`Error in AI Bot auto-reply: ${aiErr}`);
+            } finally {
+              // 🟢 Stop typing indicator immediately
+              io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
+              memberUserIds.forEach((uid) => {
+                io.to(`user:${uid}`).emit('ai:typing:stop', { channelId });
+              });
             }
-          } catch (aiErr) {
-            logger.error(`Error in AI Bot auto-reply: ${aiErr}`);
-          }
-        }, 0);
+          })();
+        }
       }
     } catch (error: any) {
       logger.error(`Error sending message: ${error.message}`);

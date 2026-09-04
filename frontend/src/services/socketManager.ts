@@ -235,14 +235,6 @@ function attachListeners(sock: Socket): void {
     useChatStore.getState().removeMessage(data.messageId, data.channelId);
   });
 
-  // ── AI Typing Indicator ─────────────────────────────────────────────────────
-  sock.on('ai:typing:start', (data: { channelId: string }) => {
-    useUIStore.getState().setAITypingChannelId(data.channelId);
-  });
-
-  sock.on('ai:typing:stop', (data: { channelId: string }) => {
-    useUIStore.getState().setAITypingChannelId(null);
-  });
 
   // ── Channels ──────────────────────────────────────────────────────────────
   sock.on('channel:new', () => {
