@@ -1,3 +1,17 @@
+/**
+ * @file Header.tsx
+ * @description Main Chat Window Top Header Component.
+ * Displays channel title, direct message status ("Active now" / "Last seen..."),
+ * global search trigger (Ctrl+K), and channel control actions.
+ * 
+ * Key Features:
+ * - Real-time relative presence status formatter (`formatLastSeenText`).
+ * - Global keyboard shortcut binding (`Ctrl+K` for instant search modal).
+ * - Member panel toggling & mobile view drawer toggling.
+ * 
+ * @module Components/Layout/Header
+ */
+
 import { useState, useEffect } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -13,23 +27,18 @@ import './Header.css';
 
 export function formatLastSeenText(isOnline: boolean, lastSeenAt?: string | Date): string {
   if (isOnline) return '🟢 Active now';
-  if (!lastSeenAt) return 'Last seen recently';
+  if (!lastSeenAt) return 'Offline';
 
   const date = new Date(lastSeenAt);
-  if (isNaN(date.getTime())) return 'Last seen recently';
+  if (isNaN(date.getTime())) return 'Offline';
 
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
-
-  // Within 10 seconds of now → treat as active
-  if (diffMs <= 10000) return '🟢 Active now';
-
   const diffMins = Math.floor(diffMs / (1000 * 60));
 
   if (diffMins < 1) return 'Last seen just now';
   if (diffMins < 60) return `Last seen ${diffMins}m ago`;
 
-  // Same calendar day only
   const todayStr = now.toDateString();
   const dateDateStr = date.toDateString();
   if (todayStr === dateDateStr) {
@@ -37,7 +46,6 @@ export function formatLastSeenText(isOnline: boolean, lastSeenAt?: string | Date
     return `Last seen today at ${timeStr}`;
   }
 
-  // Yesterday only
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
   if (yesterday.toDateString() === dateDateStr) {
@@ -45,7 +53,6 @@ export function formatLastSeenText(isOnline: boolean, lastSeenAt?: string | Date
     return `Last seen yesterday at ${timeStr}`;
   }
 
-  // Older dates (e.g. "Last seen Aug 22 at 10:25 AM")
   const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   return `Last seen ${dateStr} at ${timeStr}`;
@@ -87,12 +94,19 @@ export function Header() {
     : undefined;
 
   const realTimeIsOnline = useIsUserOnline(otherUserId);
-  const isOtherUserOnline = isAIChat
-    ? true
-    : realTimeIsOnline || Boolean(dmInfo?.otherUser?.isOnline || (channel?.createdBy as any)?.isOnline);
+  const isOtherUserOnline = isAIChat ? true : realTimeIsOnline;
   const lastSeenAt = dmInfo?.otherUser?.lastSeenAt || (channel?.createdBy as any)?.lastSeenAt;
 
   const [, setTick] = useState(0);
+
+  // Live timer tick to continuously update relative "Last seen Xm ago" when user is offline
+  useEffect(() => {
+    if (isOtherUserOnline) return;
+    const interval = setInterval(() => {
+      setTick((t) => t + 1);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isOtherUserOnline]);
 
   // REST fallback: refresh online status for the DM recipient whenever switching channels
   useEffect(() => {

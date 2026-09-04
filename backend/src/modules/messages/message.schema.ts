@@ -12,6 +12,7 @@ export const sendMessageSchema = z.object({
   content: z.string().max(4000, 'Message must be at most 4000 characters').default(''),
   parentId: z.string().uuid().optional(),
   attachments: z.array(attachmentInputSchema).optional(),
+  skipMembershipCheck: z.boolean().optional(),
 });
 
 export const updateMessageSchema = z.object({

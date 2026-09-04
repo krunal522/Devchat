@@ -1,3 +1,16 @@
+/**
+ * @file StartDMModal.tsx
+ * @description Direct Message Creation Modal Component.
+ * Allows instant search and starting a DM with any member in 0ms using optimistic store updates.
+ * 
+ * Key Features:
+ * - 0ms instant UI navigation upon clicking user item (`openDM`).
+ * - Real-time green presence badge integration.
+ * - Search by display name, username, or email.
+ * 
+ * @module Components/Channel/StartDMModal
+ */
+
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useChatStore } from '../../stores/chatStore';
@@ -35,9 +48,9 @@ export function StartDMModal({ isOpen, onClose }: StartDMModalProps) {
       .finally(() => setIsLoading(false));
   }, [isOpen]);
 
-  const handleSelectUser = async (targetUserId: string) => {
-    await openDM(targetUserId);
+  const handleSelectUser = (targetUser: User) => {
     onClose();
+    openDM(targetUser.id, targetUser);
   };
 
   const filteredUsers = users.filter((u) => {
@@ -72,7 +85,7 @@ export function StartDMModal({ isOpen, onClose }: StartDMModalProps) {
               <button
                 key={user.id}
                 className="start-dm-modal__item"
-                onClick={() => handleSelectUser(user.id)}
+                onClick={() => handleSelectUser(user)}
               >
                 <UserAvatar
                   src={user.avatarUrl}

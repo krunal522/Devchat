@@ -338,15 +338,18 @@
 }
 
 .sidebar__unread-badge {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.45);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.45);
   margin-left: auto;
   flex-shrink: 0;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .sidebar__item--unread .sidebar__item-name {

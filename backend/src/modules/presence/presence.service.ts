@@ -49,6 +49,9 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
     const userSet = memorySockets.get(userId)!;
     userSet.delete(socketId);
     remainingSockets = userSet.size;
+    if (remainingSockets === 0) {
+      memorySockets.delete(userId);
+    }
   }
 
   try {
@@ -64,10 +67,10 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
   if (remainingSockets === 0) {
     if (offlineTimers.has(userId)) {
       clearTimeout(offlineTimers.get(userId)!);
+      offlineTimers.delete(userId);
     }
 
-    // ⚡ Mark offline in DB IMMEDIATELY so other users see correct status right away
-    // Also remove from Redis immediately
+    // ⚡ Mark offline in DB & Redis IMMEDIATELY
     try {
       if (redis.status === 'ready') {
         await redis.srem(RedisKeys.onlineUsers, userId);
@@ -81,32 +84,7 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
       });
     } catch (err) {}
 
-    // Short 3-second grace period ONLY to handle browser tab refresh / brief reconnects
-    // (Not for marking offline — that already happened above)
-    const timer = setTimeout(async () => {
-      offlineTimers.delete(userId);
-
-      // Re-verify if user reconnected during grace period
-      if (memorySockets.has(userId) && (memorySockets.get(userId)?.size || 0) > 0) {
-        // User reconnected — undo the offline mark
-        try {
-          await prisma.user.update({
-            where: { id: userId },
-            data: { isOnline: true },
-          });
-          if (redis.status === 'ready') {
-            await redis.sadd(RedisKeys.onlineUsers, userId);
-          }
-        } catch {}
-        return;
-      }
-
-      memorySockets.delete(userId);
-      logger.debug(`User ${userId} confirmed offline after grace period`);
-    }, 3000);
-
-    offlineTimers.set(userId, timer);
-    // Return true = caller should broadcast user:offline immediately
+    logger.debug(`User ${userId} marked offline immediately`);
     return true;
   }
 
@@ -120,15 +98,14 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
 export async function getOnlineUsers(): Promise<string[]> {
   const onlineSet = new Set<string>();
 
-  // 1. Only truly connected sockets = online
-  //    offlineTimers users are DISCONNECTING — do NOT show them as online
-  for (const userId of memorySockets.keys()) {
-    if ((memorySockets.get(userId)?.size || 0) > 0) {
+  // 1. Truly connected active sockets in memory
+  for (const [userId, sockets] of memorySockets.entries()) {
+    if (sockets && sockets.size > 0) {
       onlineSet.add(userId);
     }
   }
 
-  // 2. Redis online set (across distributed backend workers / multiple server instances)
+  // 2. Redis online set (for multi-instance / cluster deployments)
   try {
     if (redis.status === 'ready') {
       const redisUsers = await redis.smembers(RedisKeys.onlineUsers);
@@ -137,18 +114,6 @@ export async function getOnlineUsers(): Promise<string[]> {
       }
     }
   } catch (err) {}
-
-  // 3. DB fallback — ONLY check isOnline: true (NOT lastSeenAt)
-  //    Using lastSeenAt caused ghost online status for up to 5 minutes after logout!
-  if (onlineSet.size === 0) {
-    try {
-      const dbOnlineUsers = await prisma.user.findMany({
-        where: { isOnline: true },
-        select: { id: true },
-      });
-      dbOnlineUsers.forEach((u) => onlineSet.add(u.id));
-    } catch (err) {}
-  }
 
   return Array.from(onlineSet);
 }

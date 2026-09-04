@@ -1,3 +1,16 @@
+/**
+ * @file presenceHandler.ts
+ * @description Socket.IO Presence Event Handlers.
+ * Manages real-time online status lookups, user presence checks, and online counts.
+ * 
+ * Features:
+ * - `presence:get_online`: Fetches list of active user IDs from Redis store.
+ * - `presence:check`: Batch check online status for array of user IDs.
+ * - `presence:count`: Get current count of active connections.
+ * 
+ * @module Sockets/PresenceHandler
+ */
+
 import { Server, Socket } from 'socket.io';
 import * as presenceService from '../modules/presence/presence.service.js';
 import { logger } from '../utils/logger.js';
@@ -38,3 +51,4 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
     }
   });
 }
+

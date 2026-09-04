@@ -1,3 +1,17 @@
+/**
+ * @file authStore.ts
+ * @description Authentication & User Session Management Zustand Store.
+ * Controls JWT tokens, auto-refresh on 401 response, WebSocket lifecycle connection (`initSocket`/`destroySocket`),
+ * and user profile state.
+ * 
+ * Key Features:
+ * - Silent Token Refresh (`authApi.refresh`) when access token expires.
+ * - Automatic Socket initialization on login/auth verification.
+ * - Graceful network retry preserving local sessions during transient disconnects.
+ * 
+ * @module Stores/AuthStore
+ */
+
 import { create } from 'zustand';
 import type { User } from '../types/user';
 import { authApi } from '../services/authApi';
@@ -76,20 +90,55 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   checkAuth: async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      set({ isLoading: false, isAuthenticated: false });
+    let token = localStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    if (!token && !refreshToken) {
+      set({ isLoading: false, isAuthenticated: false, user: null });
       return;
     }
+
     try {
-      const user = await authApi.getMe();
-      initSocket(token);
-      set({ user, isAuthenticated: true, isLoading: false });
-    } catch (err) {
+      if (token) {
+        try {
+          const user = await authApi.getMe();
+          initSocket(token);
+          set({ user, isAuthenticated: true, isLoading: false });
+          return;
+        } catch (meErr: any) {
+          // If token expired/unauthorized (401), attempt silent token refresh
+          if (meErr.response?.status === 401 && refreshToken) {
+            const tokenRes = await authApi.refresh(refreshToken);
+            token = tokenRes.accessToken;
+            localStorage.setItem('accessToken', tokenRes.accessToken);
+            localStorage.setItem('refreshToken', tokenRes.refreshToken);
+            const user = await authApi.getMe();
+            initSocket(token);
+            set({ user, isAuthenticated: true, isLoading: false });
+            return;
+          }
+          throw meErr;
+        }
+      } else if (refreshToken) {
+        const tokenRes = await authApi.refresh(refreshToken);
+        token = tokenRes.accessToken;
+        localStorage.setItem('accessToken', tokenRes.accessToken);
+        localStorage.setItem('refreshToken', tokenRes.refreshToken);
+        const user = await authApi.getMe();
+        initSocket(token);
+        set({ user, isAuthenticated: true, isLoading: false });
+        return;
+      }
+    } catch (err: any) {
       console.warn('Authentication check failed:', err);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        set({ user: null, isAuthenticated: false, isLoading: false });
+      } else {
+        // Keep active session during temporary network/server glitches
+        set({ isLoading: false });
+      }
     } finally {
       set({ isLoading: false });
     }

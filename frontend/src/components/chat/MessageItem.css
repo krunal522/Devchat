@@ -331,61 +331,58 @@
   display: block;
 }
 
-/* ── Floating Hover Action Toolbar ──────────────────────── */
+/* ── Floating Hover Action Toolbar (Slack / Discord Style) ── */
 .message__actions {
   position: absolute;
-  top: -16px;
-  right: 1rem;
+  top: -12px;
+  right: 1.25rem;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   padding: 3px 6px;
-  background: var(--bg-elevated, #1f2230);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-  z-index: 100;
-  animation: actionsFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #1e2230;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s ease;
+  pointer-events: none;
 }
 
-@keyframes actionsFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(3px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.message:hover .message__actions,
+.message__actions--active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .message__action-btn {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.875rem;
   background: transparent;
   border: none;
-  border-radius: 12px;
+  border-radius: 6px;
   cursor: pointer;
   color: var(--text-secondary, #9ca3af);
-  transition: all 0.15s ease;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .message__action-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  transform: scale(1.18);
+  background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
 }
 
 .message__action-btn--active,
 .message__action-btn--more {
-  font-weight: 700;
-  font-size: 0.75rem;
+  background: rgba(108, 92, 231, 0.25);
   color: #a29bfe;
 }
 
@@ -396,9 +393,9 @@
 
 .message__action-divider {
   width: 1px;
-  height: 16px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 0 2px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 3px;
 }
 
 /* More Emoji Wrapper & Popover Position */

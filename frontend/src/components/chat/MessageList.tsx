@@ -112,20 +112,23 @@ export function MessageList() {
     getSocket()?.emit('channel:join', activeChannelId);
   }, [activeChannelId]);
 
-  // ─── 3-Second Silent Sync Safety Net ──────────────────────────────────────
-  // Guarantees real-time delivery even during socket network stutters on Render
+  // ─── Silent Sync Safety Net ──────────────────────────────────────
+  // Triggers REST sync fallback only if socket connection stutters or drops
   useEffect(() => {
     if (!activeChannelId) return;
     const syncInterval = setInterval(() => {
-      messageApi
-        .getMessages(activeChannelId)
-        .then((data) => {
-          if (data && Array.isArray(data.messages)) {
-            useChatStore.getState().mergeServerMessages(activeChannelId, data.messages);
-          }
-        })
-        .catch(() => {});
-    }, 3000);
+      const sock = getSocket();
+      if (!sock || !sock.connected) {
+        messageApi
+          .getMessages(activeChannelId)
+          .then((data) => {
+            if (data && Array.isArray(data.messages)) {
+              useChatStore.getState().mergeServerMessages(activeChannelId, data.messages);
+            }
+          })
+          .catch(() => {});
+      }
+    }, 10000);
 
     return () => clearInterval(syncInterval);
   }, [activeChannelId]);
@@ -161,7 +164,7 @@ export function MessageList() {
     );
   }
 
-  if (isLoading && messages.length === 0) {
+  if (isLoading) {
     return (
       <div className="message-list">
         <div className="message-list__skeleton">
@@ -220,13 +223,6 @@ export function MessageList() {
   return (
     <div className="message-list" ref={containerRef} onScroll={handleScroll}>
       <div className="message-list__inner">
-        {!isAIChat && hasMore && (
-          <div className="message-list__load-more">
-            <button className="message-list__load-btn" onClick={() => loadMoreMessages(activeChannelId)}>
-              Load older messages
-            </button>
-          </div>
-        )}
 
         {displayMessages.map((message) => {
           const messageDate = new Date(message.createdAt).toDateString();

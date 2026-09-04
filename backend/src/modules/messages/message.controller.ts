@@ -5,6 +5,8 @@ import { prisma } from '../../config/database.js';
 import { AI_BOT_ID, generateAIResponse } from '../ai/ai.service.js';
 import { logger } from '../../utils/logger.js';
 
+import { broadcastMessageToChannel } from '../../sockets/chatHandler.js';
+
 export async function sendMessage(req: Request, res: Response, next: NextFunction) {
   try {
     const channelId = req.params.channelId as string;
@@ -17,16 +19,7 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
     // Asynchronously handle Socket broadcast and AI bot auto-response
     try {
       const io = getIO();
-      io.to(`channel:${channelId}`).emit('message:new', message);
-      io.emit('message:new', message);
-
-      const members = await prisma.channelMember.findMany({
-        where: { channelId },
-        select: { userId: true },
-      });
-      members.forEach((m) => {
-        io.to(`user:${m.userId}`).emit('message:new', message);
-      });
+      await broadcastMessageToChannel(io, channelId, message);
 
       if (senderUserId !== AI_BOT_ID) {
         setTimeout(async () => {
@@ -44,6 +37,11 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
               const senderName = senderUser?.displayName || senderUser?.username || 'Developer';
               const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || 'Hello AI';
 
+              const members = await prisma.channelMember.findMany({
+                where: { channelId },
+                select: { userId: true },
+              });
+
               io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
               members.forEach((m) => {
                 io.to(`user:${m.userId}`).emit('ai:typing:start', { channelId });
@@ -57,11 +55,7 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
                   parentId: isAIMentioned ? message.id : req.body.parentId,
                 });
 
-                io.emit('message:new', aiMessage);
-                io.to(`channel:${channelId}`).emit('message:new', aiMessage);
-                members.forEach((m) => {
-                  io.to(`user:${m.userId}`).emit('message:new', aiMessage);
-                });
+                await broadcastMessageToChannel(io, channelId, aiMessage);
               } finally {
                 io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
                 members.forEach((m) => {

@@ -1,3 +1,17 @@
+/**
+ * chatStore.ts
+ *
+ * Central Zustand Store for Channels, Messages, Threads, and Direct Messages.
+ * 
+ * Key Design Features:
+ * 1. Optimistic Message Pipeline: Local messages render instantly with 0ms UI lag
+ *    and deduplicate when server acknowledgments arrive.
+ * 2. Instant Channel & DM Switching: Switching channels or starting new DMs sets
+ *    active state in 0ms with skeleton loaders while fetching full message history.
+ * 3. Real-Time Syncing: Works hand-in-hand with socketManager.ts to process
+ *    incoming messages, thread replies, and presence updates reactively.
+ */
+
 import { create } from 'zustand';
 import type { Channel, DMChannel } from '../types/channel';
 import type { Message } from '../types/message';
@@ -48,12 +62,13 @@ interface ChatState {
   addMessage: (message: Message) => void;
   mergeServerMessages: (channelId: string, messages: Message[]) => void;
   updateMessage: (message: Message) => void;
+  updateMessageId: (channelId: string, oldId: string, newId: string) => void;
   removeMessage: (messageId: string, channelId: string) => void;
   addChannel: (channel: Channel) => void;
   createChannel: (data: { name: string; description?: string; type?: 'PUBLIC' | 'PRIVATE' }) => Promise<Channel>;
   joinChannel: (channelId: string) => Promise<void>;
   deleteChannel: (channelId: string) => Promise<void>;
-  openDM: (targetUserId: string) => Promise<void>;
+  openDM: (targetUserId: string, targetUser?: any) => Promise<void>;
   updateUserLastSeen: (userId: string, lastSeenAt: string) => void;
   clearChannelMessages: (channelId: string) => void;
   bumpDMChannel: (channelId: string) => void;
@@ -168,7 +183,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setActiveChannel: async (channelId: string) => {
-    const { channels, dmChannels, messages, loadMessages, joinChannel } = get();
+    const { channels, dmChannels, loadMessages, joinChannel } = get();
     let channel = channels.find((c) => c.id === channelId) || null;
 
     if (!channel) {
@@ -225,7 +240,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       activeChannelId: channelId,
       activeChannel: channel,
       activeSessionId: null,
-      isLoadingMessages: !state.messages[channelId] || state.messages[channelId].length === 0,
+      isLoadingMessages: true,
       unreadCounts: {
         ...state.unreadCounts,
         [channelId]: 0,
@@ -266,14 +281,47 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  openDM: async (targetUserId: string) => {
+  openDM: async (targetUserId: string, targetUser?: any) => {
     try {
+      // ⚡ FAST PATH 1: Check existing DM channel in store
+      const existingDM = get().dmChannels.find(
+        (d) => d.id === targetUserId || d.otherUser?.id === targetUserId
+      );
+      const resolvedUser = targetUser || existingDM?.otherUser;
+
+      // ⚡ FAST PATH 2: If we have resolvedUser or existingDM, switch UI INSTANTLY (0ms)
+      if (existingDM || resolvedUser) {
+        const channelId = existingDM?.id || `dm-${targetUserId}`;
+        set((state) => ({
+          activeChannelId: channelId,
+          activeChannel: {
+            id: channelId,
+            name: resolvedUser?.displayName || resolvedUser?.username || 'Direct Message',
+            slug: channelId,
+            description: resolvedUser ? `@${resolvedUser.username}` : '',
+            type: 'DIRECT',
+            createdById: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            otherUser: resolvedUser || undefined,
+            createdBy: resolvedUser ? {
+              id: resolvedUser.id,
+              username: resolvedUser.username,
+              displayName: resolvedUser.displayName,
+              avatarUrl: resolvedUser.avatarUrl ?? null,
+            } : { id: '', username: '', displayName: '', avatarUrl: null },
+            _count: { members: 2, messages: 0 },
+            isMember: true,
+          } as any,
+          isLoadingMessages: true,
+          unreadCounts: { ...state.unreadCounts, [channelId]: 0 },
+        }));
+      }
+
       const dmChannel = await channelApi.getOrCreateDM(targetUserId);
 
-      // Try to get otherUser from existing dmChannels store first (fast path)
-      let otherUser = get().dmChannels.find((d) => d.id === dmChannel.id)?.otherUser;
+      let otherUser = resolvedUser || get().dmChannels.find((d) => d.id === dmChannel.id)?.otherUser;
 
-      // If not found, fetch from the members list
       if (!otherUser) {
         const currentUserId = useAuthStore.getState().user?.id;
         try {
@@ -293,7 +341,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         } catch {}
       }
 
-      // INSTANTLY open the chat view without waiting for sidebar refresh
+      // INSTANTLY finalize active channel with actual backend channel ID
       set((state) => ({
         activeChannelId: dmChannel.id,
         activeChannel: {
@@ -315,6 +363,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           _count: { members: 2, messages: 0 },
           isMember: true,
         } as any,
+        isLoadingMessages: true,
         unreadCounts: { ...state.unreadCounts, [dmChannel.id]: 0 },
       }));
 
@@ -330,10 +379,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   loadMessages: async (channelId: string) => {
-    const existing = get().messages[channelId];
-    if (!existing || existing.length === 0) {
-      set({ isLoadingMessages: true });
-    }
+    set({ isLoadingMessages: true });
     try {
       const data = await messageApi.getMessages(channelId);
       set((state) => {
@@ -362,12 +408,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
           messages: { ...state.messages, [channelId]: merged },
           hasMore: { ...state.hasMore, [channelId]: Boolean(data?.hasMore) },
           cursors: { ...state.cursors, [channelId]: data?.nextCursor || null },
-          isLoadingMessages: false,
+          isLoadingMessages: state.activeChannelId === channelId ? false : state.isLoadingMessages,
         };
       });
     } catch (error) {
       console.error('Failed to load messages:', error);
-      set({ isLoadingMessages: false });
+      if (get().activeChannelId === channelId) {
+        set({ isLoadingMessages: false });
+      }
     }
   },
 
@@ -589,6 +637,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
   },
 
+  updateMessageId: (channelId: string, oldId: string, newId: string) => {
+    set((state) => {
+      const channelMsgs = state.messages[channelId] || [];
+      const updated = channelMsgs.map((m) => (m.id === oldId ? { ...m, id: newId } : m));
+      return {
+        messages: {
+          ...state.messages,
+          [channelId]: updated,
+        },
+      };
+    });
+  },
+
   removeMessage: (messageId: string, channelId: string) => {
     set((state) => {
       const updatedChannelMessages = (state.messages[channelId] || []).map((m) =>
@@ -644,20 +705,32 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   updateUserLastSeen: (userId: string, lastSeenAt: string) => {
-    set((state) => ({
-      dmChannels: state.dmChannels.map((d) =>
-        d.otherUser?.id === userId
-          ? { ...d, otherUser: { ...d.otherUser, lastSeenAt } }
-          : d
-      ),
-      activeChannel:
-        state.activeChannel?.createdBy?.id === userId
-          ? {
-              ...state.activeChannel,
-              createdBy: { ...state.activeChannel.createdBy, lastSeenAt } as any,
-            }
-          : state.activeChannel,
-    }));
+    set((state) => {
+      const isOtherInActive = state.activeChannel?.otherUser?.id === userId;
+      const isCreatedByInActive = state.activeChannel?.createdBy?.id === userId;
+
+      let updatedActiveChannel = state.activeChannel;
+      if (isOtherInActive || isCreatedByInActive) {
+        updatedActiveChannel = {
+          ...state.activeChannel,
+          ...(isOtherInActive && state.activeChannel?.otherUser
+            ? { otherUser: { ...state.activeChannel.otherUser, lastSeenAt } }
+            : {}),
+          ...(isCreatedByInActive && state.activeChannel?.createdBy
+            ? { createdBy: { ...state.activeChannel.createdBy, lastSeenAt } as any }
+            : {}),
+        } as any;
+      }
+
+      return {
+        dmChannels: state.dmChannels.map((d) =>
+          d.otherUser?.id === userId
+            ? { ...d, otherUser: { ...d.otherUser, lastSeenAt } }
+            : d
+        ),
+        activeChannel: updatedActiveChannel,
+      };
+    });
   },
 
   clearChannelMessages: (channelId: string) => {

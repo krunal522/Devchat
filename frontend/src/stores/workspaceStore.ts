@@ -1,3 +1,16 @@
+/**
+ * @file workspaceStore.ts
+ * @description Workspace & Team Management Zustand Store.
+ * Controls active workspace selection, member permissions, role updates, and pending invite links.
+ * 
+ * Key Features:
+ * - Persisted active workspace ID (`devchat_active_workspace_id`).
+ * - Automatic channel list synchronization with `useChatStore`.
+ * - Workspace invitation workflow (`createInvitation`, `acceptInvitation`, `rejectInvitation`).
+ * 
+ * @module Stores/WorkspaceStore
+ */
+
 import { create } from 'zustand';
 import {
   workspaceApi,

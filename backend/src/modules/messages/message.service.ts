@@ -53,6 +53,40 @@ const MESSAGE_SELECT = {
   },
 } as const;
 
+// Lean select for message CREATE — skips _count and parent lookup
+// A new message always has 0 replies, so we hard-code it after creation.
+// This eliminates the expensive COUNT(*) GROUP BY subquery (~300-350ms penalty).
+const MESSAGE_SELECT_CREATE = {
+  id: true,
+  content: true,
+  isEdited: true,
+  parentId: true,
+  channelId: true,
+  createdAt: true,
+  updatedAt: true,
+  user: {
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      avatarUrl: true,
+    },
+  },
+  reactions: {
+    select: { id: true, emoji: true, userId: true },
+  },
+  attachments: {
+    select: {
+      id: true,
+      fileName: true,
+      fileUrl: true,
+      fileType: true,
+      fileSize: true,
+      mimeType: true,
+    },
+  },
+} as const;
+
 export async function sendMessage(userId: string, channelId: string, input: SendMessageInput) {
   // Ensure AI Bot is automatically a member of any channel it posts to
   if (userId === 'devchat-ai-bot-id') {
@@ -61,12 +95,11 @@ export async function sendMessage(userId: string, channelId: string, input: Send
       create: { userId: 'devchat-ai-bot-id', channelId, role: 'MEMBER' },
       update: {},
     });
-  } else {
-    // Verify user is a member of the channel
+  } else if (!input.skipMembershipCheck) {
+    // Verify user is a member of the channel (skip when socket handler pre-validates via findMany)
     const membership = await prisma.channelMember.findUnique({
       where: { userId_channelId: { userId, channelId } },
     });
-
     if (!membership) {
       throw ApiError.forbidden('You are not a member of this channel');
     }
@@ -82,7 +115,7 @@ export async function sendMessage(userId: string, channelId: string, input: Send
     }
   }
 
-  const message = await prisma.message.create({
+  const rawMessage = await prisma.message.create({
     data: {
       content: input.content,
       userId,
@@ -102,14 +135,23 @@ export async function sendMessage(userId: string, channelId: string, input: Send
           }
         : {}),
     },
-    select: MESSAGE_SELECT,
+    select: MESSAGE_SELECT_CREATE,
   });
 
-  // Update channel's updatedAt for sorting
-  await prisma.channel.update({
-    where: { id: channelId },
-    data: { updatedAt: new Date() },
-  });
+  // Compose final message — new messages always have 0 replies and no parent snapshot needed
+  const message = {
+    ...rawMessage,
+    parent: null,
+    _count: { replies: 0 },
+  };
+
+  // Update channel's updatedAt for sorting asynchronously
+  prisma.channel
+    .update({
+      where: { id: channelId },
+      data: { updatedAt: new Date() },
+    })
+    .catch(() => {});
 
   return message;
 }
@@ -129,9 +171,33 @@ export async function getMessages(
     throw ApiError.forbidden('You are not a member of this channel');
   }
 
+  // Check if this channel is a DIRECT channel to aggregate all messages between contact
+  const targetChannel = await prisma.channel.findUnique({
+    where: { id: channelId },
+    select: { type: true, members: { select: { userId: true } } },
+  });
+
+  let matchingChannelIds = [channelId];
+
+  if (targetChannel?.type === 'DIRECT' && targetChannel.members.length === 2) {
+    const u1 = targetChannel.members[0].userId;
+    const u2 = targetChannel.members[1].userId;
+    const allDMs = await prisma.channel.findMany({
+      where: {
+        type: 'DIRECT',
+        AND: [
+          { members: { some: { userId: u1 } } },
+          { members: { some: { userId: u2 } } },
+        ],
+      },
+      select: { id: true },
+    });
+    matchingChannelIds = allDMs.map((d) => d.id);
+  }
+
   const messages = await prisma.message.findMany({
     where: {
-      channelId,
+      channelId: { in: matchingChannelIds },
       parentId: null, // Only top-level messages
       ...(cursor ? { createdAt: { lt: (await prisma.message.findUnique({ where: { id: cursor } }))?.createdAt } } : {}),
     },

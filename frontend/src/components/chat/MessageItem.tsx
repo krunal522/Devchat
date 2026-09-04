@@ -188,14 +188,7 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
 
   return (
     <>
-      <div
-        className={`message ${isEditing ? 'message--editing' : ''}`}
-        onMouseEnter={() => setShowActions(true)}
-        onMouseLeave={() => {
-          setShowActions(false);
-          setShowFullPicker(false);
-        }}
-      >
+      <div className={`message ${isEditing ? 'message--editing' : ''}`}>
         <UserAvatar
           src={authorAvatar}
           displayName={authorName}
@@ -335,9 +328,9 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
           )}
         </div>
 
-        {/* Hover Action Toolbar (Completely disabled for DevChat AI) */}
-        {(showActions || showFullPicker) && !isEditing && !isAIMessage && !isAIChat && (
-          <div className="message__actions">
+        {/* Hover Action Toolbar (Completely disabled for DevChat AI and while editing) */}
+        {!isEditing && !isAIMessage && !isAIChat && (
+          <div className={`message__actions ${showFullPicker ? 'message__actions--active' : ''}`}>
             {/* Clean Smiley Reaction Picker Trigger */}
             <div className="message__more-emoji-wrapper">
               <button

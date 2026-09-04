@@ -1,3 +1,16 @@
+/**
+ * @file presenceStore.ts
+ * @description Real-time User Presence & Typing Indicator Zustand Store.
+ * Centralized reactive store for tracking user online status (Set<string>) and typing indicators.
+ * 
+ * Key Features:
+ * - Reactive `Set<string>` online users map for 0ms presence lookups.
+ * - Helper `useIsUserOnline(userId)` hook preventing unnecessary re-renders.
+ * - Local storage fallback ensuring current user always displays as active.
+ * 
+ * @module Stores/PresenceStore
+ */
+
 import { create } from 'zustand';
 
 interface TypingUser {

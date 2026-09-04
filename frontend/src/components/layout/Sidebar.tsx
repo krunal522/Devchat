@@ -1,3 +1,17 @@
+/**
+ * @file Sidebar.tsx
+ * @description Enterprise Sidebar Component.
+ * Manages Workspace selection, Public Channels list, Direct Messages list,
+ * DevChat AI quick launcher, unread message counters, and document title badges.
+ * 
+ * Key Features:
+ * - Real-time green online presence dots with `useIsUserOnline(userId)`.
+ * - Deduplicated Direct Messages listing per recipient user.
+ * - Dynamic browser tab title unread count update `(N) DevChat`.
+ * 
+ * @module Components/Layout/Sidebar
+ */
+
 import { useEffect, useState } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -12,6 +26,7 @@ import { LogoutConfirmModal } from '../auth/LogoutConfirmModal';
 import { WorkspaceSelector } from '../workspace/WorkspaceSelector';
 import { channelApi } from '../../services/channelApi';
 import { userApi } from '../../services/userApi';
+import { getSocket } from '../../services/socketManager';
 import { AILogoIcon } from '../ui/AILogoIcon';
 import type { DMChannel } from '../../types/channel';
 import './Sidebar.css';
@@ -30,7 +45,7 @@ function SidebarDMItem({
   const otherUserId = dm.otherUser?.id;
   const realTimeIsOnline = useIsUserOnline(otherUserId);
   const isAI = dm.otherUser?.username === 'devchat_ai' || dm.otherUser?.id === 'devchat-ai-bot-id';
-  const isOnline = isAI ? true : realTimeIsOnline || Boolean(dm.otherUser?.isOnline);
+  const isOnline = isAI ? true : realTimeIsOnline;
 
   return (
     <button
@@ -110,7 +125,13 @@ export function Sidebar() {
     };
 
     fetchOnlineUsers();
-    const interval = setInterval(fetchOnlineUsers, 3000);
+    // Silent REST fallback only when socket is disconnected — stops loop terminal log
+    const interval = setInterval(() => {
+      const sock = getSocket();
+      if (!sock || !sock.connected) {
+        fetchOnlineUsers();
+      }
+    }, 10000);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -152,9 +173,15 @@ export function Sidebar() {
   });
   const filteredDMChannels = Array.from(uniqueDMMap.values());
 
-  // Calculate Overall Total Unread Counts
+  // Calculate Overall Total Unread Counts (WhatsApp style across channels and DMs)
   const totalChannelsUnread = publicChannels.reduce((sum, c) => sum + (unreadCounts[c.id] || 0), 0);
-  const totalDMsUnread = filteredDMChannels.reduce((sum, d) => sum + (unreadCounts[d.id] || 0), 0);
+  const totalDMsUnread = Object.entries(unreadCounts).reduce((sum, [cId, count]) => {
+    const isPublic = publicChannels.some((c) => c.id === cId);
+    if (!isPublic && count > 0) {
+      return sum + count;
+    }
+    return sum;
+  }, 0);
   const totalUnread = totalChannelsUnread + totalDMsUnread;
 
   // Update browser tab document title dynamically with unread count (e.g. "(3) DevChat")
@@ -261,15 +288,21 @@ export function Sidebar() {
             </div>
 
             <div className="sidebar__list">
-              {filteredDMChannels.map((dm) => (
-                <SidebarDMItem
-                  key={dm.id}
-                  dm={dm}
-                  isActive={activeChannelId === dm.id}
-                  unread={unreadCounts[dm.id] || 0}
-                  onSelect={() => handleSelectChannel(dm.id)}
-                />
-              ))}
+              {filteredDMChannels.map((dm) => {
+                const unread = dmChannels
+                  .filter((d) => d.id === dm.id || (d.otherUser?.id && dm.otherUser?.id && d.otherUser.id === dm.otherUser.id))
+                  .reduce((sum, d) => sum + (unreadCounts[d.id] || 0), 0) || (unreadCounts[dm.id] || 0);
+
+                return (
+                  <SidebarDMItem
+                    key={dm.id}
+                    dm={dm}
+                    isActive={activeChannelId === dm.id}
+                    unread={unread}
+                    onSelect={() => handleSelectChannel(dm.id)}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>

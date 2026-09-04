@@ -44,4 +44,6 @@ backend/prisma/migrations/**/migration_lock.toml
 *.tgz
 .cache/
 backend/backups/
+backend/uploads/
+backend/src/cleanDuplicates.ts
 *.db.bak

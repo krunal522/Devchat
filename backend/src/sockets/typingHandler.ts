@@ -1,3 +1,15 @@
+/**
+ * @file typingHandler.ts
+ * @description Real-time Typing Indicators Handler with Redis State Sync & Auto-Stop Timers.
+ * 
+ * Key Features:
+ * - Real-time `typing:start` and `typing:stop` broadcasts excluding the active sender.
+ * - 3-second auto-stop timeout cleanup to prevent stuck typing indicators on dropped connections.
+ * - Redis Hash persistence per channel (`RedisKeys.typing(channelId)`).
+ * 
+ * @module Sockets/TypingHandler
+ */
+
 import { Server, Socket } from 'socket.io';
 import { redis, RedisKeys } from '../config/redis.js';
 

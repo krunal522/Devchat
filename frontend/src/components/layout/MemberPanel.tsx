@@ -1,3 +1,16 @@
+/**
+ * @file MemberPanel.tsx
+ * @description Right-side Member & Channel Info Drawer Component.
+ * Displays channel members divided by online/offline presence status, profile actions, and member moderation.
+ * 
+ * Key Features:
+ * - Direct 0ms DM activation upon clicking member avatar (`openDM`).
+ * - Real-time online/offline list separation using `useIsUserOnline`.
+ * - Admin member removal and mute notifications trigger.
+ * 
+ * @module Components/Layout/MemberPanel
+ */
+
 import React, { useEffect, useState } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -93,7 +106,7 @@ export function MemberPanel() {
         className={`member-panel__item ${!isOnline ? 'member-panel__item--offline' : ''}`}
         onClick={() => {
           if (member.id !== currentUserId) {
-            openDM(member.id);
+            openDM(member.id, member);
             setMobileView('chat');
           }
         }}

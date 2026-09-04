@@ -405,7 +405,7 @@ export async function getDMChannels(userId: string) {
   const onlineSet = new Set(onlineUserIds);
 
   const mapByRecipient = new Map<string, typeof channels[0]>();
-  const duplicateIdsToDelete: string[] = [];
+  const duplicatesToPrimary = new Map<string, string[]>();
 
   for (const ch of channels) {
     const other = ch.members.find((m) => m.user.id !== userId)?.user;
@@ -417,24 +417,25 @@ export async function getDMChannels(userId: string) {
       // Duplicate channel detected for same contact
       const primary = mapByRecipient.get(other.id)!;
       if (ch.id !== primary.id) {
-        duplicateIdsToDelete.push(ch.id);
+        const dups = duplicatesToPrimary.get(primary.id) || [];
+        dups.push(ch.id);
+        duplicatesToPrimary.set(primary.id, dups);
       }
     }
   }
 
-  // Merge and delete duplicate channels in background
-  if (duplicateIdsToDelete.length > 0) {
-    const primaryId = Array.from(mapByRecipient.values())[0]?.id;
-    if (primaryId) {
+  // Merge and delete duplicate channels in background per primary channel
+  if (duplicatesToPrimary.size > 0) {
+    duplicatesToPrimary.forEach((dupIds, primaryId) => {
       prisma.message.updateMany({
-        where: { channelId: { in: duplicateIdsToDelete } },
+        where: { channelId: { in: dupIds } },
         data: { channelId: primaryId },
       }).then(() => {
-        return prisma.channelMember.deleteMany({ where: { channelId: { in: duplicateIdsToDelete } } });
+        return prisma.channelMember.deleteMany({ where: { channelId: { in: dupIds } } });
       }).then(() => {
-        return prisma.channel.deleteMany({ where: { id: { in: duplicateIdsToDelete } } });
+        return prisma.channel.deleteMany({ where: { id: { in: dupIds } } });
       }).catch((err) => logger.error('Error cleaning up duplicate DMs in getDMChannels:', err));
-    }
+    });
   }
 
   return Array.from(mapByRecipient.values()).map((channel) => {

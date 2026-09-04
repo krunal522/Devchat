@@ -199,6 +199,12 @@ function attachListeners(sock: Socket): void {
     }
   });
 
+  sock.on('message:saved', (data: { tempId: string; realId: string; channelId: string }) => {
+    if (data?.tempId && data?.realId && data?.channelId) {
+      useChatStore.getState().updateMessageId(data.channelId, data.tempId, data.realId);
+    }
+  });
+
   sock.on('message:edited', (message: Message) => {
     useChatStore.getState().updateMessage(message);
   });

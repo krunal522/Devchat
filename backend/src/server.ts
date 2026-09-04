@@ -44,10 +44,10 @@ async function start(): Promise<void> {
 
           // ⚡ NEON DB KEEPALIVE: Ping every 25s to prevent serverless cold starts
           // Without this, first message after idle period takes 2-5 seconds (Neon compute wakeup)
-          setInterval(async () => {
-            try {
-              await prisma.$queryRaw`SELECT 1`;
-            } catch {}
+          setInterval(() => {
+            prisma.$queryRaw`SELECT 1`.catch(() => {
+              // Silent — Neon is temporarily unreachable, will reconnect automatically
+            });
           }, 25000);
           logger.info('✅ DB keepalive started (prevents Neon cold starts)');
         } catch (err) {

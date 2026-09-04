@@ -1,3 +1,15 @@
+/**
+ * index.ts
+ *
+ * Central Socket.io Server Initialization & Lifecycle Management
+ * 
+ * Features:
+ * 1. Redis Adapter with in-memory fallback for horizontal scalability.
+ * 2. Instant room joining for user rooms (`user:${userId}`).
+ * 3. Pre-cached socket user metadata for zero-DB-latency broadcasts.
+ * 4. Automatic connection & disconnection presence synchronization.
+ */
+
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
@@ -10,6 +22,7 @@ import { registerChannelHandlers } from './channelHandler.js';
 import { registerPresenceHandlers } from './presenceHandler.js';
 import { registerTypingHandlers } from './typingHandler.js';
 import * as presenceService from '../modules/presence/presence.service.js';
+import { prisma } from '../config/database.js';
 
 let io: Server;
 
@@ -58,6 +71,17 @@ export function initializeSocket(httpServer: HttpServer): Server {
     // ⚡ CRITICAL: Join personal room & register handlers FIRST — synchronously, zero delay
     // user:${userId} room must exist BEFORE any message can be delivered to this user
     socket.join(`user:${userId}`);
+
+    // Pre-populate user display details on socket object for zero-latency message construction
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { displayName: true, avatarUrl: true },
+    }).then((user) => {
+      if (user) {
+        socket.data.displayName = user.displayName;
+        socket.data.avatarUrl = user.avatarUrl;
+      }
+    }).catch(() => {});
 
     // Register all event handlers immediately
     registerChatHandlers(io, socket);

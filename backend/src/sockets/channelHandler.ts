@@ -1,3 +1,17 @@
+/**
+ * @file channelHandler.ts
+ * @description Real-time Channel and DM Room Socket Handlers.
+ * Handles channel room subscriptions (`channel:join`, `channel:leave`, `channel:join_all`)
+ * and wams up memory caches for fast direct message routing.
+ * 
+ * Key Features:
+ * - Room auto-subscription for all channels and DMs the user is a member of.
+ * - In-memory channel member cache warm up (`cacheAddMember`).
+ * - Global room broadcast for newly created channels (`channel:new`).
+ * 
+ * @module Sockets/ChannelHandler
+ */
+
 import { Server, Socket } from 'socket.io';
 import { logger } from '../utils/logger.js';
 import { prisma } from '../config/database.js';
