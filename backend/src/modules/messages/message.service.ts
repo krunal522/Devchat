@@ -306,16 +306,38 @@ export async function deleteMessage(userId: string, messageId: string) {
 }
 
 export async function clearChannelMessages(userId: string, channelId: string) {
-  const membership = await prisma.channelMember.findUnique({
-    where: { userId_channelId: { userId, channelId } },
+  // 1. Find channel by ID or slug
+  const channel = await prisma.channel.findFirst({
+    where: {
+      OR: [
+        { id: channelId },
+        { slug: channelId },
+      ],
+    },
+    include: { members: true },
   });
 
-  if (!membership) {
+  if (!channel) {
+    // If channel doesn't exist in DB yet, delete any messages matching channelId directly
+    await prisma.message.deleteMany({ where: { channelId } });
+    return { success: true, channelId };
+  }
+
+  const isMember = channel.members.some((m) => m.userId === userId) || channel.createdById === userId;
+  if (!isMember) {
     throw ApiError.forbidden('You are not a member of this channel');
   }
 
+  // Delete messages by channel ID AND slug matching channels (handles legacy duplicate DM channels)
+  const matchingChannels = await prisma.channel.findMany({
+    where: { slug: channel.slug },
+    select: { id: true },
+  });
+  const channelIds = matchingChannels.map((c) => c.id);
+  if (!channelIds.includes(channelId)) channelIds.push(channelId);
+
   await prisma.message.deleteMany({
-    where: { channelId },
+    where: { channelId: { in: channelIds } },
   });
 
   return { success: true, channelId };
