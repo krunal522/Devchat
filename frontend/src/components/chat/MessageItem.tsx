@@ -272,7 +272,7 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
                       onClick={() => setLightboxAttachment({ url: att.fileUrl, name: att.fileName })}
                       title="Click to expand full image"
                     >
-                      <img src={att.fileUrl} alt={att.fileName} loading="lazy" />
+                      <img src={att.fileUrl} alt={att.fileName} loading="lazy" decoding="async" />
                     </div>
                   );
                 }

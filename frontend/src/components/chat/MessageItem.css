@@ -10,6 +10,7 @@
   padding: 0.625rem 1rem;
   border-radius: 12px;
   transition: background-color 0.15s ease;
+  contain: layout style;
 }
 
 .message:hover {
@@ -129,6 +130,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  contain: layout paint;
 }
 
 .message__attachment-image:hover {
@@ -141,6 +143,8 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .message__attachment-card {

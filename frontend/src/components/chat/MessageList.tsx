@@ -59,6 +59,8 @@ export function MessageList() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const prevLengthRef = useRef(0);
+  const isNearBottomRef = useRef(true);
+  const scrollTimeoutRef = useRef<number | null>(null);
 
   const dmInfo = dmChannels.find((d) => d.id === activeChannelId);
   const isAIChat = activeChannel?.type === 'DIRECT' && (
@@ -85,29 +87,37 @@ export function MessageList() {
     bottomRef.current?.scrollIntoView({ behavior: 'auto' });
   };
 
-  // INSTANT 0ms scroll on channel switch, message count change, OR member panel toggle!
-  useLayoutEffect(() => {
+  // Reset scroll to bottom whenever user switches channel
+  useEffect(() => {
+    isNearBottomRef.current = true;
     scrollToBottomInstant();
-    const t1 = requestAnimationFrame(scrollToBottomInstant);
-    const t2 = setTimeout(scrollToBottomInstant, 50);
-    const t3 = setTimeout(scrollToBottomInstant, 150);
-    const t4 = setTimeout(scrollToBottomInstant, 300);
-    prevLengthRef.current = (messages || []).length;
-    return () => {
-      cancelAnimationFrame(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-    };
+  }, [activeChannelId]);
+
+  // INSTANT 0ms scroll on message count change OR member panel toggle ONLY IF user is near bottom
+  useLayoutEffect(() => {
+    if (isNearBottomRef.current) {
+      scrollToBottomInstant();
+      const t1 = requestAnimationFrame(scrollToBottomInstant);
+      const t2 = setTimeout(scrollToBottomInstant, 50);
+      const t3 = setTimeout(scrollToBottomInstant, 150);
+      prevLengthRef.current = (messages || []).length;
+      return () => {
+        cancelAnimationFrame(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
   }, [activeChannelId, (messages || []).length, isMemberPanelOpen, mobileView]);
 
-  // Automatic ResizeObserver — auto-scroll to bottom whenever layout container resizes (panel toggle / window resize)
+  // Automatic ResizeObserver — auto-scroll ONLY if user is already near bottom
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const observer = new ResizeObserver(() => {
-      scrollToBottomInstant();
+      if (isNearBottomRef.current) {
+        scrollToBottomInstant();
+      }
     });
 
     observer.observe(container);
@@ -117,6 +127,7 @@ export function MessageList() {
   // When AI is typing, keep scrolled to bottom instantly & set safety timeout to hide loader after 15s max
   useEffect(() => {
     if (isAITyping) {
+      isNearBottomRef.current = true;
       scrollToBottomInstant();
       const safetyTimer = setTimeout(() => {
         useUIStore.getState().setAITypingChannelId(null);
@@ -126,14 +137,12 @@ export function MessageList() {
   }, [isAITyping]);
 
   // ─── Always re-join socket room when channel changes ─────────────────────────
-  // Guarantees socket room membership even after reconnect / nav change
   useEffect(() => {
     if (!activeChannelId) return;
     getSocket()?.emit('channel:join', activeChannelId);
   }, [activeChannelId]);
 
   // ─── Silent Sync Safety Net ──────────────────────────────────────
-  // Triggers REST sync fallback only if socket connection stutters or drops
   useEffect(() => {
     if (!activeChannelId) return;
     const syncInterval = setInterval(() => {
@@ -153,15 +162,22 @@ export function MessageList() {
     return () => clearInterval(syncInterval);
   }, [activeChannelId]);
 
-  // Handle scroll events: load more at top
+  // Handle scroll events with RAF throttling & smart bottom tracking
   const handleScroll = () => {
     const container = containerRef.current;
     if (!container) return;
 
-    // Load older messages at top
-    if (container.scrollTop < 100 && hasMore && activeChannelId) {
-      loadMoreMessages(activeChannelId);
-    }
+    const threshold = 120;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    isNearBottomRef.current = distanceFromBottom <= threshold;
+
+    if (scrollTimeoutRef.current !== null) return;
+    scrollTimeoutRef.current = requestAnimationFrame(() => {
+      scrollTimeoutRef.current = null;
+      if (container.scrollTop < 100 && hasMore && activeChannelId) {
+        loadMoreMessages(activeChannelId);
+      }
+    });
   };
 
   const handlePromptClick = (promptText: string) => {
