@@ -97,15 +97,23 @@ export function Sidebar() {
     setMobileView('chat');
   };
 
-  const handleOpenAIChat = async () => {
-    try {
-      const channel = await channelApi.getOrCreateDM('devchat-ai-bot-id');
-      await loadDMChannels();
-      setActiveChannel(channel.id);
-      setMobileView('chat');
-    } catch (err) {
-      console.error('Failed to open AI Chat:', err);
-      openStartDMModal();
+  const handleOpenAIChat = () => {
+    setMobileView('chat');
+
+    const existingAIDM = dmChannels.find(
+      (d) => d.otherUser?.username === 'devchat_ai' || d.otherUser?.id === 'devchat-ai-bot-id'
+    );
+
+    if (existingAIDM) {
+      setActiveChannel(existingAIDM.id);
+    } else {
+      openDM('devchat-ai-bot-id', {
+        id: 'devchat-ai-bot-id',
+        username: 'devchat_ai',
+        displayName: '🤖 DevChat AI',
+        avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=DevChatAI',
+        isOnline: true,
+      });
     }
   };
 
