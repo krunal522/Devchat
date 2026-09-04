@@ -154,9 +154,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // If current active channel is a DM, update activeChannel object to ensure latest user details
       const activeId = get().activeChannelId;
       const currentActiveChannel = get().activeChannel;
+      const currentUserId = useAuthStore.getState().user?.id;
       if (activeId && currentActiveChannel?.type === 'DIRECT') {
         const dm = dmChannels.find((d) => d.id === activeId);
-        if (dm && dm.otherUser) {
+        if (dm && dm.otherUser && dm.otherUser.id !== currentUserId) {
           set({
             activeChannel: {
               id: dm.id,
@@ -167,6 +168,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               createdById: '',
               createdAt: dm.updatedAt,
               updatedAt: dm.updatedAt,
+              otherUser: dm.otherUser,
               createdBy: {
                 id: dm.otherUser.id,
                 username: dm.otherUser.username,
@@ -188,8 +190,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     let channel = channels.find((c) => c.id === channelId) || null;
 
     if (!channel) {
+      const currentUserId = useAuthStore.getState().user?.id;
       const dm = dmChannels.find((d) => d.id === channelId);
-      if (dm && dm.otherUser) {
+      if (dm && dm.otherUser && dm.otherUser.id !== currentUserId) {
         channel = {
           id: dm.id,
           name: dm.otherUser.displayName || dm.otherUser.username,
@@ -213,14 +216,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
         try {
           const rawChannel: any = await channelApi.getChannel(channelId);
           if (rawChannel && rawChannel.type === 'DIRECT') {
-            const currentUserId = useAuthStore.getState().user?.id;
             const rawMembers = await channelApi.getMembers(channelId);
             const members = Array.isArray(rawMembers) ? rawMembers : [];
-            const otherMember = members.find((m) => m.id !== currentUserId) || members[0];
+            const otherMember = members.find((m: any) => (m.id || m.userId) !== currentUserId);
             channel = {
               ...rawChannel,
               name: otherMember?.displayName || otherMember?.username || rawChannel.name,
               description: `@${otherMember?.username || ''}`,
+              otherUser: otherMember || undefined,
               createdBy: {
                 id: otherMember?.id || rawChannel.createdById,
                 username: otherMember?.username || '',

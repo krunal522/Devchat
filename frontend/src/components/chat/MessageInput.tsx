@@ -5,6 +5,7 @@ import { MentionPopup } from './MentionPopup';
 import { TypingIndicator } from './TypingIndicator';
 import { AttachmentSheet } from './AttachmentSheet';
 import { useChatStore } from '../../stores/chatStore';
+import { useAuthStore } from '../../stores/authStore';
 import { useSocketActions } from '../../hooks/useSocket';
 import { messageApi, type UploadedFileResponse } from '../../services/messageApi';
 import { userApi } from '../../services/userApi';
@@ -19,6 +20,8 @@ import './MessageInput.css';
 export function MessageInput() {
   const activeChannelId = useChatStore((s) => s.activeChannelId);
   const activeChannel = useChatStore((s) => s.activeChannel);
+  const dmChannels = useChatStore((s) => s.dmChannels);
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const { sendMessage, startTyping, stopTyping } = useSocketActions();
 
   const [content, setContent] = useState('');
@@ -382,8 +385,18 @@ export function MessageInput() {
 
   if (!activeChannelId) return null;
 
+  const dmInfo = dmChannels.find((d) => d.id === activeChannelId);
+  const otherUser =
+    ((activeChannel as any)?.otherUser?.id && (activeChannel as any).otherUser.id !== currentUserId
+      ? (activeChannel as any).otherUser
+      : undefined) ||
+    (dmInfo?.otherUser?.id && dmInfo.otherUser.id !== currentUserId ? dmInfo.otherUser : undefined) ||
+    (activeChannel?.createdBy?.id && activeChannel.createdBy.id !== currentUserId
+      ? activeChannel.createdBy
+      : undefined);
+
   const channelName = activeChannel?.type === 'DIRECT'
-    ? activeChannel?.name || 'user'
+    ? (otherUser?.displayName || otherUser?.username || activeChannel?.name || 'member')
     : `#${activeChannel?.name || 'channel'}`;
 
   const hasInput = Boolean(content.trim()) || attachments.length > 0;

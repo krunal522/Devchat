@@ -23,6 +23,7 @@ import { AddMemberModal } from '../channel/AddMemberModal';
 import { AIHistoryModal } from '../chat/AIHistoryModal';
 import { UserAvatar } from '../user/UserAvatar';
 import { userApi } from '../../services/userApi';
+import { channelApi } from '../../services/channelApi';
 import { formatLastSeenText } from '../../utils/formatPresence';
 import './Header.css';
 
@@ -47,29 +48,71 @@ export function Header() {
   const channelNameLower = typeof channel?.name === 'string' ? channel.name.toLowerCase() : '';
   const isAIChat = isDirect && (channelNameLower.includes('devchat ai') || dmInfo?.otherUser?.username === 'devchat_ai' || (channel?.createdBy as any)?.username === 'devchat_ai');
 
-  // Find the other user from channel members if available
+  // Find other user from channel members if present
   const memberOther = (channel as any)?.members?.find((m: any) => {
     const mId = m.userId || m.user?.id || m.id;
     return mId && mId !== currentUserId;
   });
-  const memberOtherUserId = memberOther?.user?.id || memberOther?.userId || memberOther?.id;
 
-  // Resolve the actual DM recipient object with all fallback mechanisms
-  const otherUserObj =
-    (channel as any)?.otherUser ||
-    dmInfo?.otherUser ||
+  // Candidate other users from store (strictly must not be current user)
+  const rawOther =
+    ((channel as any)?.otherUser?.id && (channel as any)?.otherUser?.id !== currentUserId ? (channel as any)?.otherUser : undefined) ||
+    (dmInfo?.otherUser?.id && dmInfo?.otherUser?.id !== currentUserId ? dmInfo?.otherUser : undefined) ||
     (channel?.createdBy?.id && channel.createdBy.id !== currentUserId ? channel.createdBy : undefined) ||
-    memberOther?.user ||
-    memberOther;
+    (memberOther?.id && memberOther.id !== currentUserId ? memberOther?.user || memberOther : undefined);
 
-  // Derive otherUserId with all fallback mechanisms
-  const otherUserId = isDirect
-    ? (otherUserObj?.id || memberOtherUserId)
-    : undefined;
+  const [asyncOtherUser, setAsyncOtherUser] = useState<any>(null);
+
+  // Fallback: fetch channel members if store doesn't have the other user object
+  useEffect(() => {
+    if (!isDirect || isAIChat || !channel?.id) {
+      setAsyncOtherUser(null);
+      return;
+    }
+
+    if (rawOther && rawOther.id !== currentUserId) {
+      setAsyncOtherUser(rawOther);
+      return;
+    }
+
+    let isCancelled = false;
+    channelApi
+      .getMembers(channel.id)
+      .then((members) => {
+        if (isCancelled || !Array.isArray(members)) return;
+        const found = members.find((m: any) => (m.id || m.userId) !== currentUserId);
+        if (found) {
+          setAsyncOtherUser(found);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [channel?.id, isDirect, isAIChat, currentUserId, rawOther?.id]);
+
+  const otherUserObj = (asyncOtherUser && asyncOtherUser.id !== currentUserId)
+    ? asyncOtherUser
+    : (rawOther && rawOther.id !== currentUserId ? rawOther : undefined);
+
+  const otherUserId = isDirect ? otherUserObj?.id : undefined;
 
   const realTimeIsOnline = useIsUserOnline(otherUserId);
   const isOtherUserOnline = isAIChat ? true : (realTimeIsOnline || Boolean(otherUserObj?.isOnline));
-  const lastSeenAt = otherUserObj?.lastSeenAt || (channel?.createdBy as any)?.lastSeenAt;
+  const lastSeenAt = otherUserObj?.lastSeenAt;
+
+  const displayName = isDirect
+    ? (isAIChat ? 'DevChat AI' : (otherUserObj?.displayName || otherUserObj?.username || channel?.name || 'Direct Message'))
+    : (channel?.name || 'Select a channel');
+
+  const handleText = isDirect && !isAIChat
+    ? (otherUserObj?.username ? `@${otherUserObj.username}` : (channel?.description || ''))
+    : '';
+
+  const avatarUrl = isAIChat
+    ? 'https://api.dicebear.com/7.x/bottts/svg?seed=DevChatAI'
+    : (otherUserObj?.avatarUrl || dmInfo?.otherUser?.avatarUrl);
 
   const [, setTick] = useState(0);
 
@@ -179,8 +222,8 @@ export function Header() {
         <div className="chat-header__info" onClick={() => toggleMemberPanel()}>
           {isDirect ? (
             <UserAvatar
-              src={dmInfo?.otherUser?.avatarUrl || channel?.createdBy?.avatarUrl}
-              displayName={channel?.name || '?'}
+              src={avatarUrl}
+              displayName={displayName}
               size="sm"
               isOnline={isAIChat ? true : isOtherUserOnline}
               showStatus
@@ -191,9 +234,9 @@ export function Header() {
 
           <div className="chat-header__details">
             <div className="chat-header__title-row">
-              <h2 className="chat-header__name">{channel?.name || 'Select a channel'}</h2>
-              {isDirect && channel?.description && (
-                <span className="chat-header__handle">{channel.description}</span>
+              <h2 className="chat-header__name">{displayName}</h2>
+              {handleText && (
+                <span className="chat-header__handle">{handleText}</span>
               )}
             </div>
             {isDirect ? (
