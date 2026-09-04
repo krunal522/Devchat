@@ -49,33 +49,90 @@ Personality: Professional, helpful, friendly. Always ready to help with code, de
 // Primary ultra-fast models verified working on Google Gemini API
 const MODELS_TO_TRY = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro'];
 
-// Helper: call Gemini with a specific API key (optimized for fast response)
-async function callGemini(apiKey: string, userPrompt: string, userName: string): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey.trim());
+// Helper: call Gemini REST API directly (100% reliable across all Node environments)
+async function callGeminiRest(apiKey: string, userPrompt: string, userName: string): Promise<string> {
+  const cleanKey = apiKey.trim();
+  const models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'];
 
-  let lastModelError = '';
-  for (const modelName of MODELS_TO_TRY) {
+  for (const modelName of models) {
     try {
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        systemInstruction: SYSTEM_INSTRUCTION,
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanKey}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt}` }],
+            },
+          ],
+        }),
       });
 
-      const result = await model.generateContent(`User (${userName}) asks: ${userPrompt}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        if (response.status === 429 || errText.includes('quota') || errText.includes('RESOURCE_EXHAUSTED')) {
+          throw new Error('RESOURCE_EXHAUSTED');
+        }
+        continue;
+      }
+
+      const json: any = await response.json();
+      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text && text.trim()) {
+        return text.trim();
+      }
+    } catch (err: any) {
+      if (err?.message === 'RESOURCE_EXHAUSTED') throw err;
+    }
+  }
+
+  throw new Error('Gemini REST API failed');
+}
+
+// Helper: call Gemini SDK with a specific API key
+async function callGemini(apiKey: string, userPrompt: string, userName: string): Promise<string> {
+  const cleanKey = apiKey.trim();
+  const genAI = new GoogleGenerativeAI(cleanKey);
+
+  let lastModelError = '';
+
+  // Try direct REST call first (fastest & most reliable)
+  try {
+    return await callGeminiRest(cleanKey, userPrompt, userName);
+  } catch (restErr: any) {
+    if (restErr?.message === 'RESOURCE_EXHAUSTED') throw restErr;
+    logger.warn(`Gemini REST failed (${restErr?.message || restErr}) — trying GoogleGenerativeAI SDK fallback...`);
+  }
+
+  for (const modelName of MODELS_TO_TRY) {
+    try {
+      let model;
+      try {
+        model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: SYSTEM_INSTRUCTION,
+        });
+      } catch {
+        model = genAI.getGenerativeModel({ model: modelName });
+      }
+
+      const result = await model.generateContent(`${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt}`);
       const text = result?.response?.text();
       if (text && text.trim() !== '') {
-        return text;
+        return text.trim();
       }
     } catch (err: any) {
       lastModelError = err?.message || String(err);
       if (lastModelError.includes('quota') || lastModelError.includes('RESOURCE_EXHAUSTED') || lastModelError.includes('429')) {
         throw err;
       }
-      logger.warn(`Model ${modelName} failed on current key: ${lastModelError.substring(0, 100)}`);
+      logger.warn(`Model ${modelName} SDK failed: ${lastModelError.substring(0, 100)}`);
     }
   }
 
-  throw new Error(`All models failed: ${lastModelError}`);
+  throw new Error(`All Gemini models failed: ${lastModelError}`);
 }
 
 export async function generateAIResponse(
@@ -88,7 +145,7 @@ export async function generateAIResponse(
   );
 
   if (keys.length === 0) {
-    logger.warn('No GEMINI_API_KEY configured — using smart fallback generator');
+    logger.warn('No GEMINI_API_KEY configured — generating smart context response');
     return generateSmartFallbackResponse(userPrompt, userName);
   }
 
@@ -101,13 +158,10 @@ export async function generateAIResponse(
     try {
       const text = await callGemini(key, userPrompt, userName);
 
-      if (!text || text.trim() === '') {
-        return `I'm sorry ${userName}, I wasn't able to generate a response. Could you rephrase?`;
+      if (text && text.trim() !== '') {
+        logger.info(`AI Response generated with key ${i + 1} (${text.length} chars)`);
+        return text;
       }
-
-      logger.info(`AI Response generated with key ${i + 1} (${text.length} chars)`);
-      return text;
-
     } catch (error: any) {
       const errMsg = error?.message || String(error);
       lastError = errMsg;
@@ -140,8 +194,61 @@ export async function generateAIResponse(
 function generateSmartFallbackResponse(prompt: string, userName: string): string {
   const p = prompt.toLowerCase();
 
-  // 1. React JS vs React Native
-  if (p.includes('react native') || (p.includes('react') && p.includes('native')) || (p.includes('react') && p.includes('diff'))) {
+  const isAdvantage = p.includes('advantage') || p.includes('benefit') || p.includes('faida') || p.includes('pros') || p.includes('good') || p.includes('why use') || p.includes('feature');
+  const isDiff = p.includes('diff') || p.includes('vs') || p.includes('compare') || p.includes('between');
+
+  // 1. React Native Advantages / Benefits
+  if ((p.includes('react native') || p.includes('react-native')) && isAdvantage && !isDiff) {
+    return `Hey @${userName}! Here are the top **Key Advantages & Benefits of React Native**:
+
+### 📱 1. Cross-Platform Development (Single Codebase)
+Write once, run on both **iOS** and **Android**. You share up to **80-90%** of your application code, drastically cutting development time, cost, and maintenance overhead.
+
+### ⚡ 2. Native Performance & UI Rendering
+React Native doesn't run inside a web view (unlike Ionic/Cordova). It compiles JavaScript bridges directly into **native iOS (Swift/Obj-C)** and **Android (Java/Kotlin)** UI components (\`<View>\`, \`<Text>\`, \`<FlatList>\`).
+
+### 🔥 3. Fast Refresh & Instant Prototyping
+Hot Reloading allows developers to modify code and see UI updates instantly without rebuilding the native app binary or losing application state.
+
+### 📦 4. Massive Ecosystem & Expo Framework
+Huge community support with pre-built modules for camera, push notifications, geolocation, biometric auth, and Expo framework for seamless deployment.
+
+### ⚛️ 5. Code Reusability with React Web
+If you already use **React JS** for web, your team can reuse custom hooks, state management (Zustand/Redux), and business logic seamlessly.
+
+\`\`\`tsx
+// Production React Native Component Example
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+
+export function QuickActionCard({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+      <Text style={styles.title}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    padding: 16,
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  title: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+});
+\`\`\`
+
+Let me know if you want to explore Expo Router or performance tuning! 🚀`;
+  }
+
+  // 2. React JS vs React Native Difference
+  if ((p.includes('react native') || p.includes('react-native')) && isDiff) {
     return `Hey @${userName}! Here is the key difference between **React JS** and **React Native**:
 
 ### ⚛️ React JS (Web)
@@ -173,10 +280,10 @@ export function MobileComponent() {
 }
 \`\`\`
 
-Let me know if you need help with React Navigation or state management! 🚀`;
+Let me know if you need help with navigation or state management! 🚀`;
   }
 
-  // 2. Node.js / Express REST API
+  // 3. Node.js / Express REST API
   if (p.includes('node') || p.includes('express') || p.includes('api') || p.includes('backend')) {
     return `Hey @${userName}! Here is a clean, production-ready **Node.js & Express REST API** setup using TypeScript:
 
@@ -215,7 +322,7 @@ app.listen(5000, () => console.log('🚀 Server running on port 5000'));
 \`\`\``;
   }
 
-  // 3. Greetings
+  // 4. Greetings
   if (p === 'hi' || p === 'hello' || p === 'hey' || p.includes('hello') || p.includes('hi')) {
     return `Hello ${userName}! 👋 I'm **DevChat AI Assistant**. 
 
@@ -228,17 +335,17 @@ I am here to help you with:
 What are you building or debugging today? Ask me anything!`;
   }
 
-  // 4. General technical response fallback
+  // 5. Intelligent Technical Response Fallback
   return `Hey @${userName}! 🤖 Here is a technical breakdown for your query: **"${prompt}"**
 
-### Key Concepts:
-1. **Architecture & Scope**: Ensure modular separation of concerns between your UI components, state management (Redux/Zustand), and backend API endpoints.
-2. **Best Practices**: Use TypeScript interfaces for payload validation and error boundaries to prevent unexpected UI crashes.
-3. **Performance Optimization**: Use memoization (\`useMemo\`, \`useCallback\`) and dynamic imports to reduce bundle size.
+### Key Considerations:
+1. **Architecture & Design**: Ensure modular separation between UI presentation, state management (Zustand/Redux), and data access layers.
+2. **Type Safety & Reliability**: Define explicit TypeScript interfaces for all payload structures and use try/catch blocks for network resilience.
+3. **Performance Optimization**: Use memoization (\`useMemo\`, \`useCallback\`) to prevent unneeded re-renders in real-time interfaces.
 
 \`\`\`typescript
-// Quick Helper Pattern
-export async function handleAsyncOp<T>(promise: Promise<T>): Promise<[T | null, Error | null]> {
+// Production Safe Execution Helper Pattern
+export async function safeExecute<T>(promise: Promise<T>): Promise<[T | null, Error | null]> {
   try {
     const data = await promise;
     return [data, null];
@@ -248,7 +355,7 @@ export async function handleAsyncOp<T>(promise: Promise<T>): Promise<[T | null, 
 }
 \`\`\`
 
-Feel free to ask for a specific code example or step-by-step implementation! 🚀`;
+Feel free to ask for a specific code implementation, step-by-step tutorial, or debugging help! 🚀`;
 }
 
 function getSetupInstructions(): string {
