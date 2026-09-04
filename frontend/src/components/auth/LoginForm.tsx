@@ -95,16 +95,14 @@ export function LoginForm() {
     try {
       await login(userEmail, 'Password123');
     } catch (err: any) {
-      const serverMsg = err.response?.data?.error?.message;
-      if (serverMsg) {
-        setErrors({ identifier: serverMsg });
-      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout') || !err.response) {
+      // Automatic retry after 3s if backend was sleeping on Render
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await login(userEmail, 'Password123');
+      } catch (retryErr: any) {
+        const serverMsg = retryErr.response?.data?.error?.message;
         setErrors({
-          identifier: 'Render backend is waking up (cold start). Please click 1-Click Sign In again in 5s!',
-        });
-      } else {
-        setErrors({
-          identifier: 'Demo login failed. Please try again.',
+          identifier: serverMsg || 'Connecting to backend took longer than expected. Please try signing in again.',
         });
       }
     } finally {
