@@ -77,6 +77,7 @@ export function Sidebar() {
   const setActiveChannel = useChatStore((s) => s.setActiveChannel);
   const loadChannels = useChatStore((s) => s.loadChannels);
   const loadDMChannels = useChatStore((s) => s.loadDMChannels);
+  const openDM = useChatStore((s) => s.openDM);
   const user = useAuthStore((s) => s.user);
   const onlineUsers = usePresenceStore((s) => s.onlineUsers);
   const {

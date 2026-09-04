@@ -16,6 +16,7 @@ export interface Channel {
   };
   isMember?: boolean;
   myRole?: 'ADMIN' | 'MEMBER' | null;
+  otherUser?: DMChannel['otherUser'];
 }
 
 export interface DMChannel {
