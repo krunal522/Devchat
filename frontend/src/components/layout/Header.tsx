@@ -48,6 +48,15 @@ export function Header() {
   const channelNameLower = typeof channel?.name === 'string' ? channel.name.toLowerCase() : '';
   const isAIChat = isDirect && (channelNameLower.includes('devchat ai') || dmInfo?.otherUser?.username === 'devchat_ai' || (channel?.createdBy as any)?.username === 'devchat_ai');
 
+  const channelMessages = useChatStore((s) => (channel?.id ? s.messages[channel.id] : undefined));
+  const activeSessionId = useChatStore((s) => s.activeSessionId);
+  const hasMessages = Boolean(
+    channel?.id &&
+    channelMessages &&
+    channelMessages.length > 0 &&
+    (isAIChat ? activeSessionId !== 'new' : true)
+  );
+
   // Find other user from channel members if present
   const memberOther = (channel as any)?.members?.find((m: any) => {
     const mId = m.userId || m.user?.id || m.id;
@@ -136,7 +145,7 @@ export function Header() {
   }, [otherUserId, isAIChat]);
 
   const handleClearChat = () => {
-    if (!channel) return;
+    if (!channel || !hasMessages) return;
     useChatStore.getState().clearChannelMessages(channel.id);
     useToastStore.getState().addToast({
       type: 'info',
@@ -273,9 +282,12 @@ export function Header() {
             <>
               {isAIChat && (
                 <button
-                  className="chat-header__new-chat-btn"
+                  type="button"
+                  className={`chat-header__new-chat-btn ${!hasMessages ? 'chat-header__new-chat-btn--disabled' : ''}`}
                   onClick={handleClearChat}
-                  title="Clear conversation screen"
+                  disabled={!hasMessages}
+                  title={hasMessages ? 'Clear conversation screen' : 'No chat history to clear'}
+                  aria-disabled={!hasMessages}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="3 6 5 6 21 6" />

@@ -170,17 +170,39 @@
   color: #ffffff;
 }
 
-/* ── New Chat Button ────────────────── */
+/* ── New Chat / Clear Chat Button ────────────────── */
 .chat-header__new-chat-btn {
   background: linear-gradient(135deg, rgba(108, 92, 231, 0.25) 0%, rgba(162, 155, 254, 0.15) 100%);
   border: 1px solid rgba(108, 92, 231, 0.45);
   color: #a29bfe;
+  transition: all 0.2s ease;
 }
 
-.chat-header__new-chat-btn:hover {
+.chat-header__new-chat-btn:not(:disabled):hover {
   background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 12px rgba(108, 92, 231, 0.35);
+}
+
+.chat-header__new-chat-btn:disabled,
+.chat-header__new-chat-btn--disabled {
+  opacity: 0.35;
+  filter: blur(0.3px) grayscale(0.5);
+  cursor: not-allowed !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-muted, #9ca3af) !important;
+  box-shadow: none !important;
+}
+
+.chat-header__new-chat-btn:disabled:hover,
+.chat-header__new-chat-btn--disabled:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-muted, #9ca3af) !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
 }
 
 .chat-header__members-count-btn {
