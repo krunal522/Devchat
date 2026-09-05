@@ -76,6 +76,7 @@ interface ChatState {
   updateUserOnline: (userId: string, isOnline: boolean, lastSeenAt?: string) => void;
   clearChannelMessages: (channelId: string) => void;
   bumpDMChannel: (channelId: string) => void;
+  syncServerUnreads: () => Promise<void>;
 }
 
 function getStoredUnreads(): Record<string, number> {
@@ -215,6 +216,32 @@ export const useChatStore = create<ChatState>((set, get) => ({
         unreadCounts: nextUnreads,
       };
     });
+
+    // Mark as read in server database
+    channelApi.markAsRead(channelId);
+  },
+
+  syncServerUnreads: async () => {
+    try {
+      const serverMap = await channelApi.getUnreadCounts();
+      if (!serverMap || typeof serverMap !== 'object') return;
+      const activeId = get().activeChannelId;
+
+      set((state) => {
+        const next = { ...state.unreadCounts };
+        for (const [chId, count] of Object.entries(serverMap)) {
+          if (chId === activeId) {
+            next[chId] = 0;
+          } else {
+            next[chId] = Number(count) || 0;
+          }
+        }
+        persistUnreads(next);
+        return { unreadCounts: next };
+      });
+    } catch (err) {
+      console.error('Failed to sync server unreads:', err);
+    }
   },
 
   bumpDMChannel: (channelId: string) => {
@@ -232,6 +259,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const channels = await channelApi.getChannels();
       set({ channels });
+      get().syncServerUnreads().catch(() => {});
       const currentActive = get().activeChannelId;
       if (!currentActive && channels && channels.length > 0) {
         const savedChannelId = localStorage.getItem('devchat_last_active_channel');
@@ -247,6 +275,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const dmChannels = await channelApi.getDMChannels();
       set({ dmChannels });
+      get().syncServerUnreads().catch(() => {});
 
       // If current active channel is a DM, update activeChannel object to ensure latest user details
       const activeId = get().activeChannelId;
@@ -356,6 +385,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         });
     }
     persistUnreads(nextUnreads);
+    channelApi.markAsRead(channelId);
 
     set((state) => ({
       activeChannelId: channelId,
@@ -488,6 +518,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           });
       }
       persistUnreads(finalUnreads);
+      channelApi.markAsRead(dmChannel.id);
 
       // INSTANTLY finalize active channel with actual backend channel ID
       set((state) => ({

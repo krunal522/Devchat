@@ -58,4 +58,21 @@ export const channelApi = {
     const res = await api.post(`/channels/dm/${userId}`);
     return res.data.data;
   },
+
+  getUnreadCounts: async (): Promise<Record<string, number>> => {
+    try {
+      const res = await api.get('/channels/unreads');
+      return res.data?.data?.unreads || {};
+    } catch {
+      return {};
+    }
+  },
+
+  markAsRead: async (channelId: string): Promise<void> => {
+    if (!channelId || channelId.startsWith('temp-') || channelId.startsWith('dm-')) return;
+    try {
+      await api.post(`/channels/${channelId}/read`);
+    } catch {}
+  },
 };
+

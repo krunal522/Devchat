@@ -518,3 +518,56 @@ export async function getDMChannels(userId: string) {
     };
   });
 }
+
+/**
+ * Mark a channel/DM as read for a specific user
+ */
+export async function markChannelAsRead(userId: string, channelId: string): Promise<void> {
+  if (!userId || !channelId) return;
+  try {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO channel_read_states (user_id, channel_id, last_read_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id, channel_id)
+       DO UPDATE SET last_read_at = NOW()`,
+      userId,
+      channelId
+    );
+  } catch (err) {
+    logger.warn('Failed to mark channel as read in channel_read_states:', err);
+  }
+}
+
+/**
+ * Get unread message counts for all channels & DMs where user is a member
+ */
+export async function getUserUnreadCounts(userId: string): Promise<Record<string, number>> {
+  if (!userId) return {};
+  try {
+    const results: Array<{ channel_id: string; unread_count: number | string | bigint }> =
+      await prisma.$queryRawUnsafe(
+        `SELECT m.channel_id, COUNT(m.id)::int as unread_count
+         FROM messages m
+         JOIN channel_members cm ON cm.channel_id = m.channel_id AND cm.user_id = $1
+         LEFT JOIN channel_read_states crs ON crs.channel_id = m.channel_id AND crs.user_id = $1
+         WHERE m.user_id != $1
+           AND m.created_at > COALESCE(crs.last_read_at, cm.joined_at)
+         GROUP BY m.channel_id`,
+        userId
+      );
+
+    const map: Record<string, number> = {};
+    if (Array.isArray(results)) {
+      for (const r of results) {
+        if (r.channel_id) {
+          map[r.channel_id] = Number(r.unread_count) || 0;
+        }
+      }
+    }
+    return map;
+  } catch (err) {
+    logger.warn('Failed to get user unread counts:', err);
+    return {};
+  }
+}
+

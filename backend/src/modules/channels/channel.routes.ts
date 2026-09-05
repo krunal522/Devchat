@@ -9,9 +9,11 @@ const router = Router();
 // Channel CRUD
 router.get('/', authenticate, channelController.getChannels);
 router.post('/', authenticate, validate(createChannelSchema), channelController.createChannel);
+router.get('/unreads', authenticate, channelController.getUnreadCounts);
 router.get('/dm', authenticate, channelController.getDMChannels);
 router.post('/dm/:userId', authenticate, channelController.getOrCreateDMChannel);
 router.get('/:channelId', authenticate, channelController.getChannelById);
+router.post('/:channelId/read', authenticate, channelController.markChannelAsRead);
 router.post('/:channelId/join', authenticate, channelController.joinChannel);
 router.post('/:channelId/leave', authenticate, channelController.leaveChannel);
 router.get('/:channelId/members', authenticate, channelController.getChannelMembers);

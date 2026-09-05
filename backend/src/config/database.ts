@@ -22,6 +22,24 @@ export async function connectDatabase(): Promise<void> {
     await prisma.user.updateMany({
       data: { isOnline: false },
     });
+
+    // Ensure persistent channel read states table exists
+    try {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS channel_read_states (
+          user_id TEXT NOT NULL,
+          channel_id TEXT NOT NULL,
+          last_read_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (user_id, channel_id)
+        );
+      `);
+      await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS idx_channel_read_states_user ON channel_read_states(user_id);
+      `);
+    } catch (tblErr) {
+      logger.warn('channel_read_states init note:', tblErr);
+    }
+
     logger.info('✅ Database connected & presence state reset');
   } catch (error: any) {
     logger.warn('⚠️ Database connection failed');

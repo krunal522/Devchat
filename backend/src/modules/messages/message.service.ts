@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
+import { markChannelAsRead } from '../channels/channel.service.js';
 import type { SendMessageInput, UpdateMessageInput } from './message.schema.js';
 
 const MESSAGE_SELECT = {
@@ -153,6 +154,9 @@ export async function sendMessage(userId: string, channelId: string, input: Send
     })
     .catch(() => {});
 
+  // Sender has read all messages up to this point
+  markChannelAsRead(userId, channelId).catch(() => {});
+
   return message;
 }
 
@@ -194,6 +198,11 @@ export async function getMessages(
     });
     matchingChannelIds = allDMs.map((d) => d.id);
   }
+
+  // User opened channel/DM — mark as read for all matched IDs
+  matchingChannelIds.forEach((cId) => {
+    markChannelAsRead(userId, cId).catch(() => {});
+  });
 
   const messages = await prisma.message.findMany({
     where: {

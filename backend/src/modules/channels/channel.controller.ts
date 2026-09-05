@@ -155,3 +155,23 @@ export async function getOrCreateDMChannel(req: Request, res: Response, next: Ne
     next(error);
   }
 }
+
+export async function getUnreadCounts(req: Request, res: Response, next: NextFunction) {
+  try {
+    const unreads = await channelService.getUserUnreadCounts(req.user!.userId);
+    res.json({ success: true, data: { unreads } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function markChannelAsRead(req: Request, res: Response, next: NextFunction) {
+  try {
+    const channelId = req.params.channelId as string;
+    await channelService.markChannelAsRead(req.user!.userId, channelId);
+    res.json({ success: true, message: 'Channel marked as read' });
+  } catch (error) {
+    next(error);
+  }
+}
+
