@@ -16,7 +16,7 @@ import { useState, useEffect } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
-import { usePresenceStore, useIsUserOnline } from '../../stores/presenceStore';
+import { usePresenceStore, useIsUserOnline, useUserLastSeen } from '../../stores/presenceStore';
 import { useToastStore } from '../../stores/toastStore';
 import { SearchModal } from '../search/SearchModal';
 import { AddMemberModal } from '../channel/AddMemberModal';
@@ -101,20 +101,21 @@ export function Header() {
     };
   }, [channel?.id, isDirect, isAIChat, currentUserId, rawOther?.id]);
 
-  const otherUserObj = (asyncOtherUser && asyncOtherUser.id !== currentUserId)
-    ? asyncOtherUser
-    : (rawOther && rawOther.id !== currentUserId ? rawOther : undefined);
+  const otherUserObj = (rawOther && rawOther.id !== currentUserId)
+    ? rawOther
+    : (asyncOtherUser && asyncOtherUser.id !== currentUserId ? asyncOtherUser : undefined);
 
   const otherUserId = isDirect ? otherUserObj?.id : undefined;
 
   const isPresenceReady = usePresenceStore((s) => s.isInitialized);
   const realTimeIsOnline = useIsUserOnline(otherUserId);
+  const liveLastSeen = useUserLastSeen(otherUserId);
   const isOtherUserOnline = isAIChat
     ? true
     : isPresenceReady
       ? realTimeIsOnline
       : (realTimeIsOnline || Boolean(otherUserObj?.isOnline));
-  const lastSeenAt = otherUserObj?.lastSeenAt;
+  const lastSeenAt = liveLastSeen || channel?.otherUser?.lastSeenAt || dmInfo?.otherUser?.lastSeenAt || otherUserObj?.lastSeenAt;
 
   const displayName = isDirect
     ? (isAIChat ? 'DevChat AI' : (otherUserObj?.displayName || otherUserObj?.username || channel?.name || 'Direct Message'))

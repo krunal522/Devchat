@@ -12,9 +12,11 @@ export function formatLastSeenText(isOnline: boolean, lastSeenAt?: string | Date
 
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
 
-  if (diffMins < 1) return 'Last seen just now';
+  // If disconnected recently (within 90 seconds) or slight clock skew between server & client
+  if (diffMs < 90 * 1000) return 'Last seen just now';
+
+  const diffMins = Math.floor(diffMs / (1000 * 60));
   if (diffMins < 60) return `Last seen ${diffMins}m ago`;
 
   const todayStr = now.toDateString();

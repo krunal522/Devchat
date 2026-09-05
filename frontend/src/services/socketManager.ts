@@ -215,6 +215,7 @@ function attachListeners(sock: Socket): void {
   sock.on('user:offline', (data: { userId: string; lastSeen?: string }) => {
     usePresenceStore.getState().removeOnlineUser(data.userId);
     const lastSeenTime = data.lastSeen || new Date().toISOString();
+    usePresenceStore.getState().setUserLastSeen(data.userId, lastSeenTime);
     useChatStore.getState().updateUserLastSeen(data.userId, lastSeenTime);
     useChatStore.getState().updateUserOnline(data.userId, false, lastSeenTime);
   });

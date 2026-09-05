@@ -20,18 +20,21 @@ interface TypingUser {
 
 interface PresenceState {
   onlineUsers: Set<string>;
+  userLastSeen: Record<string, string>;
   typingUsers: Record<string, TypingUser[]>;
   isInitialized: boolean;
 
   setOnlineUsers: (userIds: string[]) => void;
   addOnlineUser: (userId: string) => void;
   removeOnlineUser: (userId: string) => void;
+  setUserLastSeen: (userId: string, lastSeen: string) => void;
 
   setTyping: (channelId: string, userId: string, username: string, isTyping: boolean) => void;
 }
 
 export const usePresenceStore = create<PresenceState>((set) => ({
   onlineUsers: new Set<string>(),
+  userLastSeen: {},
   typingUsers: {},
   isInitialized: false,
 
@@ -70,6 +73,17 @@ export const usePresenceStore = create<PresenceState>((set) => ({
     });
   },
 
+  setUserLastSeen: (userId, lastSeen) => {
+    if (!userId || !lastSeen) return;
+    const cleanId = String(userId).trim();
+    set((state) => ({
+      userLastSeen: {
+        ...state.userLastSeen,
+        [cleanId]: lastSeen,
+      },
+    }));
+  },
+
   setTyping: (channelId, userId, username, isTyping) => {
     set((state) => {
       const current = state.typingUsers[channelId] || [];
@@ -92,4 +106,13 @@ export const usePresenceStore = create<PresenceState>((set) => ({
 export function useIsUserOnline(userId: string | undefined): boolean {
   const cleanId = userId ? String(userId).trim() : '';
   return usePresenceStore((s) => (cleanId ? s.onlineUsers.has(cleanId) : false));
+}
+
+/**
+ * Reactive selector — returns user's most recent lastSeen timestamp.
+ * Use: const lastSeenAt = useUserLastSeen(userId)
+ */
+export function useUserLastSeen(userId: string | undefined): string | undefined {
+  const cleanId = userId ? String(userId).trim() : '';
+  return usePresenceStore((s) => (cleanId ? s.userLastSeen[cleanId] : undefined));
 }

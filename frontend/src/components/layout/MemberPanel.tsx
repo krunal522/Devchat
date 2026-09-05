@@ -18,7 +18,7 @@ import { useUIStore } from '../../stores/uiStore';
 import { useToastStore } from '../../stores/toastStore';
 import { channelApi } from '../../services/channelApi';
 import { UserAvatar } from '../user/UserAvatar';
-import { usePresenceStore, useIsUserOnline } from '../../stores/presenceStore';
+import { usePresenceStore, useIsUserOnline, useUserLastSeen } from '../../stores/presenceStore';
 import { formatLastSeenText } from '../../utils/formatPresence';
 import { getSocket } from '../../services/socketManager';
 import type { UserWithRole } from '../../types/user';
@@ -80,11 +80,12 @@ export function MemberPanel() {
   const otherUserId = activeChannel?.type === 'DIRECT' ? (otherUserObj?.id || activeChannel?.createdBy?.id) : undefined;
   const isPresenceReady = usePresenceStore((s) => s.isInitialized);
   const realTimeIsOnline = useIsUserOnline(otherUserId);
+  const liveLastSeen = useUserLastSeen(otherUserId);
   const isOtherUserOnline = isPresenceReady
     ? realTimeIsOnline
     : (realTimeIsOnline || Boolean(otherUserObj?.isOnline));
   const avatarUrl = otherUserObj?.avatarUrl || activeChannel?.createdBy?.avatarUrl;
-  const lastSeenAt = otherUserObj?.lastSeenAt || (activeChannel?.createdBy as any)?.lastSeenAt;
+  const lastSeenAt = liveLastSeen || otherUserObj?.lastSeenAt || (activeChannel?.createdBy as any)?.lastSeenAt;
 
   if (!activeChannelId) return null;
   if (!isMemberPanelOpen && mobileView !== 'details') return null;
