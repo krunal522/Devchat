@@ -254,10 +254,12 @@ function attachListeners(sock: Socket): void {
       const isCurrentChannel = chatStore.activeChannelId === message.channelId;
 
       if (isMentioned || !isCurrentChannel) {
-        notificationService.playNotificationChime();
+        notificationService.playNotificationChime(message.id);
         notificationService.sendDesktopNotification(
           `Message from ${message.user?.displayName || message.user?.username || 'Team Member'}`,
-          message.content || 'Sent an attachment'
+          message.content || 'Sent an attachment',
+          undefined,
+          message.id
         );
       }
     }

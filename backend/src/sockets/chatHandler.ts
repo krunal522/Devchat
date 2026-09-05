@@ -74,10 +74,8 @@ export async function broadcastMessageToChannel(io: Server, channelId: string, m
     ? memberUserIds
     : await getChannelMemberUserIds(channelId);
 
-  io.to(`channel:${channelId}`).emit('message:new', message);
-  uids.forEach((uid) => {
-    io.to(`user:${uid}`).emit('message:new', message);
-  });
+  const rooms = [`channel:${channelId}`, ...uids.map((uid) => `user:${uid}`)];
+  io.to(rooms).emit('message:new', message);
 }
 
 export function registerChatHandlers(io: Server, socket: Socket): void {
@@ -132,11 +130,9 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         _count: { replies: 0 },
       };
 
-      // ⚡ 3. INSTANT BROADCAST (<15ms WhatsApp Speed): Emit to channel room + all user rooms IMMEDIATELY!
-      io.to(`channel:${channelId}`).emit('message:new', instantMessage);
-      memberUserIds.forEach((uid) => {
-        io.to(`user:${uid}`).emit('message:new', instantMessage);
-      });
+      // ⚡ 3. INSTANT BROADCAST (<15ms WhatsApp Speed): Emit to channel room + all user rooms with socket deduplication
+      const rooms = [`channel:${channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
+      io.to(rooms).emit('message:new', instantMessage);
 
       // Acknowledge success to sender instantly
       callback?.({ success: true, data: instantMessage });
@@ -172,11 +168,9 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
 
         if (isDMWithAI || isAIMentioned) {
-          // ⚡ 1. Emit AI typing start IMMEDIATELY (<1ms) so the user gets instant feedback
-          io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
-          memberUserIds.forEach((uid) => {
-            io.to(`user:${uid}`).emit('ai:typing:start', { channelId });
-          });
+          // ⚡ 1. Emit AI typing start IMMEDIATELY (<1ms) with deduplicated rooms
+          const typingRooms = [`channel:${channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
+          io.to(typingRooms).emit('ai:typing:start', { channelId });
 
           // Run AI generation asynchronously
           (async () => {
@@ -250,11 +244,9 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
             } catch (aiErr) {
               logger.error(`Error in AI Bot auto-reply: ${aiErr}`);
             } finally {
-              // 🟢 Stop typing indicator immediately
-              io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
-              memberUserIds.forEach((uid) => {
-                io.to(`user:${uid}`).emit('ai:typing:stop', { channelId });
-              });
+              // 🟢 Stop typing indicator immediately with deduplicated rooms
+              const stopTypingRooms = [`channel:${channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
+              io.to(stopTypingRooms).emit('ai:typing:stop', { channelId });
             }
           })();
         }

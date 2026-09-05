@@ -33,7 +33,16 @@ class NotificationService {
     this.soundPreset = preset;
   }
 
-  public playNotificationChime(preset?: NotificationSound) {
+  private recentNotifications = new Set<string>();
+  private recentChimes = new Set<string>();
+
+  public playNotificationChime(messageId?: string, preset?: NotificationSound) {
+    if (messageId) {
+      if (this.recentChimes.has(messageId)) return;
+      this.recentChimes.add(messageId);
+      setTimeout(() => this.recentChimes.delete(messageId), 10000);
+    }
+
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
@@ -114,9 +123,17 @@ class NotificationService {
     }
   }
 
-  public sendDesktopNotification(title: string, body: string, icon?: string) {
+  public sendDesktopNotification(title: string, body: string, icon?: string, messageId?: string) {
     if (!this.hasPermission || document.visibilityState === 'visible') {
       return;
+    }
+
+    if (messageId) {
+      if (this.recentNotifications.has(messageId)) {
+        return; // Dedup: already notified for this message
+      }
+      this.recentNotifications.add(messageId);
+      setTimeout(() => this.recentNotifications.delete(messageId), 10000);
     }
 
     try {
@@ -124,6 +141,7 @@ class NotificationService {
         body,
         icon: icon || '/favicon.ico',
         badge: '/favicon.ico',
+        tag: messageId || title, // Native deduplication tag collapses duplicate popups
       });
 
       n.onclick = () => {
