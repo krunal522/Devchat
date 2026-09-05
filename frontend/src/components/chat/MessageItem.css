@@ -435,19 +435,37 @@
   font-size: 0.8125rem;
   color: var(--text-secondary, #9ca3af);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  animation: reactionPop 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes reactionPop {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .message__reaction-badge:hover {
-  background: rgba(108, 92, 231, 0.15);
-  border-color: rgba(108, 92, 231, 0.3);
+  background: rgba(108, 92, 231, 0.16);
+  border-color: rgba(108, 92, 231, 0.38);
+  transform: translateY(-1px);
+}
+
+.message__reaction-badge:active {
+  transform: scale(0.92);
 }
 
 .message__reaction-badge--active {
-  background: rgba(108, 92, 231, 0.25);
-  border-color: rgba(108, 92, 231, 0.5);
+  background: rgba(108, 92, 231, 0.28);
+  border-color: rgba(108, 92, 231, 0.6);
   color: #ffffff;
-  box-shadow: 0 0 10px rgba(108, 92, 231, 0.2);
+  box-shadow: 0 0 12px rgba(108, 92, 231, 0.35);
 }
 
 .message__reaction-count {

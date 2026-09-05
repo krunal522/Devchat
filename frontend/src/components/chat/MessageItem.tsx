@@ -60,6 +60,7 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [lightboxAttachment, setLightboxAttachment] = useState<{ url: string; name: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const pendingReactionRef = useRef(false);
 
   const channelNameLower = typeof activeChannel?.name === 'string' ? activeChannel.name.toLowerCase() : '';
   const isAIChat =
@@ -200,28 +201,49 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
   };
 
   const handleToggleReaction = (emoji: string) => {
-    toggleReaction(message.id, emoji);
+    if (!currentUserId || !message?.id) return;
 
-    if (!currentUserId) return;
+    // Prevent spam double clicks from sending conflicting socket packets
+    if (pendingReactionRef.current) return;
+    pendingReactionRef.current = true;
+    setTimeout(() => {
+      pendingReactionRef.current = false;
+    }, 200);
+
     const existingReactions = message.reactions || [];
-    const hasReacted = existingReactions.some(
+    const hasSameReaction = existingReactions.some(
       (r) => r.userId === currentUserId && r.emoji === emoji
     );
 
     let newReactions;
-    if (hasReacted) {
+    if (hasSameReaction) {
+      // Toggle off / remove reaction instantly
       newReactions = existingReactions.filter(
         (r) => !(r.userId === currentUserId && r.emoji === emoji)
       );
     } else {
+      // Remove any previous reaction by this user and add the new one (matches backend behavior)
+      const withoutUserReactions = existingReactions.filter(
+        (r) => r.userId !== currentUserId
+      );
       newReactions = [
-        ...existingReactions,
-        { id: `temp-${Date.now()}`, emoji, userId: currentUserId },
+        ...withoutUserReactions,
+        {
+          id: `temp-${Date.now()}`,
+          emoji,
+          userId: currentUserId,
+          messageId: message.id,
+          createdAt: new Date().toISOString(),
+        },
       ];
     }
 
+    // 1. Instant 0ms optimistic local store update
     const updatedMsg = { ...message, reactions: newReactions };
     useChatStore.getState().updateMessage(updatedMsg);
+
+    // 2. Dispatch event over WebSocket
+    toggleReaction(message.id, emoji);
   };
 
   // ─── Deleted Message State (WhatsApp/Slack Tombstone) ───
@@ -415,7 +437,7 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
                 <button
                   key={emoji}
                   className={`message__reaction-badge ${data.hasReacted ? 'message__reaction-badge--active' : ''}`}
-                  onClick={() => toggleReaction(message.id, emoji)}
+                  onClick={() => handleToggleReaction(emoji)}
                 >
                   <span>{emoji}</span>
                   <span className="message__reaction-count">{data.count}</span>
