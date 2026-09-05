@@ -408,6 +408,13 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
 
     // 2. Dispatch event over WebSocket
     toggleReaction(message.id, emoji);
+
+    // 3. Dual-channel REST sync: guarantees database persistence & broadcast even if socket is reconnecting
+    messageApi.toggleReaction(message.id, emoji).then((serverMsg) => {
+      if (serverMsg) {
+        useChatStore.getState().updateMessage(serverMsg);
+      }
+    }).catch(() => {});
   };
 
   // ─── Deleted Message State (WhatsApp/Slack Tombstone) ───

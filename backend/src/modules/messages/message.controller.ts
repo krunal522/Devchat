@@ -5,7 +5,7 @@ import { prisma } from '../../config/database.js';
 import { AI_BOT_ID, generateAIResponse } from '../ai/ai.service.js';
 import { logger } from '../../utils/logger.js';
 
-import { broadcastMessageToChannel } from '../../sockets/chatHandler.js';
+import { broadcastMessageToChannel, getChannelMemberUserIds } from '../../sockets/chatHandler.js';
 
 export async function sendMessage(req: Request, res: Response, next: NextFunction) {
   try {
@@ -151,6 +151,21 @@ export async function toggleReaction(req: Request, res: Response, next: NextFunc
       req.params.messageId as string,
       emoji
     );
+
+    if (message) {
+      try {
+        const io = getIO();
+        const memberUserIds = await getChannelMemberUserIds(message.channelId);
+        const rooms = [`channel:${message.channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
+        io.to(rooms).emit('message:edited', message);
+        io.to(rooms).emit('message:reaction_updated', {
+          messageId: message.id,
+          reactions: message.reactions,
+          channelId: message.channelId,
+        });
+      } catch {}
+    }
+
     res.json({ success: true, data: message });
   } catch (error) {
     next(error);

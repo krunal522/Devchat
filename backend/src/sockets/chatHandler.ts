@@ -274,8 +274,10 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         content: content.trim(),
       });
 
-      // Broadcast edit to channel
-      io.to(`channel:${message.channelId}`).emit('message:edited', message);
+      // Broadcast edit to channel and all member personal rooms
+      const memberUserIds = await getChannelMemberUserIds(message.channelId);
+      const rooms = [`channel:${message.channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
+      io.to(rooms).emit('message:edited', message);
 
       callback?.({ success: true, data: message });
     } catch (error: any) {
@@ -296,8 +298,10 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
 
       const result = await messageService.deleteMessage(userId, messageId);
 
-      // Broadcast deletion to channel
-      io.to(`channel:${result.channelId}`).emit('message:deleted', {
+      // Broadcast deletion to channel and all member personal rooms
+      const memberUserIds = await getChannelMemberUserIds(result.channelId);
+      const rooms = [`channel:${result.channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
+      io.to(rooms).emit('message:deleted', {
         messageId,
         channelId: result.channelId,
       });
@@ -317,10 +321,18 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
 
       const message = await messageService.toggleReaction(userId, messageId, emoji);
       if (message) {
-        io.to(`channel:${message.channelId}`).emit('message:edited', message);
+        // Broadcast reaction update to channel and all member personal rooms
+        const memberUserIds = await getChannelMemberUserIds(message.channelId);
+        const rooms = [`channel:${message.channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
+        io.to(rooms).emit('message:edited', message);
+        io.to(rooms).emit('message:reaction_updated', {
+          messageId: message.id,
+          reactions: message.reactions,
+          channelId: message.channelId,
+        });
       }
 
-      callback?.({ success: true });
+      callback?.({ success: true, data: message });
     } catch (error: any) {
       callback?.({ error: error.message });
     }

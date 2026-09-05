@@ -67,4 +67,9 @@ export const messageApi = {
     });
     return res.data.data;
   },
+
+  toggleReaction: async (messageId: string, emoji: string): Promise<Message> => {
+    const res = await api.post(`/messages/${messageId}/reactions`, { emoji });
+    return res.data.data;
+  },
 };

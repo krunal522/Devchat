@@ -278,6 +278,12 @@ function attachListeners(sock: Socket): void {
     useChatStore.getState().updateMessage(message);
   });
 
+  sock.on('message:reaction_updated', (data: { messageId: string; reactions: any[]; channelId?: string }) => {
+    if (data?.messageId && Array.isArray(data.reactions)) {
+      useChatStore.getState().updateMessageReactions(data.messageId, data.reactions);
+    }
+  });
+
   sock.on('message:deleted', (data: { messageId: string; channelId: string }) => {
     useChatStore.getState().removeMessage(data.messageId, data.channelId);
   });

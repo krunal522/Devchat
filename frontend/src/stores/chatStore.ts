@@ -77,6 +77,7 @@ interface ChatState {
   clearChannelMessages: (channelId: string) => void;
   bumpDMChannel: (channelId: string) => void;
   syncServerUnreads: () => Promise<void>;
+  updateMessageReactions: (messageId: string, reactions: any[]) => void;
 }
 
 function getStoredUnreads(): Record<string, number> {
@@ -844,22 +845,59 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   updateMessage: (message: Message) => {
     set((state) => {
-      const updatedChannelMessages = (state.messages[message.channelId] || []).map((m) =>
-        m.id === message.id ? message : m
-      );
+      const newMessages = { ...state.messages };
+      let updatedAny = false;
+
+      for (const [chId, msgs] of Object.entries(newMessages)) {
+        if (msgs.some((m) => m.id === message.id)) {
+          newMessages[chId] = msgs.map((m) => (m.id === message.id ? { ...m, ...message } : m));
+          updatedAny = true;
+        }
+      }
+
+      if (!updatedAny && message.channelId) {
+        newMessages[message.channelId] = (newMessages[message.channelId] || []).map((m) =>
+          m.id === message.id ? { ...m, ...message } : m
+        );
+      }
 
       const updatedThreadMessage =
-        state.activeThreadMessage?.id === message.id ? message : state.activeThreadMessage;
+        state.activeThreadMessage?.id === message.id ? { ...state.activeThreadMessage, ...message } : state.activeThreadMessage;
 
       const updatedThreadReplies = (state.activeThreadReplies || []).map((m) =>
-        m.id === message.id ? message : m
+        m.id === message.id ? { ...m, ...message } : m
       );
 
       return {
-        messages: {
-          ...state.messages,
-          [message.channelId]: updatedChannelMessages,
-        },
+        messages: newMessages,
+        activeThreadMessage: updatedThreadMessage,
+        activeThreadReplies: updatedThreadReplies,
+      };
+    });
+  },
+
+  updateMessageReactions: (messageId: string, reactions: any[]) => {
+    set((state) => {
+      const newMessages = { ...state.messages };
+      for (const [chId, msgs] of Object.entries(newMessages)) {
+        if (msgs.some((m) => m.id === messageId)) {
+          newMessages[chId] = msgs.map((m) =>
+            m.id === messageId ? { ...m, reactions } : m
+          );
+        }
+      }
+
+      const updatedThreadMessage =
+        state.activeThreadMessage?.id === messageId
+          ? { ...state.activeThreadMessage, reactions }
+          : state.activeThreadMessage;
+
+      const updatedThreadReplies = (state.activeThreadReplies || []).map((m) =>
+        m.id === messageId ? { ...m, reactions } : m
+      );
+
+      return {
+        messages: newMessages,
         activeThreadMessage: updatedThreadMessage,
         activeThreadReplies: updatedThreadReplies,
       };
