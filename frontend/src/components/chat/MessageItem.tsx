@@ -11,6 +11,7 @@ import { useSocketActions } from '../../hooks/useSocket';
 import { messageApi } from '../../services/messageApi';
 import { formatMessageTime } from '../../utils/formatDate';
 import { FileIcon } from '../ui/FileIcon';
+import { DevChatImage } from '../ui/DevChatImage';
 import type { Message } from '../../types/message';
 import '../ui/FileIcon.css';
 import './MessageItem.css';
@@ -369,7 +370,11 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
                         onClick={() => setLightboxAttachment({ url: finalUrl, name: att.fileName })}
                         title="Click to expand full image"
                       >
-                        <img src={finalUrl} alt={att.fileName} loading="lazy" decoding="async" />
+                        <DevChatImage
+                          src={finalUrl}
+                          alt={att.fileName}
+                          logoSize={34}
+                        />
                       </div>
                     );
                   }
@@ -559,7 +564,24 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
 
             {/* Main Image Container */}
             <div className="image-lightbox-card" onClick={(e) => e.stopPropagation()}>
-              <img src={lightboxAttachment.url} alt={lightboxAttachment.name} />
+              <DevChatImage
+                src={lightboxAttachment.url}
+                alt={lightboxAttachment.name}
+                logoSize={48}
+                loading="eager"
+                containerStyle={{
+                  maxWidth: '88vw',
+                  maxHeight: '78vh',
+                  minWidth: '280px',
+                  minHeight: '260px',
+                  borderRadius: '14px',
+                  background: 'rgba(18, 20, 30, 0.95)',
+                }}
+                style={{
+                  maxHeight: '78vh',
+                  objectFit: 'contain',
+                }}
+              />
             </div>
           </div>,
           document.body

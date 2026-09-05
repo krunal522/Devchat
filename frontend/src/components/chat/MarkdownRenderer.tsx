@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { DevChatImage } from '../ui/DevChatImage';
 import './MarkdownRenderer.css';
 
 interface MarkdownRendererProps {
@@ -166,17 +167,12 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             return (
               <div className="markdown-img-container">
                 <div className="markdown-img-wrapper">
-                  <img
+                  <DevChatImage
                     src={resolvedSrc}
                     alt={alt || 'AI Generated Image'}
                     className="markdown-img"
-                    loading="lazy"
+                    logoSize={38}
                     onClick={() => resolvedSrc && window.open(resolvedSrc, '_blank')}
-                    onLoad={(e: any) => {
-                      e.target.classList.add('markdown-img--loaded');
-                      const wrapper = e.target.closest('.markdown-img-wrapper');
-                      if (wrapper) wrapper.classList.add('markdown-img-wrapper--loaded');
-                    }}
                     title="Click to open full resolution"
                   />
                   <div className="markdown-img-footer">

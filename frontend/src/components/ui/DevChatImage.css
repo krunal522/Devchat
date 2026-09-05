@@ -1,0 +1,196 @@
+/* ══════════════════════════════════════════════════
+   DevChat Branded Skeleton Image Loader & Transitions
+   ══════════════════════════════════════════════════ */
+
+.devchat-image-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  background: #14151e;
+  border-radius: inherit;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Skeleton Layer ─────────────────────────────── */
+.devchat-image-skeleton {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(20, 22, 32, 0.98) 0%, rgba(28, 30, 44, 0.98) 100%);
+  z-index: 2;
+  overflow: hidden;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s ease;
+  user-select: none;
+  pointer-events: none;
+}
+
+.devchat-image-skeleton--hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* ── Moving Gradient Shimmer Wave ────────────────── */
+.devchat-image-skeleton__shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(108, 92, 231, 0.05) 25%,
+    rgba(162, 155, 254, 0.14) 50%,
+    rgba(0, 206, 201, 0.08) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: dcImageShimmer 2s infinite ease-in-out;
+  pointer-events: none;
+}
+
+@keyframes dcImageShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ── Centered DevChat Logo Badge & Pulse ──────────── */
+.devchat-image-skeleton__badge {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  animation: dcLogoPulse 2.4s infinite ease-in-out;
+}
+
+@keyframes dcLogoPulse {
+  0%, 100% {
+    transform: scale(0.96);
+    opacity: 0.85;
+    filter: drop-shadow(0 0 8px rgba(108, 92, 231, 0.35));
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+    filter: drop-shadow(0 0 20px rgba(108, 92, 231, 0.65)) drop-shadow(0 0 8px rgba(0, 206, 201, 0.4));
+  }
+}
+
+.devchat-image-skeleton__logo-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.devchat-image-skeleton__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a29bfe;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.devchat-image-skeleton__dots span {
+  animation: dcDots 1.4s infinite ease-in-out both;
+}
+
+.devchat-image-skeleton__dots span:nth-child(1) {
+  animation-delay: 0s;
+}
+.devchat-image-skeleton__dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.devchat-image-skeleton__dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dcDots {
+  0%, 80%, 100% {
+    opacity: 0.2;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* ── Actual Image Element ─────────────────────────── */
+.devchat-image__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.devchat-image__img--loaded {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ── Error State Card ─────────────────────────────── */
+.devchat-image-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  background: rgba(22, 24, 34, 0.95);
+  gap: 0.5rem;
+  z-index: 3;
+}
+
+.devchat-image-error__icon {
+  font-size: 1.5rem;
+  opacity: 0.6;
+}
+
+.devchat-image-error__text {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.devchat-image-error__retry-btn {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 6px;
+  background: rgba(108, 92, 231, 0.2);
+  border: 1px solid rgba(108, 92, 231, 0.4);
+  color: #a29bfe;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.devchat-image-error__retry-btn:hover {
+  background: rgba(108, 92, 231, 0.35);
+  color: #ffffff;
+}
