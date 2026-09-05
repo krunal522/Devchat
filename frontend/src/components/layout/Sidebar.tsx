@@ -191,12 +191,10 @@ export function Sidebar() {
   // Calculate Overall Total Unread Counts (WhatsApp style across channels and DMs)
   const totalChannelsUnread = publicChannels.reduce((sum, c) => sum + (unreadCounts[c.id] || 0), 0);
   const totalDMsUnread = filteredDMChannels.reduce((sum, dm) => {
-    const userUnread = dm.otherUser?.id ? unreadCounts[`user:${dm.otherUser.id}`] || 0 : 0;
     const channelUnread = dmChannels
       .filter((d) => d.id === dm.id || (d.otherUser?.id && dm.otherUser?.id && d.otherUser.id === dm.otherUser.id))
       .reduce((s, d) => s + (unreadCounts[d.id] || 0), 0) || (unreadCounts[dm.id] || 0);
-    const unread = Math.max(userUnread, channelUnread);
-    return sum + unread;
+    return sum + channelUnread;
   }, 0);
   const totalUnread = totalChannelsUnread + totalDMsUnread;
 
@@ -305,18 +303,16 @@ export function Sidebar() {
 
             <div className="sidebar__list">
               {filteredDMChannels.map((dm) => {
-                const userUnread = dm.otherUser?.id ? unreadCounts[`user:${dm.otherUser.id}`] || 0 : 0;
                 const channelUnread = dmChannels
                   .filter((d) => d.id === dm.id || (d.otherUser?.id && dm.otherUser?.id && d.otherUser.id === dm.otherUser.id))
                   .reduce((sum, d) => sum + (unreadCounts[d.id] || 0), 0) || (unreadCounts[dm.id] || 0);
-                const unread = Math.max(userUnread, channelUnread);
 
                 return (
                   <SidebarDMItem
                     key={dm.id}
                     dm={dm}
                     isActive={activeChannelId === dm.id}
-                    unread={unread}
+                    unread={channelUnread}
                     onSelect={() => handleSelectChannel(dm.id)}
                   />
                 );

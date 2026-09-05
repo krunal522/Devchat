@@ -81,7 +81,21 @@ interface ChatState {
 function getStoredUnreads(): Record<string, number> {
   try {
     const raw = localStorage.getItem('devchat_unread_counts');
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    const cleaned: Record<string, number> = {};
+    let hasUserKey = false;
+    for (const [k, v] of Object.entries(parsed)) {
+      if (k.startsWith('user:')) {
+        hasUserKey = true;
+      } else if (typeof v === 'number') {
+        cleaned[k] = v;
+      }
+    }
+    if (hasUserKey) {
+      localStorage.setItem('devchat_unread_counts', JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
     return {};
   }
@@ -188,8 +202,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const nextUnreads = {
         ...state.unreadCounts,
         [channelId]: 0,
-        ...(otherUserId ? { [`user:${otherUserId}`]: 0 } : {}),
       };
+      if (otherUserId) {
+        state.dmChannels
+          .filter((d) => d.otherUser?.id === otherUserId)
+          .forEach((d) => {
+            nextUnreads[d.id] = 0;
+          });
+      }
       persistUnreads(nextUnreads);
       return {
         unreadCounts: nextUnreads,
@@ -327,8 +347,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const nextUnreads = {
       ...get().unreadCounts,
       [channelId]: 0,
-      ...(otherUserId ? { [`user:${otherUserId}`]: 0 } : {}),
     };
+    if (otherUserId) {
+      dmChannels
+        .filter((d) => d.otherUser?.id === otherUserId)
+        .forEach((d) => {
+          nextUnreads[d.id] = 0;
+        });
+    }
     persistUnreads(nextUnreads);
 
     set((state) => ({
@@ -410,8 +436,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
             const next = {
               ...state.unreadCounts,
               [channelId]: 0,
-              ...(targetUserId ? { [`user:${targetUserId}`]: 0 } : {}),
             };
+            if (targetUserId) {
+              state.dmChannels
+                .filter((d) => d.otherUser?.id === targetUserId)
+                .forEach((d) => {
+                  next[d.id] = 0;
+                });
+            }
             persistUnreads(next);
             return next;
           })(),
@@ -447,8 +479,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const finalUnreads = {
         ...get().unreadCounts,
         [dmChannel.id]: 0,
-        ...(otherUser?.id ? { [`user:${otherUser.id}`]: 0 } : {}),
       };
+      if (otherUser?.id) {
+        get().dmChannels
+          .filter((d) => d.otherUser?.id === otherUser.id)
+          .forEach((d) => {
+            finalUnreads[d.id] = 0;
+          });
+      }
       persistUnreads(finalUnreads);
 
       // INSTANTLY finalize active channel with actual backend channel ID
@@ -596,9 +634,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const newUnreads = { ...state.unreadCounts };
       if (!isCurrentlyActive && !isOwnMessage) {
         newUnreads[targetChannelId] = (newUnreads[targetChannelId] || 0) + 1;
-        if (message.user?.id) {
-          newUnreads[`user:${message.user.id}`] = (newUnreads[`user:${message.user.id}`] || 0) + 1;
-        }
         persistUnreads(newUnreads);
       }
 
