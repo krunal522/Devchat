@@ -12,6 +12,7 @@ import { messageApi } from '../../services/messageApi';
 import { formatMessageTime } from '../../utils/formatDate';
 import { FileIcon } from '../ui/FileIcon';
 import { DevChatImage } from '../ui/DevChatImage';
+import { useToastStore } from '../../stores/toastStore';
 import type { Message } from '../../types/message';
 import '../ui/FileIcon.css';
 import './MessageItem.css';
@@ -64,6 +65,17 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
     right: number;
   } | null>(null);
   const emojiTriggerRef = useRef<HTMLButtonElement>(null);
+
+  // Slack-style More Actions Menu & Delete Modal States
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [moreMenuPosition, setMoreMenuPosition] = useState<{
+    top?: number;
+    bottom?: number;
+    right: number;
+  } | null>(null);
+  const moreMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const [lightboxAttachment, setLightboxAttachment] = useState<{ url: string; name: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pendingReactionRef = useRef(false);
@@ -97,6 +109,7 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
 
   const handleTogglePicker = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setShowMoreMenu(false);
     if (!showFullPicker) {
       const pos = calculatePickerPosition();
       if (pos) setPickerPosition(pos);
@@ -106,24 +119,123 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
     }
   };
 
-  // Close or reposition on window scroll / resize
-  useEffect(() => {
-    if (!showFullPicker) return;
+  const calculateMoreMenuPosition = useCallback(() => {
+    if (!moreMenuTriggerRef.current) return null;
+    const rect = moreMenuTriggerRef.current.getBoundingClientRect();
+    const menuHeight = 160;
+    const menuWidth = 190;
 
-    const handleScrollOrResize = () => {
-      const pos = calculatePickerPosition();
-      if (pos) {
-        setPickerPosition(pos);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpwards = spaceBelow < menuHeight + 16;
+
+    let right = window.innerWidth - rect.right;
+    if (rect.right - menuWidth < 12) {
+      right = window.innerWidth - menuWidth - 12;
+    }
+    if (right < 12) {
+      right = 12;
+    }
+
+    return {
+      ...(openUpwards
+        ? { bottom: window.innerHeight - rect.top + 6 }
+        : { top: rect.bottom + 6 }),
+      right,
+    };
+  }, []);
+
+  const handleToggleMoreMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowFullPicker(false);
+    if (!showMoreMenu) {
+      const pos = calculateMoreMenuPosition();
+      if (pos) setMoreMenuPosition(pos);
+      setShowMoreMenu(true);
+    } else {
+      setShowMoreMenu(false);
+    }
+  };
+
+  const handleCopyText = async () => {
+    setShowMoreMenu(false);
+    if (!message.content) return;
+    try {
+      await navigator.clipboard.writeText(message.content);
+      useToastStore.getState().addToast({
+        title: 'Copied',
+        message: 'Message copied to clipboard',
+        type: 'success',
+      });
+    } catch (err) {
+      console.warn('Clipboard copy error:', err);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    setShowDeleteModal(false);
+    useChatStore.getState().removeMessage(message.id, message.channelId);
+    deleteMessage(message.id);
+    try {
+      await messageApi.deleteMessage(message.id);
+    } catch (err) {
+      console.warn('REST delete fallback error:', err);
+    }
+  };
+
+  // Close or reposition on window scroll / resize / outside click
+  useEffect(() => {
+    if (!showFullPicker && !showMoreMenu) return;
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (showMoreMenu && !target.closest('.message__more-menu') && !moreMenuTriggerRef.current?.contains(target)) {
+        setShowMoreMenu(false);
       }
     };
 
+    const handleScrollOrResize = () => {
+      if (showFullPicker) {
+        const pos = calculatePickerPosition();
+        if (pos) setPickerPosition(pos);
+      }
+      if (showMoreMenu) {
+        const pos = calculateMoreMenuPosition();
+        if (pos) setMoreMenuPosition(pos);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowFullPicker(false);
+        setShowMoreMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
     window.addEventListener('resize', handleScrollOrResize, { passive: true });
     window.addEventListener('scroll', handleScrollOrResize, { passive: true, capture: true });
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
       window.removeEventListener('resize', handleScrollOrResize);
       window.removeEventListener('scroll', handleScrollOrResize, { capture: true });
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showFullPicker, calculatePickerPosition]);
+  }, [showFullPicker, showMoreMenu, calculatePickerPosition, calculateMoreMenuPosition]);
+
+  // Handle Delete Modal keyboard shortcuts
+  useEffect(() => {
+    if (!showDeleteModal) return;
+    const handleModalKeys = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowDeleteModal(false);
+      } else if (e.key === 'Enter') {
+        handleConfirmDelete();
+      }
+    };
+    window.addEventListener('keydown', handleModalKeys);
+    return () => window.removeEventListener('keydown', handleModalKeys);
+  }, [showDeleteModal]);
 
   const channelNameLower = typeof activeChannel?.name === 'string' ? activeChannel.name.toLowerCase() : '';
   const isAIChat =
@@ -236,16 +348,8 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
     }
   };
 
-  const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this message?')) {
-      useChatStore.getState().removeMessage(message.id, message.channelId);
-      deleteMessage(message.id);
-      try {
-        await messageApi.deleteMessage(message.id);
-      } catch (err) {
-        console.warn('REST delete fallback error:', err);
-      }
-    }
+  const handleDelete = () => {
+    setShowDeleteModal(true);
   };
 
   const handleCancelEdit = () => {
@@ -518,8 +622,8 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
 
         {/* Hover Action Toolbar (Completely disabled for DevChat AI and while editing) */}
         {!isEditing && !isAIMessage && !isAIChat && (
-          <div className={`message__actions ${showFullPicker ? 'message__actions--active' : ''}`}>
-            {/* Clean Smiley Reaction Picker Trigger */}
+          <div className={`message__actions ${showFullPicker || showMoreMenu ? 'message__actions--active' : ''}`}>
+            {/* 1. Clean Smiley Reaction Picker Trigger */}
             <button
               ref={emojiTriggerRef}
               type="button"
@@ -535,6 +639,19 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
               </svg>
             </button>
 
+            {/* 2. Reply in Thread */}
+            <button
+              type="button"
+              className="message__action-btn"
+              onClick={() => openThread(message)}
+              title="Reply in thread"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+
+            {/* 3. Reply Directly in Chat */}
             <button
               type="button"
               className="message__action-btn"
@@ -547,44 +664,20 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
               </svg>
             </button>
 
+            {/* 4. Slack-style More Actions (⋯) Trigger */}
             <button
+              ref={moreMenuTriggerRef}
               type="button"
-              className="message__action-btn"
-              onClick={() => openThread(message)}
-              title="Reply in thread"
+              className={`message__action-btn ${showMoreMenu ? 'message__action-btn--active' : ''}`}
+              onClick={handleToggleMoreMenu}
+              title="More actions"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="19" cy="12" r="2" />
               </svg>
             </button>
-
-            {canEditOrDelete && (
-              <>
-                <div className="message__action-divider" />
-                <button
-                  type="button"
-                  className="message__action-btn"
-                  onClick={handleEdit}
-                  title="Edit message"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  className="message__action-btn message__action-btn--danger"
-                  onClick={handleDelete}
-                  title="Delete message"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
-                </button>
-              </>
-            )}
           </div>
         )}
       </div>
@@ -677,6 +770,151 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
               }}
               onClose={() => setShowFullPicker(false)}
             />
+          </div>,
+          document.body
+        )}
+
+      {/* Slack-Style More Actions (⋯) Dropdown Menu Portal */}
+      {showMoreMenu && moreMenuPosition &&
+        createPortal(
+          <div
+            className="message__more-menu"
+            style={{
+              position: 'fixed',
+              top: moreMenuPosition.top !== undefined ? `${moreMenuPosition.top}px` : 'auto',
+              bottom: moreMenuPosition.bottom !== undefined ? `${moreMenuPosition.bottom}px` : 'auto',
+              right: `${moreMenuPosition.right}px`,
+              zIndex: 999999,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Copy Text */}
+            {message.content && (
+              <button
+                type="button"
+                className="message__more-menu-item"
+                onClick={handleCopyText}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                <span>Copy text</span>
+              </button>
+            )}
+
+            {/* Reply / Quote in Chat */}
+            <button
+              type="button"
+              className="message__more-menu-item"
+              onClick={() => {
+                setShowMoreMenu(false);
+                useChatStore.getState().setReplyingToMessage(message);
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 17 4 12 9 7" />
+                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+              </svg>
+              <span>Reply to message</span>
+            </button>
+
+            {canEditOrDelete && (
+              <>
+                <div className="message__more-menu-divider" />
+
+                {/* Edit Message */}
+                <button
+                  type="button"
+                  className="message__more-menu-item"
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    handleEdit();
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  <span>Edit message</span>
+                  <span className="message__more-menu-shortcut">E</span>
+                </button>
+
+                {/* Delete Message */}
+                <button
+                  type="button"
+                  className="message__more-menu-item message__more-menu-item--danger"
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    setShowDeleteModal(true);
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                  <span>Delete message</span>
+                </button>
+              </>
+            )}
+          </div>,
+          document.body
+        )}
+
+      {/* Enterprise Slack-Style Delete Message Confirmation Modal */}
+      {showDeleteModal &&
+        createPortal(
+          <div className="slack-delete-modal__backdrop" onClick={() => setShowDeleteModal(false)}>
+            <div className="slack-delete-modal__card" onClick={(e) => e.stopPropagation()}>
+              <div className="slack-delete-modal__header">
+                <div className="slack-delete-modal__title-row">
+                  <span className="slack-delete-modal__icon">🗑️</span>
+                  <h3 className="slack-delete-modal__title">Delete message</h3>
+                </div>
+                <button
+                  type="button"
+                  className="slack-delete-modal__close"
+                  onClick={() => setShowDeleteModal(false)}
+                  title="Close (Esc)"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="slack-delete-modal__body">
+                <p className="slack-delete-modal__desc">
+                  Are you sure you want to delete this message? This cannot be undone.
+                </p>
+
+                {/* Quoted Message Preview Box */}
+                <div className="slack-delete-modal__preview">
+                  <div className="slack-delete-modal__preview-author">
+                    <span className="slack-delete-modal__preview-name">{authorName}</span>
+                    <span className="slack-delete-modal__preview-time">{formatMessageTime(message.createdAt)}</span>
+                  </div>
+                  <div className="slack-delete-modal__preview-text">
+                    {message.content || (message.attachments?.length ? 'Attachment' : 'Message')}
+                  </div>
+                </div>
+              </div>
+
+              <div className="slack-delete-modal__footer">
+                <button
+                  type="button"
+                  className="slack-delete-modal__btn slack-delete-modal__btn--cancel"
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="slack-delete-modal__btn slack-delete-modal__btn--delete"
+                  onClick={handleConfirmDelete}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
           </div>,
           document.body
         )}

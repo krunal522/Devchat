@@ -353,6 +353,7 @@
   visibility: hidden;
   transform: translateY(4px);
   transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s ease;
+  will-change: transform, opacity;
   pointer-events: none;
 }
 
@@ -621,4 +622,260 @@
     height: 34px;
     font-size: 1rem;
   }
+}
+
+/* ── Slack-Style More Actions (⋯) Dropdown Menu ───────── */
+.message__more-menu {
+  width: 200px;
+  background: rgba(22, 24, 34, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  padding: 0.375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: pickerPopIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.message__more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #d1d5db;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  box-sizing: border-box;
+}
+
+.message__more-menu-item svg {
+  color: #9ca3af;
+  flex-shrink: 0;
+  transition: color 0.12s ease;
+}
+
+.message__more-menu-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+}
+
+.message__more-menu-item:hover svg {
+  color: #ffffff;
+}
+
+.message__more-menu-item--danger {
+  color: #f87171;
+}
+
+.message__more-menu-item--danger svg {
+  color: #f87171;
+}
+
+.message__more-menu-item--danger:hover {
+  background: rgba(239, 68, 68, 0.16);
+  color: #ef4444;
+}
+
+.message__more-menu-item--danger:hover svg {
+  color: #ef4444;
+}
+
+.message__more-menu-shortcut {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  color: #6b7280;
+  font-weight: 600;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+.message__more-menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0.25rem 0;
+}
+
+/* ── Slack-Style Delete Confirmation Modal ────────────── */
+.slack-delete-modal__backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(8, 9, 13, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 1000000 !important;
+  padding: 1rem;
+  box-sizing: border-box;
+  animation: fadeIn 0.15s ease;
+}
+
+.slack-delete-modal__card {
+  width: 100%;
+  max-width: 460px;
+  background: #1a1c27;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slack-delete-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.125rem 1.25rem 0.875rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.slack-delete-modal__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.slack-delete-modal__icon {
+  font-size: 1.125rem;
+}
+
+.slack-delete-modal__title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.slack-delete-modal__close {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 6px;
+  transition: all 0.12s ease;
+  line-height: 1;
+}
+
+.slack-delete-modal__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.slack-delete-modal__body {
+  padding: 1.125rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.slack-delete-modal__desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.slack-delete-modal__preview {
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 3px solid #ef4444;
+  border-radius: 4px 10px 10px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.slack-delete-modal__preview-author {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.slack-delete-modal__preview-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.slack-delete-modal__preview-time {
+  font-size: 0.6875rem;
+  color: #9ca3af;
+}
+
+.slack-delete-modal__preview-text {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  line-height: 1.4;
+  max-height: 80px;
+  overflow-y: auto;
+  word-break: break-word;
+}
+
+.slack-delete-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  padding: 0.875rem 1.25rem;
+  background: rgba(0, 0, 0, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.slack-delete-modal__btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.slack-delete-modal__btn--cancel {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+}
+
+.slack-delete-modal__btn--cancel:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.slack-delete-modal__btn--delete {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);
+}
+
+.slack-delete-modal__btn--delete:hover {
+  background: #ef4444;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.55);
+}
+
+.slack-delete-modal__btn--delete:active {
+  transform: translateY(0);
 }
