@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useUIStore } from '../../stores/uiStore';
 import { getSocket } from '../../services/socketManager';
@@ -78,63 +78,45 @@ export function MessageList() {
   const isMemberPanelOpen = useUIStore((s) => s.isMemberPanelOpen);
   const mobileView = useUIStore((s) => s.mobileView);
 
-  // Helper to force INSTANT scroll to absolute bottom of container (0ms delay)
-  const scrollToBottomInstant = () => {
+  // Helper to force scroll to absolute bottom of container
+  const scrollToBottomInstant = useCallback(() => {
     const container = containerRef.current;
     if (container) {
       container.scrollTop = container.scrollHeight;
     }
     bottomRef.current?.scrollIntoView({ behavior: 'auto' });
-  };
+  }, []);
 
   // Reset scroll to bottom whenever user switches channel
   useEffect(() => {
     isNearBottomRef.current = true;
+    prevLengthRef.current = (messages || []).length;
     scrollToBottomInstant();
-  }, [activeChannelId]);
+  }, [activeChannelId, scrollToBottomInstant]);
 
-  // INSTANT 0ms scroll on message count change OR member panel toggle ONLY IF user is near bottom
-  useLayoutEffect(() => {
-    if (isNearBottomRef.current) {
-      scrollToBottomInstant();
-      const t1 = requestAnimationFrame(scrollToBottomInstant);
-      const t2 = setTimeout(scrollToBottomInstant, 50);
-      const t3 = setTimeout(scrollToBottomInstant, 150);
-      prevLengthRef.current = (messages || []).length;
-      return () => {
-        cancelAnimationFrame(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-      };
-    }
-  }, [activeChannelId, (messages || []).length, isMemberPanelOpen, mobileView]);
-
-  // Automatic ResizeObserver — auto-scroll ONLY if user is already near bottom
+  // Auto-scroll ONLY when a NEW message is actually appended and user was already at bottom
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const currentLen = (messages || []).length;
+    const prevLen = prevLengthRef.current;
+    prevLengthRef.current = currentLen;
 
-    const observer = new ResizeObserver(() => {
+    if (currentLen > prevLen) {
       if (isNearBottomRef.current) {
-        scrollToBottomInstant();
+        requestAnimationFrame(scrollToBottomInstant);
       }
-    });
+    }
+  }, [(messages || []).length, scrollToBottomInstant]);
 
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
-
-  // When AI is typing, keep scrolled to bottom instantly & set safety timeout to hide loader after 15s max
+  // When AI is typing, keep scrolled to bottom if user is already near bottom
   useEffect(() => {
-    if (isAITyping) {
-      isNearBottomRef.current = true;
+    if (isAITyping && isNearBottomRef.current) {
       scrollToBottomInstant();
       const safetyTimer = setTimeout(() => {
         useUIStore.getState().setAITypingChannelId(null);
       }, 15000);
       return () => clearTimeout(safetyTimer);
     }
-  }, [isAITyping]);
+  }, [isAITyping, scrollToBottomInstant]);
 
   // ─── Always re-join socket room when channel changes ─────────────────────────
   useEffect(() => {
@@ -162,23 +144,23 @@ export function MessageList() {
     return () => clearInterval(syncInterval);
   }, [activeChannelId]);
 
-  // Handle scroll events with RAF throttling & smart bottom tracking
-  const handleScroll = () => {
+  // Ultra-smooth passive scroll handler — zero layout thrashing
+  const handleScroll = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const threshold = 120;
+    const threshold = 80;
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     isNearBottomRef.current = distanceFromBottom <= threshold;
 
-    if (scrollTimeoutRef.current !== null) return;
-    scrollTimeoutRef.current = requestAnimationFrame(() => {
-      scrollTimeoutRef.current = null;
-      if (container.scrollTop < 100 && hasMore && activeChannelId) {
+    if (container.scrollTop < 80 && hasMore && activeChannelId) {
+      if (scrollTimeoutRef.current !== null) return;
+      scrollTimeoutRef.current = requestAnimationFrame(() => {
+        scrollTimeoutRef.current = null;
         loadMoreMessages(activeChannelId);
-      }
-    });
-  };
+      });
+    }
+  }, [hasMore, activeChannelId, loadMoreMessages]);
 
   const handlePromptClick = (promptText: string) => {
     if (activeChannelId) {
@@ -267,7 +249,7 @@ export function MessageList() {
           lastDate = messageDate;
 
           return (
-            <div key={message.id} id={`msg-${message.id}`}>
+            <div key={message.id} id={`msg-${message.id}`} className="message-list__row">
               {showDateSeparator && (
                 <div className="message-list__date-separator">
                   <span className="message-list__date-text">

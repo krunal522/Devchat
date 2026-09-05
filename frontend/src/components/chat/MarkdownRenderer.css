@@ -288,12 +288,14 @@
 .markdown-img-wrapper {
   width: 100%;
   max-width: 520px;
+  min-height: 180px;
   border-radius: 14px;
   background: #15161e;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
   overflow: hidden;
   position: relative;
+  contain: layout paint;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
