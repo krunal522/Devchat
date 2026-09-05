@@ -22,10 +22,49 @@ import type { Message } from '../types/message';
 import { userApi } from './userApi';
 
 // Connect to configured backend URL (falls back to local in development)
-const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL ||
-  import.meta.env.VITE_SOCKET_BASE_URL ||
-  'http://localhost:3001';
+function resolveSocketUrl(): string {
+  const apiBase = (
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    'http://localhost:3001/api'
+  ).replace(/\/api\/?$/, '');
+
+  const explicitSocket = (
+    import.meta.env.VITE_SOCKET_URL ||
+    import.meta.env.VITE_SOCKET_BASE_URL ||
+    ''
+  ).trim();
+
+  // If not explicitly configured, default directly to the API server origin
+  if (!explicitSocket) {
+    return apiBase;
+  }
+
+  // Filter out known dead/obsolete Render instance from previous deployments
+  if (explicitSocket.includes('devchat-srv')) {
+    console.warn(`[Socket] Obsolete dead socket URL detected (${explicitSocket}). Auto-routing to active API server: ${apiBase}`);
+    return apiBase;
+  }
+
+  // Auto-sync: Ensure socket connects to the same Render instance as the API
+  try {
+    const apiUrl = new URL(apiBase);
+    const socketUrl = new URL(explicitSocket);
+    if (apiUrl.hostname.endsWith('onrender.com') && socketUrl.hostname.endsWith('onrender.com')) {
+      if (apiUrl.hostname !== socketUrl.hostname) {
+        console.warn(`[Socket] Mismatched Render hostname detected (API: ${apiUrl.hostname} vs Socket: ${socketUrl.hostname}). Auto-syncing socket to: ${apiBase}`);
+        return apiBase;
+      }
+    }
+  } catch (err) {
+    console.warn('[Socket] Could not parse URLs, falling back to API base:', err);
+    return apiBase;
+  }
+
+  return explicitSocket;
+}
+
+const SOCKET_URL = resolveSocketUrl();
 
 let socket: Socket | null = null;
 let listenersAttached = false;

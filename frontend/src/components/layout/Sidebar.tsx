@@ -141,13 +141,19 @@ export function Sidebar() {
       if (document.visibilityState === 'visible') {
         fetchOnlineUsers();
         loadDMChannels();
+        const sock = getSocket();
+        if (sock && !sock.connected) {
+          sock.connect();
+        }
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
 
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
     };
   }, []);
 
