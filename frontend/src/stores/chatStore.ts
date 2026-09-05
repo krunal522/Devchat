@@ -260,12 +260,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const channels = await channelApi.getChannels();
       set({ channels });
       get().syncServerUnreads().catch(() => {});
-      const currentActive = get().activeChannelId;
-      if (!currentActive && channels && channels.length > 0) {
-        const savedChannelId = localStorage.getItem('devchat_last_active_channel');
-        const targetChannel = (savedChannelId && channels.find((c) => c.id === savedChannelId)) || channels[0];
-        await get().setActiveChannel(targetChannel.id);
-      }
     } catch (error) {
       console.error('Failed to load channels:', error);
     }

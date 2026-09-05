@@ -413,6 +413,8 @@ export function MessageInput() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  if (!activeChannelId) return null;
+
   return (
     <div className="message-input-wrapper">
       <TypingIndicator channelId={activeChannelId} />

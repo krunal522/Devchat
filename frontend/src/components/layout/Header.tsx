@@ -119,7 +119,7 @@ export function Header() {
 
   const displayName = isDirect
     ? (isAIChat ? 'DevChat AI' : (otherUserObj?.displayName || otherUserObj?.username || channel?.name || 'Direct Message'))
-    : (channel?.name || 'Select a channel');
+    : (channel?.name || 'DevChat Workspace');
 
   const handleText = isDirect && !isAIChat
     ? (otherUserObj?.username ? `@${otherUserObj.username}` : (channel?.description || ''))
@@ -234,7 +234,7 @@ export function Header() {
           </svg>
         </button>
 
-        <div className="chat-header__info" onClick={() => toggleMemberPanel()}>
+        <div className="chat-header__info" onClick={() => channel && toggleMemberPanel()} style={{ cursor: channel ? 'pointer' : 'default' }}>
           {isDirect ? (
             <UserAvatar
               src={avatarUrl}
@@ -243,8 +243,10 @@ export function Header() {
               isOnline={isAIChat ? true : isOtherUserOnline}
               showStatus
             />
-          ) : (
+          ) : channel ? (
             <div className="chat-header__hash-badge">#</div>
+          ) : (
+            <div className="chat-header__hash-badge">💬</div>
           )}
 
           <div className="chat-header__details">
@@ -254,6 +256,9 @@ export function Header() {
                 <span className="chat-header__handle">{handleText}</span>
               )}
             </div>
+            {!channel && (
+              <span className="chat-header__subtext">Select a channel or conversation from the sidebar</span>
+            )}
             {isDirect ? (
               presenceStatusText && (
                 <span className={`chat-header__subtext ${isOtherUserOnline ? 'chat-header__subtext--online' : ''}`}>
