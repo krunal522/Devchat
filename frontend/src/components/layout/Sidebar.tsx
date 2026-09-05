@@ -43,9 +43,14 @@ function SidebarDMItem({
   onSelect: () => void;
 }) {
   const otherUserId = dm.otherUser?.id;
+  const isPresenceReady = usePresenceStore((s) => s.isInitialized);
   const realTimeIsOnline = useIsUserOnline(otherUserId);
   const isAI = dm.otherUser?.username === 'devchat_ai' || dm.otherUser?.id === 'devchat-ai-bot-id';
-  const isOnline = isAI ? true : (realTimeIsOnline || Boolean(dm.otherUser?.isOnline));
+  const isOnline = isAI
+    ? true
+    : isPresenceReady
+      ? realTimeIsOnline
+      : (realTimeIsOnline || Boolean(dm.otherUser?.isOnline));
 
   return (
     <button

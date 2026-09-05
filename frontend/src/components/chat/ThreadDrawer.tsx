@@ -114,7 +114,7 @@ export function ThreadDrawer() {
         <div className="thread-drawer__body">
           {/* Parent Original Message */}
           <div className="thread-drawer__parent-message">
-            <MessageItem message={activeThreadMessage} />
+            <MessageItem message={activeThreadMessage} isThreadParent />
           </div>
 
           {/* Replies Divider */}

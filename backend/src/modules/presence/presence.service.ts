@@ -65,7 +65,7 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
   }
 
   if (remainingSockets === 0) {
-    // ⚡ 3-second grace period debounce: prevents flickering offline during page reloads or transport upgrades
+    // ⚡ 1-second grace period debounce: fast offline status while handling rapid tab switches
     return new Promise<boolean>((resolve) => {
       if (offlineTimers.has(userId)) {
         clearTimeout(offlineTimers.get(userId)!);
@@ -95,7 +95,7 @@ export async function removeSocket(userId: string, socketId: string): Promise<bo
 
         logger.debug(`User ${userId} marked offline after grace period`);
         resolve(true);
-      }, 3000);
+      }, 1000);
 
       offlineTimers.set(userId, timer);
     });
@@ -128,17 +128,18 @@ export async function getOnlineUsers(): Promise<string[]> {
     }
   } catch (err) {}
 
-  // 3. Fallback to DB for active users (updated within last 60 seconds)
-  try {
-    const recentActive = await prisma.user.findMany({
-      where: {
-        isOnline: true,
-        lastSeenAt: { gte: new Date(Date.now() - 60000) },
-      },
-      select: { id: true },
-    });
-    recentActive.forEach((u) => onlineSet.add(u.id));
-  } catch (err) {}
+  // 3. Fallback to DB only on cold boot when memory and redis are empty
+  if (onlineSet.size === 0 && redis.status !== 'ready') {
+    try {
+      const recentActive = await prisma.user.findMany({
+        where: {
+          isOnline: true,
+        },
+        select: { id: true },
+      });
+      recentActive.forEach((u) => onlineSet.add(u.id));
+    } catch (err) {}
+  }
 
   return Array.from(onlineSet);
 }

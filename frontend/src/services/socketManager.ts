@@ -204,6 +204,7 @@ function attachListeners(sock: Socket): void {
 
   sock.on('user:online', (data: { userId: string; username: string }) => {
     usePresenceStore.getState().addOnlineUser(data.userId);
+    useChatStore.getState().updateUserOnline(data.userId, true);
     useToastStore.getState().addToast({
       type: 'info',
       title: 'User Online',
@@ -215,6 +216,7 @@ function attachListeners(sock: Socket): void {
     usePresenceStore.getState().removeOnlineUser(data.userId);
     const lastSeenTime = data.lastSeen || new Date().toISOString();
     useChatStore.getState().updateUserLastSeen(data.userId, lastSeenTime);
+    useChatStore.getState().updateUserOnline(data.userId, false, lastSeenTime);
   });
 
   sock.on('user:profile_updated', (data: { id: string; displayName?: string; avatarUrl?: string }) => {

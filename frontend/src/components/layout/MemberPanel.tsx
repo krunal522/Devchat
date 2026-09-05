@@ -78,7 +78,11 @@ export function MemberPanel() {
     (activeChannel?.createdBy?.id && activeChannel.createdBy.id !== currentUserId ? activeChannel.createdBy : undefined);
 
   const otherUserId = activeChannel?.type === 'DIRECT' ? (otherUserObj?.id || activeChannel?.createdBy?.id) : undefined;
-  const isOtherUserOnline = useIsUserOnline(otherUserId) || Boolean(otherUserObj?.isOnline);
+  const isPresenceReady = usePresenceStore((s) => s.isInitialized);
+  const realTimeIsOnline = useIsUserOnline(otherUserId);
+  const isOtherUserOnline = isPresenceReady
+    ? realTimeIsOnline
+    : (realTimeIsOnline || Boolean(otherUserObj?.isOnline));
   const avatarUrl = otherUserObj?.avatarUrl || activeChannel?.createdBy?.avatarUrl;
   const lastSeenAt = otherUserObj?.lastSeenAt || (activeChannel?.createdBy as any)?.lastSeenAt;
 
@@ -87,7 +91,8 @@ export function MemberPanel() {
 
   const safeMembers = Array.isArray(members) ? members : [];
   const isAdmin = activeChannel?.myRole === 'ADMIN' || activeChannel?.createdById === currentUserId;
-  const isMemberOnline = (m: UserWithRole) => onlineUsers.has(m.id) || Boolean(m.isOnline);
+  const isMemberOnline = (m: UserWithRole) =>
+    isPresenceReady ? onlineUsers.has(m.id) : (onlineUsers.has(m.id) || Boolean(m.isOnline));
   const onlineMembers = safeMembers.filter(isMemberOnline);
   const offlineMembers = safeMembers.filter((m) => !isMemberOnline(m));
 

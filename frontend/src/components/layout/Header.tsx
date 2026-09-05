@@ -107,8 +107,13 @@ export function Header() {
 
   const otherUserId = isDirect ? otherUserObj?.id : undefined;
 
+  const isPresenceReady = usePresenceStore((s) => s.isInitialized);
   const realTimeIsOnline = useIsUserOnline(otherUserId);
-  const isOtherUserOnline = isAIChat ? true : (realTimeIsOnline || Boolean(otherUserObj?.isOnline));
+  const isOtherUserOnline = isAIChat
+    ? true
+    : isPresenceReady
+      ? realTimeIsOnline
+      : (realTimeIsOnline || Boolean(otherUserObj?.isOnline));
   const lastSeenAt = otherUserObj?.lastSeenAt;
 
   const displayName = isDirect

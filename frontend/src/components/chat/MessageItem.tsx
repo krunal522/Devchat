@@ -19,6 +19,7 @@ import './MessageItem.css';
 
 interface MessageItemProps {
   message: Message;
+  isThreadParent?: boolean;
 }
 
 function getSafeStreamingMarkdown(content: string): string {
@@ -29,7 +30,7 @@ function getSafeStreamingMarkdown(content: string): string {
   return content;
 }
 
-export const MessageItem = memo(function MessageItem({ message }: MessageItemProps) {
+export const MessageItem = memo(function MessageItem({ message, isThreadParent }: MessageItemProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const currentUserAvatar = useAuthStore((s) => s.user?.avatarUrl);
   const currentUserDisplayName = useAuthStore((s) => s.user?.displayName);
@@ -609,7 +610,7 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
             </div>
           )}
 
-          {message._count?.replies > 0 && (
+          {message._count?.replies > 0 && !isThreadParent && (
             <div className="message__thread-indicator" onClick={() => openThread(message)} title="Open side thread panel">
               💬 {message._count.replies} {message._count.replies === 1 ? 'reply' : 'replies'}
             </div>
@@ -635,17 +636,19 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
               </svg>
             </button>
 
-            {/* 2. Reply in Thread */}
-            <button
-              type="button"
-              className="message__action-btn"
-              onClick={() => openThread(message)}
-              title="Reply in thread"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-            </button>
+            {/* 2. Reply in Thread (hidden if already the thread parent) */}
+            {!isThreadParent && (
+              <button
+                type="button"
+                className="message__action-btn"
+                onClick={() => openThread(message)}
+                title="Reply in thread"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </button>
+            )}
 
             {/* 3. Reply Directly in Chat */}
             <button

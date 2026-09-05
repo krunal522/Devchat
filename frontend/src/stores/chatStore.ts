@@ -72,6 +72,7 @@ interface ChatState {
   deleteChannel: (channelId: string) => Promise<void>;
   openDM: (targetUserId: string, targetUser?: any) => Promise<void>;
   updateUserLastSeen: (userId: string, lastSeenAt: string) => void;
+  updateUserOnline: (userId: string, isOnline: boolean, lastSeenAt?: string) => void;
   clearChannelMessages: (channelId: string) => void;
   bumpDMChannel: (channelId: string) => void;
 }
@@ -115,7 +116,48 @@ export const useChatStore = create<ChatState>((set, get) => ({
       seen.add(r.id);
       return true;
     });
-    set({ activeThreadReplies: unique });
+
+    set((state) => {
+      const activeParent = state.activeThreadMessage;
+      const parentId = activeParent?.id;
+      const realCount = unique.length;
+
+      const updatedActiveThread = activeParent
+        ? {
+            ...activeParent,
+            _count: {
+              ...activeParent._count,
+              replies: realCount,
+            },
+          }
+        : null;
+
+      // Also sync the message in the channel messages list
+      const channelId = activeParent?.channelId;
+      let updatedMessages = state.messages;
+      if (channelId && state.messages[channelId] && parentId) {
+        updatedMessages = {
+          ...state.messages,
+          [channelId]: state.messages[channelId].map((m) =>
+            m.id === parentId
+              ? {
+                  ...m,
+                  _count: {
+                    ...m._count,
+                    replies: realCount,
+                  },
+                }
+              : m
+          ),
+        };
+      }
+
+      return {
+        activeThreadReplies: unique,
+        activeThreadMessage: updatedActiveThread,
+        messages: updatedMessages,
+      };
+    });
   },
 
   setReplyingToMessage: (message: Message | null) => {
@@ -590,12 +632,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const shouldIncrementCount = !hadMatchingTempReply;
 
         const updatedExisting = existing.map((m) => {
-          if (m.id === updatedMsg.parentId && shouldIncrementCount) {
+          if (m.id === updatedMsg.parentId) {
+            const nextRepliesCount = isCurrentThread
+              ? updatedReplies.length
+              : shouldIncrementCount
+                ? (m._count?.replies || 0) + 1
+                : (m._count?.replies || 0);
+
             return {
               ...m,
               _count: {
                 ...m._count,
-                replies: (m._count?.replies || 0) + 1,
+                replies: nextRepliesCount,
               },
             };
           }
@@ -603,12 +651,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
         });
 
         const updatedActiveThread =
-          activeThread && activeThread.id === updatedMsg.parentId && shouldIncrementCount
+          activeThread && activeThread.id === updatedMsg.parentId
             ? {
                 ...activeThread,
                 _count: {
                   ...activeThread._count,
-                  replies: (activeThread._count?.replies || 0) + 1,
+                  replies: isCurrentThread
+                    ? updatedReplies.length
+                    : shouldIncrementCount
+                      ? (activeThread._count?.replies || 0) + 1
+                      : (activeThread._count?.replies || 0),
                 },
               }
             : activeThread;
@@ -826,10 +878,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         updatedActiveChannel = {
           ...state.activeChannel,
           ...(isOtherInActive && state.activeChannel?.otherUser
-            ? { otherUser: { ...state.activeChannel.otherUser, lastSeenAt } }
+            ? { otherUser: { ...state.activeChannel.otherUser, isOnline: false, lastSeenAt } }
             : {}),
           ...(isCreatedByInActive && state.activeChannel?.createdBy
-            ? { createdBy: { ...state.activeChannel.createdBy, lastSeenAt } as any }
+            ? { createdBy: { ...state.activeChannel.createdBy, isOnline: false, lastSeenAt } as any }
             : {}),
         } as any;
       }
@@ -837,7 +889,55 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return {
         dmChannels: state.dmChannels.map((d) =>
           d.otherUser?.id === userId
-            ? { ...d, otherUser: { ...d.otherUser, lastSeenAt } }
+            ? { ...d, otherUser: { ...d.otherUser, isOnline: false, lastSeenAt } }
+            : d
+        ),
+        activeChannel: updatedActiveChannel,
+      };
+    });
+  },
+
+  updateUserOnline: (userId: string, isOnline: boolean, lastSeenAt?: string) => {
+    set((state) => {
+      const isOtherInActive = state.activeChannel?.otherUser?.id === userId;
+      const isCreatedByInActive = state.activeChannel?.createdBy?.id === userId;
+
+      let updatedActiveChannel = state.activeChannel;
+      if (isOtherInActive || isCreatedByInActive) {
+        updatedActiveChannel = {
+          ...state.activeChannel,
+          ...(isOtherInActive && state.activeChannel?.otherUser
+            ? {
+                otherUser: {
+                  ...state.activeChannel.otherUser,
+                  isOnline,
+                  ...(lastSeenAt ? { lastSeenAt } : {}),
+                },
+              }
+            : {}),
+          ...(isCreatedByInActive && state.activeChannel?.createdBy
+            ? {
+                createdBy: {
+                  ...state.activeChannel.createdBy,
+                  isOnline,
+                  ...(lastSeenAt ? { lastSeenAt } : {}),
+                } as any,
+              }
+            : {}),
+        } as any;
+      }
+
+      return {
+        dmChannels: state.dmChannels.map((d) =>
+          d.otherUser?.id === userId
+            ? {
+                ...d,
+                otherUser: {
+                  ...d.otherUser,
+                  isOnline,
+                  ...(lastSeenAt ? { lastSeenAt } : {}),
+                },
+              }
             : d
         ),
         activeChannel: updatedActiveChannel,

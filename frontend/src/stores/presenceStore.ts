@@ -21,6 +21,7 @@ interface TypingUser {
 interface PresenceState {
   onlineUsers: Set<string>;
   typingUsers: Record<string, TypingUser[]>;
+  isInitialized: boolean;
 
   setOnlineUsers: (userIds: string[]) => void;
   addOnlineUser: (userId: string) => void;
@@ -32,6 +33,7 @@ interface PresenceState {
 export const usePresenceStore = create<PresenceState>((set) => ({
   onlineUsers: new Set<string>(),
   typingUsers: {},
+  isInitialized: false,
 
   setOnlineUsers: (userIds) => {
     const validIds = (Array.isArray(userIds) ? userIds : []).filter(Boolean).map((id) => String(id).trim());
@@ -43,7 +45,7 @@ export const usePresenceStore = create<PresenceState>((set) => ({
         if (u?.id) finalSet.add(String(u.id).trim());
       }
     } catch {}
-    set({ onlineUsers: finalSet });
+    set({ onlineUsers: finalSet, isInitialized: true });
   },
 
   addOnlineUser: (userId) => {
