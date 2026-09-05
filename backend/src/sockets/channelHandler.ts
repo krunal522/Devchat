@@ -49,14 +49,26 @@ export function registerChannelHandlers(io: Server, socket: Socket): void {
   // ─── Join All User's Channels ─────────────────────
   socket.on('channel:join_all', async (callback?: Function) => {
     try {
-      // Join ALL channels including DMs (type: DIRECT)
-      const memberships = await prisma.channelMember.findMany({
-        where: { userId },
-        select: { channelId: true },
-      });
+      // Join ALL channels including DMs (type: DIRECT) AND all workspace public channels
+      const [memberships, publicChannels] = await Promise.all([
+        prisma.channelMember.findMany({
+          where: { userId },
+          select: { channelId: true },
+        }),
+        prisma.channel.findMany({
+          where: { type: 'PUBLIC' },
+          select: { id: true },
+        }),
+      ]);
 
-      const channelIds = memberships.map((m) => m.channelId);
-      channelIds.forEach((id) => {
+      const allChannelIds = Array.from(
+        new Set([
+          ...memberships.map((m) => m.channelId),
+          ...publicChannels.map((c) => c.id),
+        ])
+      );
+
+      allChannelIds.forEach((id) => {
         socket.join(`channel:${id}`);
         // ⚡ Warm up member cache: record this user as member of each channel
         cacheAddMember(id, userId);
@@ -64,7 +76,7 @@ export function registerChannelHandlers(io: Server, socket: Socket): void {
 
       // Always join personal user room for direct notifications
       socket.join(`user:${userId}`);
-      callback?.({ success: true, channelIds });
+      callback?.({ success: true, channelIds: allChannelIds });
     } catch (error: any) {
       logger.error(`Error joining all channels: ${error.message}`);
       callback?.({ error: error.message || 'Failed to join channels' });

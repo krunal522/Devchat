@@ -30,6 +30,7 @@ interface ChatState {
 
   // Messages
   messages: Record<string, Message[]>; // channelId → messages
+  isChannelLoaded: Record<string, boolean>; // channelId → has full history been loaded from server
   hasMore: Record<string, boolean>;
   cursors: Record<string, string | null>;
   isLoadingMessages: boolean;
@@ -84,6 +85,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   activeChannel: null,
 
   messages: {},
+  isChannelLoaded: {},
   hasMore: {},
   cursors: {},
   isLoadingMessages: false,
@@ -165,12 +167,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   clearUnread: (channelId: string) => {
-    set((state) => ({
-      unreadCounts: {
-        ...state.unreadCounts,
-        [channelId]: 0,
-      },
-    }));
+    set((state) => {
+      const dm = state.dmChannels.find((d) => d.id === channelId);
+      const otherUserId = dm?.otherUser?.id;
+      return {
+        unreadCounts: {
+          ...state.unreadCounts,
+          [channelId]: 0,
+          ...(otherUserId ? { [`user:${otherUserId}`]: 0 } : {}),
+        },
+      };
+    });
   },
 
   bumpDMChannel: (channelId: string) => {
@@ -291,14 +298,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     }
 
+    const dm = channel?.type === 'DIRECT' ? channel : dmChannels.find((d) => d.id === channelId);
+    const otherUserId = (dm as any)?.otherUser?.id;
+
     set((state) => ({
       activeChannelId: channelId,
       activeChannel: channel,
       activeSessionId: null,
-      isLoadingMessages: true,
+      isLoadingMessages: !state.isChannelLoaded[channelId],
       unreadCounts: {
         ...state.unreadCounts,
         [channelId]: 0,
+        ...(otherUserId ? { [`user:${otherUserId}`]: 0 } : {}),
       },
     }));
 
@@ -368,8 +379,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
             _count: { members: 2, messages: 0 },
             isMember: true,
           } as any,
-          isLoadingMessages: true,
-          unreadCounts: { ...state.unreadCounts, [channelId]: 0 },
+          isLoadingMessages: !state.isChannelLoaded[channelId],
+          unreadCounts: {
+            ...state.unreadCounts,
+            [channelId]: 0,
+            ...(targetUserId ? { [`user:${targetUserId}`]: 0 } : {}),
+          },
         }));
       }
 
@@ -418,8 +433,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
           _count: { members: 2, messages: 0 },
           isMember: true,
         } as any,
-        isLoadingMessages: true,
-        unreadCounts: { ...state.unreadCounts, [dmChannel.id]: 0 },
+        isLoadingMessages: !state.isChannelLoaded[dmChannel.id],
+        unreadCounts: {
+          ...state.unreadCounts,
+          [dmChannel.id]: 0,
+          ...(otherUser?.id ? { [`user:${otherUser.id}`]: 0 } : {}),
+        },
       }));
 
       // Load messages and join socket room
@@ -461,6 +480,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         return {
           messages: { ...state.messages, [channelId]: merged },
+          isChannelLoaded: { ...state.isChannelLoaded, [channelId]: true },
           hasMore: { ...state.hasMore, [channelId]: Boolean(data?.hasMore) },
           cursors: { ...state.cursors, [channelId]: data?.nextCursor || null },
           isLoadingMessages: state.activeChannelId === channelId ? false : state.isLoadingMessages,
@@ -540,6 +560,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const newUnreads = { ...state.unreadCounts };
       if (!isCurrentlyActive && !isOwnMessage && !message.id.startsWith('temp-')) {
         newUnreads[targetChannelId] = (newUnreads[targetChannelId] || 0) + 1;
+        if (message.user?.id) {
+          newUnreads[`user:${message.user.id}`] = (newUnreads[`user:${message.user.id}`] || 0) + 1;
+        }
       }
 
       const nextSessionId = state.activeSessionId === 'new' ? null : state.activeSessionId;

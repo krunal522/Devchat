@@ -49,6 +49,7 @@ export function MessageList() {
   const messages = useChatStore((s) => (activeChannelId ? s.messages[activeChannelId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES));
   const activeSessionId = useChatStore((s) => s.activeSessionId);
   const isLoading = useChatStore((s) => s.isLoadingMessages);
+  const isChannelLoaded = useChatStore((s) => (activeChannelId ? Boolean(s.isChannelLoaded[activeChannelId]) : false));
   const isLoadingMore = useChatStore((s) => (activeChannelId ? s.isLoadingMore[activeChannelId] : false));
   const hasMore = useChatStore((s) => (activeChannelId ? s.hasMore[activeChannelId] : false));
   const loadMoreMessages = useChatStore((s) => s.loadMoreMessages);
@@ -100,7 +101,7 @@ export function MessageList() {
   // useLayoutEffect ensures the container is positioned at the bottom BEFORE the browser paints!
   useLayoutEffect(() => {
     if (!activeChannelId) return;
-    if (isLoading && displayMessages.length === 0) return;
+    if (isLoading && !isChannelLoaded) return;
 
     if (lastScrolledChannelRef.current !== activeChannelId) {
       lastScrolledChannelRef.current = activeChannelId;
@@ -241,8 +242,8 @@ export function MessageList() {
     );
   }
 
-  // Only show skeleton loader if loading AND no messages exist in store yet
-  if (isLoading && displayMessages.length === 0) {
+  // Only show skeleton loader if loading AND channel history has not loaded yet
+  if (isLoading && !isChannelLoaded) {
     return (
       <div className="message-list">
         <div className="message-list__skeleton">
