@@ -46,8 +46,9 @@ export function useSocketActions() {
       }
 
       // Optimistic UI Update — render message instantly (0ms latency)
+      let tempId: string | undefined;
       if (currentUser) {
-        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
         const optimisticMsg: Message = {
           id: tempId,
           content,
@@ -75,7 +76,7 @@ export function useSocketActions() {
 
       const socket = getSocket();
       if (socket && socket.connected) {
-        socket.emit('message:send', { channelId, content, parentId, attachments }, (res: any) => {
+        socket.emit('message:send', { channelId, content, parentId, attachments, tempId }, (res: any) => {
           if (res?.error) {
             console.error('[Socket] message:send error:', res.error);
           }

@@ -108,7 +108,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setThreadReplies: (replies: Message[]) => {
-    set({ activeThreadReplies: replies });
+    // Deduplicate replies by ID to guarantee unique list
+    const seen = new Set<string>();
+    const unique = (replies || []).filter((r) => {
+      if (!r?.id || seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    });
+    set({ activeThreadReplies: unique });
   },
 
   setReplyingToMessage: (message: Message | null) => {
@@ -545,8 +552,45 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const updatedMsg = { ...message, channelId: targetChannelId };
 
       if (updatedMsg.parentId) {
+        const activeThread = state.activeThreadMessage;
+        const currentReplies = state.activeThreadReplies || [];
+        const isCurrentThread = Boolean(activeThread && activeThread.id === updatedMsg.parentId);
+
+        const isServerMsg = !updatedMsg.id.startsWith('temp-');
+        const normContent = (updatedMsg.content || '').trim();
+
+        // Check if there was already an optimistic reply from the same user with the same content
+        const hadMatchingTempReply =
+          isServerMsg &&
+          currentReplies.some(
+            (r) =>
+              r.id.startsWith('temp-') &&
+              r.user?.id === updatedMsg.user?.id &&
+              (r.content || '').trim() === normContent
+          );
+
+        // Deduplicate thread replies list
+        let filteredReplies = currentReplies.filter((r) => r.id !== updatedMsg.id);
+        if (isServerMsg) {
+          filteredReplies = filteredReplies.filter(
+            (r) =>
+              !(
+                r.id.startsWith('temp-') &&
+                r.user?.id === updatedMsg.user?.id &&
+                (r.content || '').trim() === normContent
+              )
+          );
+        }
+
+        const updatedReplies = isCurrentThread
+          ? [...filteredReplies, updatedMsg]
+          : currentReplies;
+
+        // If this server message replaces an optimistic reply that already incremented the count, do NOT increment again!
+        const shouldIncrementCount = !hadMatchingTempReply;
+
         const updatedExisting = existing.map((m) => {
-          if (m.id === updatedMsg.parentId) {
+          if (m.id === updatedMsg.parentId && shouldIncrementCount) {
             return {
               ...m,
               _count: {
@@ -558,9 +602,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
           return m;
         });
 
-        const activeThread = state.activeThreadMessage;
         const updatedActiveThread =
-          activeThread && activeThread.id === updatedMsg.parentId
+          activeThread && activeThread.id === updatedMsg.parentId && shouldIncrementCount
             ? {
                 ...activeThread,
                 _count: {
@@ -569,12 +612,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 },
               }
             : activeThread;
-
-        const currentReplies = state.activeThreadReplies || [];
-        const isCurrentThread = activeThread && activeThread.id === updatedMsg.parentId;
-        const updatedReplies = isCurrentThread
-          ? [...currentReplies.filter((r) => r.id !== updatedMsg.id), updatedMsg]
-          : currentReplies;
 
         return {
           unreadCounts: newUnreads,
@@ -661,11 +698,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => {
       const channelMsgs = state.messages[channelId] || [];
       const updated = channelMsgs.map((m) => (m.id === oldId ? { ...m, id: newId } : m));
+      const updatedThreadReplies = (state.activeThreadReplies || []).map((m) =>
+        m.id === oldId ? { ...m, id: newId } : m
+      );
       return {
         messages: {
           ...state.messages,
           [channelId]: updated,
         },
+        activeThreadReplies: updatedThreadReplies,
       };
     });
   },

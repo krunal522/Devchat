@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { MessageItem } from './MessageItem';
 import { useSocketActions } from '../../hooks/useSocket';
@@ -16,9 +16,32 @@ export function ThreadDrawer() {
   const [replyContent, setReplyContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const repliesEndRef = useRef<HTMLDivElement>(null);
+  const isSubmittingRef = useRef(false);
 
   const parentId = activeThreadMessage?.id;
   const channelId = activeThreadMessage?.channelId;
+
+  // Deduplicate and filter out temporary messages when confirmed server messages exist
+  const safeReplies = useMemo(() => {
+    if (!Array.isArray(replies)) return [];
+    const seen = new Set<string>();
+    const serverReplies = replies.filter((r) => !r.id.startsWith('temp-'));
+
+    return replies.filter((r) => {
+      if (!r?.id || seen.has(r.id)) return false;
+      seen.add(r.id);
+
+      // If this is a temporary message, drop it if a confirmed server message from the same author with same content exists
+      if (r.id.startsWith('temp-')) {
+        const norm = (r.content || '').trim();
+        const hasConfirmed = serverReplies.some(
+          (sr) => sr.user?.id === r.user?.id && (sr.content || '').trim() === norm
+        );
+        if (hasConfirmed) return false;
+      }
+      return true;
+    });
+  }, [replies]);
 
   // 1. Fetch thread replies from API when thread opens
   useEffect(() => {
@@ -47,19 +70,23 @@ export function ThreadDrawer() {
   // Scroll to bottom when new reply is added
   useEffect(() => {
     repliesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [(replies || []).length]);
+  }, [safeReplies.length]);
 
   const handleSendReply = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyContent.trim() || !activeThreadMessage || !channelId) return;
+    const trimmed = replyContent.trim();
+    if (!trimmed || !activeThreadMessage || !channelId || isSubmittingRef.current) return;
 
-    sendMessage(channelId, replyContent.trim(), activeThreadMessage.id);
+    isSubmittingRef.current = true;
+    setTimeout(() => {
+      isSubmittingRef.current = false;
+    }, 250);
+
+    sendMessage(channelId, trimmed, activeThreadMessage.id);
     setReplyContent('');
   };
 
   if (!activeThreadMessage) return null;
-
-  const safeReplies = Array.isArray(replies) ? replies : [];
 
   return (
     <div className="thread-drawer-overlay">
@@ -103,7 +130,7 @@ export function ThreadDrawer() {
             {isLoading ? (
               <div className="thread-drawer__loading">Loading replies...</div>
             ) : (
-              replies.map((reply) => (
+              safeReplies.map((reply) => (
                 <MessageItem key={reply.id} message={reply} />
               ))
             )}

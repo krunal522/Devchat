@@ -57,7 +57,6 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
   const { editMessage, deleteMessage, toggleReaction } = useSocketActions();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content || '');
-  const [showActions, setShowActions] = useState(false);
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [pickerPosition, setPickerPosition] = useState<{
     top?: number;
@@ -348,9 +347,6 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
     }
   };
 
-  const handleDelete = () => {
-    setShowDeleteModal(true);
-  };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
