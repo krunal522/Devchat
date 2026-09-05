@@ -127,17 +127,31 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
 
           // ── Images & AI Generated Media (Images & Videos) ───────
           img({ src, alt }) {
+            const rawSrc = src || '';
+            const resolvedSrc = (() => {
+              if (!rawSrc) return '';
+              if (rawSrc.startsWith('http://') || rawSrc.startsWith('https://') || rawSrc.startsWith('data:') || rawSrc.startsWith('blob:')) {
+                return rawSrc;
+              }
+              const backendBase = (
+                import.meta.env.VITE_API_URL ||
+                import.meta.env.VITE_API_BASE_URL ||
+                'http://localhost:3001/api'
+              ).replace(/\/api\/?$/, '');
+              return `${backendBase}${rawSrc.startsWith('/') ? '' : '/'}${rawSrc}`;
+            })();
+
             const isVideo =
-              src?.endsWith('.mp4') ||
-              src?.endsWith('.webm') ||
-              src?.includes('mixkit') ||
+              rawSrc.endsWith('.mp4') ||
+              rawSrc.endsWith('.webm') ||
+              rawSrc.includes('mixkit') ||
               alt?.toLowerCase().includes('video');
 
-            if (isVideo && src) {
+            if (isVideo && resolvedSrc) {
               return (
                 <div className="markdown-img-container">
                   <video
-                    src={src}
+                    src={resolvedSrc}
                     controls
                     playsInline
                     preload="metadata"
@@ -153,26 +167,36 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
               <div className="markdown-img-container">
                 <div className="markdown-img-wrapper">
                   <img
-                    src={src}
+                    src={resolvedSrc}
                     alt={alt || 'AI Generated Image'}
                     className="markdown-img"
-                    loading="eager"
-                    onClick={() => src && window.open(src, '_blank')}
+                    loading="lazy"
+                    onClick={() => resolvedSrc && window.open(resolvedSrc, '_blank')}
                     onLoad={(e: any) => {
                       e.target.classList.add('markdown-img--loaded');
                       const wrapper = e.target.closest('.markdown-img-wrapper');
                       if (wrapper) wrapper.classList.add('markdown-img-wrapper--loaded');
                     }}
-                    onError={(e: any) => {
-                      if (!e.target.dataset.retry) {
-                        e.target.dataset.retry = '1';
-                        setTimeout(() => {
-                          e.target.src = src + (src?.includes('?') ? '&' : '?') + 'r=' + Date.now();
-                        }, 2000);
-                      }
-                    }}
                     title="Click to open full resolution"
                   />
+                  <div className="markdown-img-footer">
+                    <span className="markdown-img-alt">{alt || 'Generated Artwork'}</span>
+                    <a
+                      href={resolvedSrc}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="markdown-img-expand-btn"
+                      onClick={(e) => e.stopPropagation()}
+                      download
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      <span>Full Resolution</span>
+                    </a>
+                  </div>
                 </div>
               </div>
             );

@@ -399,6 +399,12 @@ export function MessageInput() {
     ? (otherUser?.displayName || otherUser?.username || activeChannel?.name || 'member')
     : `#${activeChannel?.name || 'channel'}`;
 
+  const isAIChat =
+    activeChannel?.type === 'DIRECT' &&
+    ((activeChannel?.name || '').toLowerCase().includes('devchat ai') ||
+      otherUser?.username === 'devchat_ai' ||
+      otherUser?.id === 'devchat-ai-bot-id');
+
   const hasInput = Boolean(content.trim()) || attachments.length > 0;
 
   const formatSecs = (sec: number) => {
@@ -536,7 +542,11 @@ export function MessageInput() {
               value={content}
               onChange={handleInput}
               onKeyDown={handleKeyDown}
-              placeholder={`Message ${channelName}...`}
+              placeholder={
+                isAIChat
+                  ? 'Ask DevChat AI, attach an image to analyze, or type /image to create...'
+                  : `Message ${channelName}...`
+              }
               rows={1}
             />
 

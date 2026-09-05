@@ -117,6 +117,6 @@
   --z-dropdown: 100;
   --z-sticky: 200;
   --z-overlay: 300;
-  --z-modal: 400;
-  --z-toast: 500;
+  --z-modal: 1000;
+  --z-toast: 9999999;
 }

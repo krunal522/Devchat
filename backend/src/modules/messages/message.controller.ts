@@ -35,7 +35,7 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
             if (isDMWithAI || isAIMentioned) {
               const senderUser = await prisma.user.findUnique({ where: { id: senderUserId } });
               const senderName = senderUser?.displayName || senderUser?.username || 'Developer';
-              const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || 'Hello AI';
+              const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || (req.body.attachments && req.body.attachments.length > 0 ? 'Describe and analyze this image in detail.' : 'Hello AI');
 
               const members = await prisma.channelMember.findMany({
                 where: { channelId },
@@ -48,11 +48,14 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
               });
 
               try {
-                const aiReplyText = await generateAIResponse(cleanPrompt, senderName);
+                const aiResult = await generateAIResponse(cleanPrompt, senderName, [], req.body.attachments);
+                const aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
+                const aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
 
                 const aiMessage = await messageService.sendMessage(AI_BOT_ID, channelId, {
                   content: aiReplyText,
                   parentId: isAIMentioned ? message.id : req.body.parentId,
+                  attachments: aiAttachments,
                 });
 
                 await broadcastMessageToChannel(io, channelId, aiMessage);

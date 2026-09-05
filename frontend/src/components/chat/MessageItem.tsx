@@ -336,49 +336,72 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
           )}
 
           {/* Attachments Renderer */}
-          {message.attachments && message.attachments.length > 0 && (
-            <div className="message__attachments">
-              {message.attachments.map((att) => {
-                if (att.fileType === 'IMAGE') {
+          {(() => {
+            // Avoid showing duplicate image card if the image is already displayed inside the message content
+            const uniqueAttachments = (message.attachments || []).filter((att) => {
+              if (att.fileType === 'IMAGE' && message.content) {
+                if (message.content.includes(att.fileUrl) || message.content.includes('![')) {
+                  return false;
+                }
+              }
+              return true;
+            });
+
+            if (uniqueAttachments.length === 0) return null;
+
+            const resolveUrl = (url?: string) => {
+              if (!url) return '';
+              if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) return url;
+              const backend = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/api\/?$/, '');
+              return `${backend}${url.startsWith('/') ? '' : '/'}${url}`;
+            };
+
+            return (
+              <div className="message__attachments">
+                {uniqueAttachments.map((att) => {
+                  const finalUrl = resolveUrl(att.fileUrl);
+
+                  if (att.fileType === 'IMAGE') {
+                    return (
+                      <div
+                        key={att.id}
+                        className="message__attachment-image"
+                        onClick={() => setLightboxAttachment({ url: finalUrl, name: att.fileName })}
+                        title="Click to expand full image"
+                      >
+                        <img src={finalUrl} alt={att.fileName} loading="lazy" decoding="async" />
+                      </div>
+                    );
+                  }
+
+                  if (att.fileType === 'AUDIO') {
+                    return <VoicePlayer key={att.id} src={finalUrl} />;
+                  }
+
+                  if (att.fileType === 'VIDEO') {
+                    return (
+                      <div key={att.id} className="message__attachment-media">
+                        <video controls src={finalUrl} style={{ maxWidth: '100%', borderRadius: 8 }} />
+                      </div>
+                    );
+                  }
+
                   return (
-                    <div
-                      key={att.id}
-                      className="message__attachment-image"
-                      onClick={() => setLightboxAttachment({ url: att.fileUrl, name: att.fileName })}
-                      title="Click to expand full image"
-                    >
-                      <img src={att.fileUrl} alt={att.fileName} loading="lazy" decoding="async" />
-                    </div>
+                    <a key={att.id} href={finalUrl} target="_blank" rel="noopener noreferrer" className="message__attachment-card" download>
+                      <FileIcon fileType={att.fileType} fileName={att.fileName} mimeType={att.mimeType} />
+                      <div className="message__attachment-card-info">
+                        <span className="message__attachment-card-name">{att.fileName}</span>
+                        <span className="message__attachment-card-meta">
+                          {(att.fileSize / 1024).toFixed(1)} KB
+                        </span>
+                      </div>
+                      <span className="message__attachment-card-download" title="Download">⬇️</span>
+                    </a>
                   );
-                }
-
-                if (att.fileType === 'AUDIO') {
-                  return <VoicePlayer key={att.id} src={att.fileUrl} />;
-                }
-
-                if (att.fileType === 'VIDEO') {
-                  return (
-                    <div key={att.id} className="message__attachment-media">
-                      <video controls src={att.fileUrl} style={{ maxWidth: '100%', borderRadius: 8 }} />
-                    </div>
-                  );
-                }
-
-                return (
-                  <a key={att.id} href={att.fileUrl} target="_blank" rel="noopener noreferrer" className="message__attachment-card" download>
-                    <FileIcon fileType={att.fileType} fileName={att.fileName} mimeType={att.mimeType} />
-                    <div className="message__attachment-card-info">
-                      <span className="message__attachment-card-name">{att.fileName}</span>
-                      <span className="message__attachment-card-meta">
-                        {(att.fileSize / 1024).toFixed(1)} KB
-                      </span>
-                    </div>
-                    <span className="message__attachment-card-download" title="Download">⬇️</span>
-                  </a>
-                );
-              })}
-            </div>
-          )}
+                })}
+              </div>
+            );
+          })()}
 
           {/* Reaction Badges */}
           {Object.keys(groupedReactions).length > 0 && (

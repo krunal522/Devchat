@@ -4,6 +4,25 @@
   gap: 1rem;
 }
 
+.add-member-modal__error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 8px;
+  color: #f87171;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.add-member-modal__error-icon {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
 .add-member-modal__input {
   width: 100%;
   padding: 0.75rem 1rem;

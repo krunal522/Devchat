@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 import { env } from '../../config/env.js';
@@ -67,12 +69,138 @@ export interface ChatHistoryMessage {
   text: string;
 }
 
+export interface ImageAttachmentInput {
+  fileName?: string;
+  fileUrl: string;
+  fileType?: string;
+  fileSize?: number;
+  mimeType?: string;
+}
+
+export interface AIResponseResult {
+  text: string;
+  attachments?: Array<{
+    fileName: string;
+    fileUrl: string;
+    fileType: string;
+    fileSize: number;
+    mimeType: string;
+  }>;
+}
+
+// Convert image attachment (local uploads or remote URL) to Base64 for Gemini Vision
+export async function getImageBase64(attachment: ImageAttachmentInput): Promise<{ mimeType: string; data: string } | null> {
+  try {
+    const { fileUrl, mimeType } = attachment;
+    if (!fileUrl) return null;
+
+    // 1. If it's a local upload from /uploads/
+    if (fileUrl.includes('/uploads/')) {
+      const filename = fileUrl.split('/uploads/')[1]?.split('?')[0];
+      if (filename) {
+        const localPath = path.join(process.cwd(), 'uploads', filename);
+        if (fs.existsSync(localPath)) {
+          const buffer = await fs.promises.readFile(localPath);
+          let detectedMime = mimeType;
+          if (!detectedMime || detectedMime === 'application/octet-stream') {
+            const ext = path.extname(filename).toLowerCase();
+            detectedMime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : ext === '.gif' ? 'image/gif' : 'image/jpeg';
+          }
+          return {
+            mimeType: detectedMime,
+            data: buffer.toString('base64'),
+          };
+        }
+      }
+    }
+
+    // 2. Fetch via HTTP if remote URL or not found on disk
+    const res = await fetch(fileUrl);
+    if (!res.ok) return null;
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentType = res.headers.get('content-type') || mimeType || 'image/jpeg';
+    return {
+      mimeType: contentType.split(';')[0].trim(),
+      data: buffer.toString('base64'),
+    };
+  } catch (err: any) {
+    logger.warn(`Failed to process image attachment for AI vision: ${err.message || err}`);
+    return null;
+  }
+}
+
+// Detect if user is asking to create/generate an image
+export function isImageGenerationRequest(prompt: string): boolean {
+  const p = prompt.trim().toLowerCase();
+  if (p.startsWith('/image') || p.startsWith('/imagine') || p.startsWith('/img')) return true;
+
+  const triggers = [
+    'generate image',
+    'create image',
+    'generate an image',
+    'create an image',
+    'generate photo',
+    'create photo',
+    'generate a photo',
+    'create a photo',
+    'draw an image',
+    'draw a picture',
+    'draw me',
+    'paint an image',
+    'make an image',
+    'make a picture',
+    'generate picture',
+    'image generate',
+    'image banao',
+    'photo banao',
+    'tasveer banao',
+  ];
+
+  return triggers.some((t) => p.includes(t));
+}
+
+// Extract the subject prompt to generate
+export function extractImagePrompt(prompt: string): string {
+  let p = prompt.trim();
+  p = p.replace(/^\/(image|imagine|img)\s*/i, '');
+  const regex = /(?:generate|create|make|draw|paint)\s+(?:an?\s+)?(?:image|photo|picture|artwork|illustration)\s+(?:of|for|showing|depicting)?\s*:?/i;
+  p = p.replace(regex, '');
+  p = p.replace(/^(image|photo)\s+(banao|generate\s+karo)\s*/i, '');
+  p = p.replace(/\s*(ki\s+)?(image|photo)\s+banao$/i, '');
+  return p.trim() || prompt.trim();
+}
+
+// Generate AI image using ultra-fast high-definition Flux model
+export async function generateAIImage(prompt: string, userName: string): Promise<AIResponseResult> {
+  const imageSubject = extractImagePrompt(prompt);
+  const seed = Math.floor(Math.random() * 10000000);
+  const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imageSubject)}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`;
+  const title = imageSubject.charAt(0).toUpperCase() + imageSubject.slice(1);
+
+  const text = `🎨 **${title}**\n\n![${title}](${imageUrl})\n\n✨ **Engine**: Flux 1.0 (1024×1024 Ultra-HD)`;
+
+  return {
+    text,
+    attachments: [
+      {
+        fileName: `${imageSubject.slice(0, 25).replace(/[^a-zA-Z0-9_-]/g, '_') || 'ai-image'}.jpg`,
+        fileUrl: imageUrl,
+        fileType: 'IMAGE',
+        fileSize: 1024 * 1024,
+        mimeType: 'image/jpeg',
+      },
+    ],
+  };
+}
+
 // Helper: call Gemini REST API directly (100% reliable across all Node environments, zero thinking latency)
 async function callGeminiRest(
   apiKey: string,
   userPrompt: string,
   userName: string,
-  history: ChatHistoryMessage[] = []
+  history: ChatHistoryMessage[] = [],
+  imageParts: Array<{ mimeType: string; data: string }> = []
 ): Promise<string> {
   const cleanKey = apiKey.trim();
 
@@ -89,9 +217,23 @@ async function callGeminiRest(
           });
         }
       }
+
+      const parts: any[] = [];
+      for (const img of imageParts) {
+        parts.push({
+          inline_data: {
+            mime_type: img.mimeType,
+            data: img.data,
+          },
+        });
+      }
+      parts.push({
+        text: `${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt || 'Describe and analyze this image in detail.'}`,
+      });
+
       contents.push({
         role: 'user',
-        parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt}` }],
+        parts,
       });
 
       const payload: any = { contents };
@@ -137,13 +279,14 @@ async function callGemini(
   apiKey: string,
   userPrompt: string,
   userName: string,
-  history: ChatHistoryMessage[] = []
+  history: ChatHistoryMessage[] = [],
+  imageParts: Array<{ mimeType: string; data: string }> = []
 ): Promise<string> {
   const cleanKey = apiKey.trim();
 
   // Try direct REST call first (fastest zero-latency path)
   try {
-    return await callGeminiRest(cleanKey, userPrompt, userName, history);
+    return await callGeminiRest(cleanKey, userPrompt, userName, history, imageParts);
   } catch (restErr: any) {
     if (restErr?.message === 'RESOURCE_EXHAUSTED') throw restErr;
     logger.warn(`Gemini REST failed (${restErr?.message || restErr}) — trying GoogleGenerativeAI SDK fallback...`);
@@ -164,7 +307,18 @@ async function callGemini(
         model = genAI.getGenerativeModel({ model: modelName });
       }
 
-      const result = await model.generateContent(`${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt}`);
+      const sdkParts: any[] = [];
+      for (const img of imageParts) {
+        sdkParts.push({
+          inlineData: {
+            mimeType: img.mimeType,
+            data: img.data,
+          },
+        });
+      }
+      sdkParts.push(`${SYSTEM_INSTRUCTION}\n\nUser (${userName}) asks: ${userPrompt || 'Describe and analyze this image in detail.'}`);
+
+      const result = await model.generateContent(sdkParts);
       const text = result?.response?.text();
       if (text && text.trim() !== '') {
         return text.trim();
@@ -184,8 +338,33 @@ async function callGemini(
 export async function generateAIResponse(
   userPrompt: string,
   userName: string = 'Developer',
-  history: ChatHistoryMessage[] = []
-): Promise<string> {
+  history: ChatHistoryMessage[] = [],
+  attachments: ImageAttachmentInput[] = []
+): Promise<AIResponseResult> {
+  // Check if this is an image generation request
+  if (isImageGenerationRequest(userPrompt)) {
+    logger.info(`AI Image Generation requested for prompt: "${userPrompt}"`);
+    return await generateAIImage(userPrompt, userName);
+  }
+
+  // Check for image attachments to enable Multimodal Vision
+  const imageParts: Array<{ mimeType: string; data: string }> = [];
+  if (attachments && attachments.length > 0) {
+    for (const att of attachments) {
+      const isImage =
+        (att.mimeType && att.mimeType.startsWith('image/')) ||
+        (att.fileType && att.fileType.toUpperCase() === 'IMAGE') ||
+        /\.(jpg|jpeg|png|webp|gif)$/i.test(att.fileUrl || '');
+
+      if (isImage) {
+        const base64Obj = await getImageBase64(att);
+        if (base64Obj) {
+          imageParts.push(base64Obj);
+        }
+      }
+    }
+  }
+
   // Build list of all configured keys (filter empty)
   const keys = [env.GEMINI_API_KEY, env.GEMINI_API_KEY_2].filter(
     (k): k is string => !!k && k.trim() !== ''
@@ -193,21 +372,21 @@ export async function generateAIResponse(
 
   if (keys.length === 0) {
     logger.warn('No GEMINI_API_KEY configured — generating smart context response');
-    return generateSmartFallbackResponse(userPrompt, userName);
+    return { text: generateSmartFallbackResponse(userPrompt, userName, imageParts.length > 0) };
   }
 
   let lastError = '';
 
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
-    logger.info(`AI Request — trying key ${i + 1}/${keys.length} (${key.substring(0, 8)}...)`);
+    logger.info(`AI Request — trying key ${i + 1}/${keys.length} (${key.substring(0, 8)}...), images attached: ${imageParts.length}`);
 
     try {
-      const text = await callGemini(key, userPrompt, userName, history);
+      const text = await callGemini(key, userPrompt, userName, history, imageParts);
 
       if (text && text.trim() !== '') {
         logger.info(`AI Response generated with key ${i + 1} (${text.length} chars)`);
-        return text;
+        return { text };
       }
     } catch (error: any) {
       const errMsg = error?.message || String(error);
@@ -229,16 +408,19 @@ export async function generateAIResponse(
 
       if (isQuota) {
         logger.warn(`Quota reached on all configured keys — using smart fallback generator`);
-        return generateSmartFallbackResponse(userPrompt, userName);
+        return { text: generateSmartFallbackResponse(userPrompt, userName, imageParts.length > 0) };
       }
     }
   }
 
   logger.error(`All ${keys.length} API keys failed. Last error: ${lastError}`);
-  return generateSmartFallbackResponse(userPrompt, userName);
+  return { text: generateSmartFallbackResponse(userPrompt, userName, imageParts.length > 0) };
 }
 
-function generateSmartFallbackResponse(prompt: string, userName: string): string {
+function generateSmartFallbackResponse(prompt: string, userName: string, hasImage: boolean = false): string {
+  if (hasImage) {
+    return `Hey @${userName}! I received your image attachment. Since my online AI API keys are currently unavailable or quota reached, I couldn't run optical vision analysis on this image right now. Please ensure a valid \`GEMINI_API_KEY\` is configured in \`backend/.env\`! 🖼️`;
+  }
   const p = prompt.toLowerCase();
 
   const isAdvantage = p.includes('advantage') || p.includes('benefit') || p.includes('faida') || p.includes('pros') || p.includes('good') || p.includes('why use') || p.includes('feature');

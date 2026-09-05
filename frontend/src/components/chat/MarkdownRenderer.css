@@ -59,13 +59,16 @@
 
 /* ── Blockquote ──────────────────────────────── */
 .markdown-blockquote {
-  border-left: 3px solid #6c5ce7;
+  border-left: 3px solid #6366f1;
   margin: 0.5rem 0;
-  padding: 0.375rem 0.75rem;
-  background: rgba(108, 92, 231, 0.08);
-  border-radius: 0 6px 6px 0;
-  color: #a29bfe;
-  font-style: italic;
+  padding: 0.5rem 0.875rem;
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: 0 8px 8px 0;
+  color: #f1f5f9;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 /* ── Inline Code ─────────────────────────────── */
@@ -278,60 +281,87 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.5rem;
-  max-width: 100%;
+  max-width: 520px;
+  width: 100%;
+}
+
+.markdown-img-wrapper {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 14px;
+  background: #15161e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  position: relative;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.markdown-img-wrapper:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(99, 102, 241, 0.15);
 }
 
 .markdown-img {
-  max-width: 280px;
   width: 100%;
-  max-height: 280px;
+  max-width: 520px;
+  max-height: 520px;
+  height: auto;
   object-fit: cover;
-  border-radius: 12px;
-  border: 1px solid rgba(108, 92, 231, 0.3);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  display: block;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .markdown-img:hover {
-  transform: scale(1.02);
-  border-color: rgba(108, 92, 231, 0.6);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(108, 92, 231, 0.3);
+  transform: scale(1.015);
 }
 
-/* ── Image Wrapper (Shimmer Placeholder) ─────── */
-.markdown-img-wrapper {
-  width: 280px;
-  min-height: 200px;
-  border-radius: 12px;
-  background: linear-gradient(110deg, #1e1e3a 30%, #2a2a4a 50%, #1e1e3a 70%);
-  background-size: 200% 100%;
-  animation: imgShimmer 1.5s ease-in-out infinite;
+.markdown-img-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.875rem;
+  background: rgba(18, 19, 26, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.78rem;
+}
+
+.markdown-img-alt {
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
   overflow: hidden;
-  position: relative;
+  text-overflow: ellipsis;
+  max-width: 340px;
 }
 
-.markdown-img-wrapper--loaded {
-  min-height: unset;
-  background: none;
-  animation: none;
+.markdown-img-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #818cf8;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  transition: all 0.15s ease;
+  cursor: pointer;
 }
 
-@keyframes imgShimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+.markdown-img-expand-btn:hover {
+  background: rgba(99, 102, 241, 0.25);
+  color: #c7d2fe;
+  border-color: rgba(99, 102, 241, 0.5);
 }
 
 /* ── Video Player ────────────────────────────── */
 .markdown-img--video {
   object-fit: contain;
   background: #000;
-}
-
-/* ── Loaded state ────────────────────────────── */
-.markdown-img--loaded {
-  opacity: 1 !important;
 }
 
 /* ── AI Typewriter Cursor ────────────────────── */

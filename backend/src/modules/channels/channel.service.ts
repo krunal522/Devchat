@@ -173,10 +173,19 @@ export async function leaveChannel(userId: string, channelId: string) {
 export async function isChannelAdmin(userId: string, channelId: string): Promise<boolean> {
   const channel = await prisma.channel.findUnique({
     where: { id: channelId },
-    select: { createdById: true },
+    select: { createdById: true, workspaceId: true },
   });
   if (!channel) return false;
   if (channel.createdById === userId) return true;
+
+  // Workspace OWNER or ADMIN has full admin permissions across workspace channels
+  if (channel.workspaceId) {
+    const wsMember = await prisma.workspaceMember.findUnique({
+      where: { userId_workspaceId: { userId, workspaceId: channel.workspaceId } },
+      select: { role: true },
+    });
+    if (wsMember?.role === 'OWNER' || wsMember?.role === 'ADMIN') return true;
+  }
 
   const membership = await prisma.channelMember.findUnique({
     where: { userId_channelId: { userId, channelId } },
@@ -195,8 +204,23 @@ export async function addChannelMembers(requesterId: string, channelId: string, 
   }
 
   const isAdmin = await isChannelAdmin(requesterId, channelId);
-  if (!isAdmin) {
-    throw ApiError.forbidden('Only channel admins can add members');
+  const isMember = await prisma.channelMember.findUnique({
+    where: { userId_channelId: { userId: requesterId, channelId } },
+  });
+
+  // In a public channel, any workspace member can add other workspace members.
+  // In any channel, existing channel members or admins can add members.
+  let isWorkspaceMember = false;
+  if (channel.workspaceId) {
+    const wsMember = await prisma.workspaceMember.findUnique({
+      where: { userId_workspaceId: { userId: requesterId, workspaceId: channel.workspaceId } },
+    });
+    isWorkspaceMember = !!wsMember;
+  }
+
+  const canAdd = isAdmin || !!isMember || (channel.type === 'PUBLIC' && isWorkspaceMember);
+  if (!canAdd) {
+    throw ApiError.forbidden('You do not have permission to add members to this channel');
   }
 
   for (const userId of userIds) {

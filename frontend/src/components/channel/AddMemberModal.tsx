@@ -20,6 +20,7 @@ export function AddMemberModal({ isOpen, onClose, channelId, channelName }: AddM
   const [existingMemberIds, setExistingMemberIds] = useState<Set<string>>(new Set());
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const loadChannels = useChatStore((s) => s.loadChannels);
@@ -28,6 +29,7 @@ export function AddMemberModal({ isOpen, onClose, channelId, channelName }: AddM
     if (!isOpen || !channelId) return;
 
     setIsLoading(true);
+    setErrorMessage(null);
     setSelectedUserIds(new Set());
 
     Promise.all([
@@ -44,7 +46,10 @@ export function AddMemberModal({ isOpen, onClose, channelId, channelName }: AddM
         setAllUsers(userList);
         setExistingMemberIds(existingIds as Set<string>);
       })
-      .catch((err) => console.error('Failed to load member data:', err))
+      .catch((err) => {
+        console.error('Failed to load member data:', err);
+        setErrorMessage('Failed to load members list');
+      })
       .finally(() => setIsLoading(false));
   }, [isOpen, channelId]);
 
@@ -68,11 +73,16 @@ export function AddMemberModal({ isOpen, onClose, channelId, channelName }: AddM
     if (selectedUserIds.size === 0) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
+
     try {
       const count = selectedUserIds.size;
-      await channelApi.addMembers(channelId, Array.from(selectedUserIds));
-      await loadChannels();
-      await setActiveChannel(channelId);
+      const userIdsToAdd = Array.from(selectedUserIds);
+      
+      await channelApi.addMembers(channelId, userIdsToAdd);
+
+      // Close modal immediately on success
+      onClose();
 
       useToastStore.getState().addToast({
         type: 'success',
@@ -80,13 +90,17 @@ export function AddMemberModal({ isOpen, onClose, channelId, channelName }: AddM
         message: `Added ${count} member${count === 1 ? '' : 's'} to #${channelName}`,
       });
 
-      onClose();
+      // Refresh channels & active channel data in the background
+      loadChannels().catch(console.error);
+      setActiveChannel(channelId).catch(console.error);
     } catch (err: any) {
       console.error('Failed to add members:', err);
+      const msg = err.response?.data?.error?.message || err.message || 'Could not add members';
+      setErrorMessage(msg);
       useToastStore.getState().addToast({
         type: 'danger',
         title: 'Failed to Add Members',
-        message: err.response?.data?.error?.message || 'Could not add members',
+        message: msg,
       });
     } finally {
       setIsSubmitting(false);
@@ -115,13 +129,23 @@ export function AddMemberModal({ isOpen, onClose, channelId, channelName }: AddM
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Add members to #${channelName}`}>
       <div className="add-member-modal">
+        {errorMessage && (
+          <div className="add-member-modal__error">
+            <span className="add-member-modal__error-icon">⚠️</span>
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
         <div className="add-member-modal__search">
           <input
             type="text"
             className="add-member-modal__input"
             placeholder="Search team members by name or email..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              if (errorMessage) setErrorMessage(null);
+            }}
             autoFocus
           />
         </div>

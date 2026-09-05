@@ -20,6 +20,7 @@ import { channelApi } from '../../services/channelApi';
 import { UserAvatar } from '../user/UserAvatar';
 import { usePresenceStore, useIsUserOnline } from '../../stores/presenceStore';
 import { formatLastSeenText } from '../../utils/formatPresence';
+import { getSocket } from '../../services/socketManager';
 import type { UserWithRole } from '../../types/user';
 import './MemberPanel.css';
 
@@ -43,12 +44,31 @@ export function MemberPanel() {
   useEffect(() => {
     if (!activeChannelId) return;
 
+    const fetchMembers = () => {
+      channelApi
+        .getMembers(activeChannelId)
+        .then(setMembers)
+        .catch((err) => console.error('Failed to load members:', err));
+    };
+
     setIsLoading(true);
-    channelApi
-      .getMembers(activeChannelId)
-      .then(setMembers)
-      .catch((err) => console.error('Failed to load members:', err))
-      .finally(() => setIsLoading(false));
+    fetchMembers();
+    setIsLoading(false);
+
+    const socket = getSocket();
+    const handleMemberUpdate = (data: { channelId: string }) => {
+      if (!data || data.channelId === activeChannelId) {
+        fetchMembers();
+      }
+    };
+
+    socket?.on('channel:member_added', handleMemberUpdate);
+    socket?.on('channel:member_removed', handleMemberUpdate);
+
+    return () => {
+      socket?.off('channel:member_added', handleMemberUpdate);
+      socket?.off('channel:member_removed', handleMemberUpdate);
+    };
   }, [activeChannelId]);
 
   const dmInfo = dmChannels.find((d) => d.id === activeChannel?.id);

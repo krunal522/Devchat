@@ -182,7 +182,7 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
           (async () => {
             try {
               const senderName = socket.data.displayName || socket.data.username || 'Developer';
-              const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || 'Hello AI';
+              const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || (attachments && attachments.length > 0 ? 'Describe and analyze this image in detail.' : 'Hello AI');
 
               // ⚡ Fetch lean recent conversation history (last 5 messages) for multi-turn context
               let history: Array<{ role: 'user' | 'model'; text: string }> = [];
@@ -201,7 +201,9 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
                 // proceed without history if query fails
               }
 
-              const aiReplyText = await generateAIResponse(cleanPrompt, senderName, history);
+              const aiResult = await generateAIResponse(cleanPrompt, senderName, history, attachments as any);
+              const aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
+              const aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
 
               // ⚡ 2. Instant broadcast to channel (0ms DB delay!)
               const instantAiId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -220,7 +222,7 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
                   avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=DevChatAI',
                 },
                 reactions: [],
-                attachments: [],
+                attachments: aiAttachments,
                 _count: { replies: 0 },
               };
 
@@ -231,6 +233,7 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
               messageService.sendMessage(AI_BOT_ID, channelId, {
                 content: aiReplyText,
                 parentId: isAIMentioned ? instantMessage.id : parentId,
+                attachments: aiAttachments,
                 skipMembershipCheck: true,
               }).then((savedMessage) => {
                 if (savedMessage && savedMessage.id !== instantAiId) {
