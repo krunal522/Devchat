@@ -11,8 +11,6 @@
   border-radius: 12px;
   transition: background-color 0.15s ease;
   contain: layout style;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 60px;
 }
 
 .message:hover {

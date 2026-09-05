@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useUIStore } from '../../stores/uiStore';
 import { getSocket } from '../../services/socketManager';
@@ -61,6 +61,7 @@ export function MessageList() {
   const prevLengthRef = useRef(0);
   const isNearBottomRef = useRef(true);
   const scrollTimeoutRef = useRef<number | null>(null);
+  const lastScrolledChannelRef = useRef<string | null>(null);
 
   const dmInfo = dmChannels.find((d) => d.id === activeChannelId);
   const isAIChat = activeChannel?.type === 'DIRECT' && (
@@ -82,30 +83,70 @@ export function MessageList() {
   const scrollToBottomInstant = useCallback(() => {
     const container = containerRef.current;
     if (container) {
-      container.scrollTop = container.scrollHeight;
+      container.scrollTop = container.scrollHeight + 10000;
     }
-    bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+    bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
   }, []);
 
-  // Reset scroll to bottom whenever user switches channel
+  // When switching active channel, reset scroll tracking immediately
   useEffect(() => {
     isNearBottomRef.current = true;
-    prevLengthRef.current = (messages || []).length;
-    scrollToBottomInstant();
-  }, [activeChannelId, scrollToBottomInstant]);
+    lastScrolledChannelRef.current = null;
+  }, [activeChannelId]);
 
-  // Auto-scroll ONLY when a NEW message is actually appended and user was already at bottom
+  // Initial scroll-to-bottom on channel open / messages ready
+  // useLayoutEffect ensures the container is positioned at the bottom BEFORE the browser paints!
+  useLayoutEffect(() => {
+    if (!activeChannelId) return;
+    if (isLoading && displayMessages.length === 0) return;
+
+    if (lastScrolledChannelRef.current !== activeChannelId) {
+      lastScrolledChannelRef.current = activeChannelId;
+      isNearBottomRef.current = true;
+      prevLengthRef.current = displayMessages.length;
+
+      // 1. Instant layout scroll before screen paint
+      scrollToBottomInstant();
+
+      // 2. Staggered frame checks to handle font loading, markdown render, and avatar layout
+      const raf1 = requestAnimationFrame(scrollToBottomInstant);
+      const raf2 = requestAnimationFrame(() => {
+        requestAnimationFrame(scrollToBottomInstant);
+      });
+      const t1 = setTimeout(scrollToBottomInstant, 50);
+      const t2 = setTimeout(scrollToBottomInstant, 150);
+      const t3 = setTimeout(scrollToBottomInstant, 300);
+
+      return () => {
+        cancelAnimationFrame(raf1);
+        cancelAnimationFrame(raf2);
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
+  }, [activeChannelId, displayMessages.length, isLoading, scrollToBottomInstant]);
+
+  // Auto-scroll when a NEW message arrives while user is already at bottom
   useEffect(() => {
+    if (lastScrolledChannelRef.current !== activeChannelId) return;
+
     const currentLen = (messages || []).length;
     const prevLen = prevLengthRef.current;
     prevLengthRef.current = currentLen;
 
     if (currentLen > prevLen) {
       if (isNearBottomRef.current) {
-        requestAnimationFrame(scrollToBottomInstant);
+        scrollToBottomInstant();
+        const raf = requestAnimationFrame(scrollToBottomInstant);
+        const t = setTimeout(scrollToBottomInstant, 60);
+        return () => {
+          cancelAnimationFrame(raf);
+          clearTimeout(t);
+        };
       }
     }
-  }, [(messages || []).length, scrollToBottomInstant]);
+  }, [(messages || []).length, activeChannelId, scrollToBottomInstant]);
 
   // When AI is typing, keep scrolled to bottom if user is already near bottom
   useEffect(() => {
@@ -149,18 +190,25 @@ export function MessageList() {
     const container = containerRef.current;
     if (!container) return;
 
-    const threshold = 80;
+    const threshold = 100;
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     isNearBottomRef.current = distanceFromBottom <= threshold;
 
-    if (container.scrollTop < 80 && hasMore && activeChannelId) {
+    // Only load more history when the channel has finished opening and user actively scrolled to top
+    if (
+      lastScrolledChannelRef.current === activeChannelId &&
+      container.scrollTop < 80 &&
+      hasMore &&
+      activeChannelId &&
+      !isLoading
+    ) {
       if (scrollTimeoutRef.current !== null) return;
       scrollTimeoutRef.current = requestAnimationFrame(() => {
         scrollTimeoutRef.current = null;
         loadMoreMessages(activeChannelId);
       });
     }
-  }, [hasMore, activeChannelId, loadMoreMessages]);
+  }, [hasMore, activeChannelId, isLoading, loadMoreMessages]);
 
   const handlePromptClick = (promptText: string) => {
     if (activeChannelId) {
@@ -265,7 +313,7 @@ export function MessageList() {
         {/* AI Typing Indicator Bubble */}
         {isAITyping && <AITypingBubble />}
 
-        <div ref={bottomRef} />
+        <div ref={bottomRef} style={{ height: 1, width: '100%', flexShrink: 0, pointerEvents: 'none' }} />
       </div>
     </div>
   );
