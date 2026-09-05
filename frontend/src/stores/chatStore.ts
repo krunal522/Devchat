@@ -33,6 +33,7 @@ interface ChatState {
   hasMore: Record<string, boolean>;
   cursors: Record<string, string | null>;
   isLoadingMessages: boolean;
+  isLoadingMore: Record<string, boolean>;
 
   // Unread message counters
   unreadCounts: Record<string, number>;
@@ -85,6 +86,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   hasMore: {},
   cursors: {},
   isLoadingMessages: false,
+  isLoadingMore: {},
 
   unreadCounts: {},
 
@@ -424,22 +426,36 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   loadMoreMessages: async (channelId: string) => {
-    const { cursors, hasMore } = get();
-    if (!hasMore[channelId] || !cursors[channelId]) return;
+    const { cursors, hasMore, isLoadingMore } = get();
+    if (!hasMore[channelId] || !cursors[channelId] || isLoadingMore[channelId]) return;
+
+    set((state) => ({
+      isLoadingMore: { ...state.isLoadingMore, [channelId]: true },
+    }));
 
     try {
       const data = await messageApi.getMessages(channelId, cursors[channelId]!);
       const serverMsgs = Array.isArray(data?.messages) ? data.messages : [];
-      set((state) => ({
-        messages: {
-          ...state.messages,
-          [channelId]: [...serverMsgs, ...(state.messages[channelId] || [])],
-        },
-        hasMore: { ...state.hasMore, [channelId]: Boolean(data?.hasMore) },
-        cursors: { ...state.cursors, [channelId]: data?.nextCursor || null },
-      }));
+      set((state) => {
+        const currentMsgs = state.messages[channelId] || [];
+        const existingIds = new Set(currentMsgs.map((m) => m.id));
+        const newUniqueMsgs = serverMsgs.filter((m) => !existingIds.has(m.id));
+
+        return {
+          messages: {
+            ...state.messages,
+            [channelId]: [...newUniqueMsgs, ...currentMsgs],
+          },
+          hasMore: { ...state.hasMore, [channelId]: Boolean(data?.hasMore) },
+          cursors: { ...state.cursors, [channelId]: data?.nextCursor || null },
+          isLoadingMore: { ...state.isLoadingMore, [channelId]: false },
+        };
+      });
     } catch (error) {
       console.error('Failed to load more messages:', error);
+      set((state) => ({
+        isLoadingMore: { ...state.isLoadingMore, [channelId]: false },
+      }));
     }
   },
 

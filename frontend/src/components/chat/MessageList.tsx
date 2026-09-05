@@ -49,6 +49,7 @@ export function MessageList() {
   const messages = useChatStore((s) => (activeChannelId ? s.messages[activeChannelId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES));
   const activeSessionId = useChatStore((s) => s.activeSessionId);
   const isLoading = useChatStore((s) => s.isLoadingMessages);
+  const isLoadingMore = useChatStore((s) => (activeChannelId ? s.isLoadingMore[activeChannelId] : false));
   const hasMore = useChatStore((s) => (activeChannelId ? s.hasMore[activeChannelId] : false));
   const loadMoreMessages = useChatStore((s) => s.loadMoreMessages);
   const loadMessages = useChatStore((s) => s.loadMessages);
@@ -60,8 +61,8 @@ export function MessageList() {
   const containerRef = useRef<HTMLDivElement>(null);
   const prevLengthRef = useRef(0);
   const isNearBottomRef = useRef(true);
-  const scrollTimeoutRef = useRef<number | null>(null);
   const lastScrolledChannelRef = useRef<string | null>(null);
+  const scrollAnchorRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
 
   const dmInfo = dmChannels.find((d) => d.id === activeChannelId);
   const isAIChat = activeChannel?.type === 'DIRECT' && (
@@ -92,6 +93,7 @@ export function MessageList() {
   useEffect(() => {
     isNearBottomRef.current = true;
     lastScrolledChannelRef.current = null;
+    scrollAnchorRef.current = null;
   }, [activeChannelId]);
 
   // Initial scroll-to-bottom on channel open / messages ready
@@ -110,22 +112,29 @@ export function MessageList() {
 
       // 2. Staggered frame checks to handle font loading, markdown render, and avatar layout
       const raf1 = requestAnimationFrame(scrollToBottomInstant);
-      const raf2 = requestAnimationFrame(() => {
-        requestAnimationFrame(scrollToBottomInstant);
-      });
-      const t1 = setTimeout(scrollToBottomInstant, 50);
-      const t2 = setTimeout(scrollToBottomInstant, 150);
-      const t3 = setTimeout(scrollToBottomInstant, 300);
+      const t1 = setTimeout(scrollToBottomInstant, 60);
+      const t2 = setTimeout(scrollToBottomInstant, 180);
 
       return () => {
         cancelAnimationFrame(raf1);
-        cancelAnimationFrame(raf2);
         clearTimeout(t1);
         clearTimeout(t2);
-        clearTimeout(t3);
       };
     }
   }, [activeChannelId, displayMessages.length, isLoading, scrollToBottomInstant]);
+
+  // Maintain seamless scroll position when older messages are prepended to top
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const anchor = scrollAnchorRef.current;
+    if (container && anchor) {
+      const heightDiff = container.scrollHeight - anchor.scrollHeight;
+      if (heightDiff > 0) {
+        container.scrollTop = anchor.scrollTop + heightDiff;
+      }
+      scrollAnchorRef.current = null;
+    }
+  }, [displayMessages.length]);
 
   // Auto-scroll when a NEW message arrives while user is already at bottom
   useEffect(() => {
@@ -197,18 +206,20 @@ export function MessageList() {
     // Only load more history when the channel has finished opening and user actively scrolled to top
     if (
       lastScrolledChannelRef.current === activeChannelId &&
-      container.scrollTop < 80 &&
+      container.scrollTop < 60 &&
       hasMore &&
       activeChannelId &&
-      !isLoading
+      !isLoading &&
+      !isLoadingMore
     ) {
-      if (scrollTimeoutRef.current !== null) return;
-      scrollTimeoutRef.current = requestAnimationFrame(() => {
-        scrollTimeoutRef.current = null;
-        loadMoreMessages(activeChannelId);
-      });
+      // Record scroll height so prepended messages don't jump or cause blank rendering
+      scrollAnchorRef.current = {
+        scrollHeight: container.scrollHeight,
+        scrollTop: container.scrollTop,
+      };
+      loadMoreMessages(activeChannelId);
     }
-  }, [hasMore, activeChannelId, isLoading, loadMoreMessages]);
+  }, [hasMore, activeChannelId, isLoading, isLoadingMore, loadMoreMessages]);
 
   const handlePromptClick = (promptText: string) => {
     if (activeChannelId) {
