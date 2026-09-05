@@ -5,6 +5,8 @@
   padding: 0.5rem 0;
   display: flex;
   flex-direction: column;
+  overflow-anchor: auto;
+  scroll-behavior: auto;
 }
 
 .message-list__row {

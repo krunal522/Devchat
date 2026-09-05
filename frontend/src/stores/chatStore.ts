@@ -78,6 +78,21 @@ interface ChatState {
   bumpDMChannel: (channelId: string) => void;
 }
 
+function getStoredUnreads(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem('devchat_unread_counts');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistUnreads(unreads: Record<string, number>) {
+  try {
+    localStorage.setItem('devchat_unread_counts', JSON.stringify(unreads));
+  } catch {}
+}
+
 export const useChatStore = create<ChatState>((set, get) => ({
   channels: [],
   dmChannels: [],
@@ -91,7 +106,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoadingMessages: false,
   isLoadingMore: {},
 
-  unreadCounts: {},
+  unreadCounts: getStoredUnreads(),
 
   activeThreadMessage: null,
   activeThreadReplies: [],
@@ -170,12 +185,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => {
       const dm = state.dmChannels.find((d) => d.id === channelId);
       const otherUserId = dm?.otherUser?.id;
+      const nextUnreads = {
+        ...state.unreadCounts,
+        [channelId]: 0,
+        ...(otherUserId ? { [`user:${otherUserId}`]: 0 } : {}),
+      };
+      persistUnreads(nextUnreads);
       return {
-        unreadCounts: {
-          ...state.unreadCounts,
-          [channelId]: 0,
-          ...(otherUserId ? { [`user:${otherUserId}`]: 0 } : {}),
-        },
+        unreadCounts: nextUnreads,
       };
     });
   },
@@ -197,7 +214,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ channels });
       const currentActive = get().activeChannelId;
       if (!currentActive && channels && channels.length > 0) {
-        await get().setActiveChannel(channels[0].id);
+        const savedChannelId = localStorage.getItem('devchat_last_active_channel');
+        const targetChannel = (savedChannelId && channels.find((c) => c.id === savedChannelId)) || channels[0];
+        await get().setActiveChannel(targetChannel.id);
       }
     } catch (error) {
       console.error('Failed to load channels:', error);
@@ -298,19 +317,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     }
 
+    try {
+      localStorage.setItem('devchat_last_active_channel', channelId);
+    } catch {}
+
     const dm = channel?.type === 'DIRECT' ? channel : dmChannels.find((d) => d.id === channelId);
     const otherUserId = (dm as any)?.otherUser?.id;
+
+    const nextUnreads = {
+      ...get().unreadCounts,
+      [channelId]: 0,
+      ...(otherUserId ? { [`user:${otherUserId}`]: 0 } : {}),
+    };
+    persistUnreads(nextUnreads);
 
     set((state) => ({
       activeChannelId: channelId,
       activeChannel: channel,
       activeSessionId: null,
       isLoadingMessages: !state.isChannelLoaded[channelId],
-      unreadCounts: {
-        ...state.unreadCounts,
-        [channelId]: 0,
-        ...(otherUserId ? { [`user:${otherUserId}`]: 0 } : {}),
-      },
+      unreadCounts: nextUnreads,
     }));
 
     // Join room over WebSocket so real-time messages arrive instantly
@@ -380,15 +406,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
             isMember: true,
           } as any,
           isLoadingMessages: !state.isChannelLoaded[channelId],
-          unreadCounts: {
-            ...state.unreadCounts,
-            [channelId]: 0,
-            ...(targetUserId ? { [`user:${targetUserId}`]: 0 } : {}),
-          },
+          unreadCounts: (() => {
+            const next = {
+              ...state.unreadCounts,
+              [channelId]: 0,
+              ...(targetUserId ? { [`user:${targetUserId}`]: 0 } : {}),
+            };
+            persistUnreads(next);
+            return next;
+          })(),
         }));
       }
 
       const dmChannel = await channelApi.getOrCreateDM(targetUserId);
+      try {
+        localStorage.setItem('devchat_last_active_channel', dmChannel.id);
+      } catch {}
 
       let otherUser = resolvedUser || get().dmChannels.find((d) => d.id === dmChannel.id)?.otherUser;
 
@@ -410,6 +443,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }
         } catch {}
       }
+
+      const finalUnreads = {
+        ...get().unreadCounts,
+        [dmChannel.id]: 0,
+        ...(otherUser?.id ? { [`user:${otherUser.id}`]: 0 } : {}),
+      };
+      persistUnreads(finalUnreads);
 
       // INSTANTLY finalize active channel with actual backend channel ID
       set((state) => ({
@@ -434,11 +474,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           isMember: true,
         } as any,
         isLoadingMessages: !state.isChannelLoaded[dmChannel.id],
-        unreadCounts: {
-          ...state.unreadCounts,
-          [dmChannel.id]: 0,
-          ...(otherUser?.id ? { [`user:${otherUser.id}`]: 0 } : {}),
-        },
+        unreadCounts: finalUnreads,
       }));
 
       // Load messages and join socket room
@@ -543,10 +579,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       // If adding real server message, deduplicate/replace matching optimistic message
+      const incomingTempId = (message as any).tempId;
       if (!message.id.startsWith('temp-')) {
         const normContent = (message.content || '').trim();
         existing = existing.filter(
-          (m) => !(m.id.startsWith('temp-') && m.user?.id === message.user?.id && (m.content || '').trim() === normContent)
+          (m) => !(m.id.startsWith('temp-') && m.user?.id === message.user?.id && ((incomingTempId && m.id === incomingTempId) || (normContent && (m.content || '').trim() === normContent)))
         );
       }
 
@@ -555,14 +592,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       const isOwnMessage = Boolean(currentUserId && message.user?.id === currentUserId);
-      const isLoaded = Boolean(state.messages[targetChannelId] && state.messages[targetChannelId].length > 0);
 
       const newUnreads = { ...state.unreadCounts };
-      if (!isCurrentlyActive && !isOwnMessage && !message.id.startsWith('temp-')) {
+      if (!isCurrentlyActive && !isOwnMessage) {
         newUnreads[targetChannelId] = (newUnreads[targetChannelId] || 0) + 1;
         if (message.user?.id) {
           newUnreads[`user:${message.user.id}`] = (newUnreads[`user:${message.user.id}`] || 0) + 1;
         }
+        persistUnreads(newUnreads);
       }
 
       const nextSessionId = state.activeSessionId === 'new' ? null : state.activeSessionId;

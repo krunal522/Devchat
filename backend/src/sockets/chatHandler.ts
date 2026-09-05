@@ -114,9 +114,11 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         avatarUrl: socket.data.avatarUrl || null,
       };
 
-      const instantId = (payload as any).tempId || `msg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const serverMsgId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const clientTempId = (payload as any).tempId || null;
       const instantMessage = {
-        id: instantId,
+        id: serverMsgId,
+        tempId: clientTempId,
         content: content ? content.trim() : '',
         channelId,
         parentId: parentId || null,
@@ -135,7 +137,7 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
       io.to(rooms).emit('message:new', instantMessage);
 
       // Acknowledge success to sender instantly
-      callback?.({ success: true, data: instantMessage });
+      callback?.({ success: true, data: instantMessage, tempId: clientTempId });
 
       // If it's a thread reply, also emit to the thread room
       if (parentId) {
@@ -149,9 +151,10 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         attachments,
         skipMembershipCheck: true,
       }).then((savedMessage) => {
-        if (savedMessage && savedMessage.id !== instantId) {
-          io.to(`channel:${channelId}`).emit('message:saved', {
-            tempId: instantId,
+        if (savedMessage && savedMessage.id !== serverMsgId) {
+          const syncRooms = [`channel:${channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
+          io.to(syncRooms).emit('message:saved', {
+            tempId: clientTempId || serverMsgId,
             realId: savedMessage.id,
             channelId,
           });

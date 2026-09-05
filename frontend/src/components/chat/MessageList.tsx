@@ -85,9 +85,8 @@ export function MessageList() {
   const scrollToBottomInstant = useCallback(() => {
     const container = containerRef.current;
     if (container) {
-      container.scrollTop = container.scrollHeight + 10000;
+      container.scrollTop = container.scrollHeight;
     }
-    bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
   }, []);
 
   // When switching active channel, reset scroll tracking immediately
@@ -100,29 +99,19 @@ export function MessageList() {
   // Initial scroll-to-bottom on channel open / messages ready
   // useLayoutEffect ensures the container is positioned at the bottom BEFORE the browser paints!
   useLayoutEffect(() => {
-    if (!activeChannelId) return;
-    if (isLoading && !isChannelLoaded) return;
+    if (!activeChannelId || !isChannelLoaded) return;
 
     if (lastScrolledChannelRef.current !== activeChannelId) {
       lastScrolledChannelRef.current = activeChannelId;
       isNearBottomRef.current = true;
       prevLengthRef.current = displayMessages.length;
 
-      // 1. Instant layout scroll before screen paint
-      scrollToBottomInstant();
-
-      // 2. Staggered frame checks to handle font loading, markdown render, and avatar layout
-      const raf1 = requestAnimationFrame(scrollToBottomInstant);
-      const t1 = setTimeout(scrollToBottomInstant, 60);
-      const t2 = setTimeout(scrollToBottomInstant, 180);
-
-      return () => {
-        cancelAnimationFrame(raf1);
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
+      // Instant layout scroll before screen paint
+      if (containerRef.current) {
+        containerRef.current.scrollTop = containerRef.current.scrollHeight;
+      }
     }
-  }, [activeChannelId, displayMessages.length, isLoading, scrollToBottomInstant]);
+  }, [activeChannelId, isChannelLoaded, displayMessages.length]);
 
   // Maintain seamless scroll position when older messages are prepended to top
   useLayoutEffect(() => {
@@ -242,8 +231,8 @@ export function MessageList() {
     );
   }
 
-  // Only show skeleton loader if loading AND channel history has not loaded yet
-  if (isLoading && !isChannelLoaded) {
+  // Only show full message list when channel history has actually loaded from the server
+  if (!isChannelLoaded) {
     return (
       <div className="message-list">
         <div className="message-list__skeleton">

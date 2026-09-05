@@ -338,6 +338,9 @@
 }
 
 .sidebar__unread-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   font-size: 0.72rem;
   font-weight: 800;
   padding: 2px 7px;
@@ -350,6 +353,7 @@
   min-width: 18px;
   text-align: center;
   line-height: 1.2;
+  z-index: 2;
 }
 
 .sidebar__item--unread .sidebar__item-name {
