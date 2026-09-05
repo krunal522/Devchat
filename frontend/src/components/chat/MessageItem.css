@@ -402,18 +402,11 @@
   margin: 0 3px;
 }
 
-/* More Emoji Wrapper & Popover Position */
-.message__more-emoji-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.message__full-emoji-picker {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 9999;
+/* ── Portal Emoji Picker (Fixed / Viewport Aware) ─────── */
+.message__portal-emoji-picker {
+  pointer-events: auto;
+  animation: pickerPopIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.65));
 }
 
 /* ── Reaction Badges ────────────────────────── */

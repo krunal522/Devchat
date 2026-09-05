@@ -10,12 +10,18 @@
 }
 
 /* Emoji Popover Container */
+.message-input__emoji-trigger-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .message-input__emoji-popover {
   position: absolute;
   bottom: calc(100% + 10px);
   left: 0;
   z-index: 9999;
-  max-width: 340px;
+  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.65));
 }
 
 /* Main Chat Input Box */

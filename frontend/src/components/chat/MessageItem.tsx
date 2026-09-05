@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, memo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { UserAvatar } from '../user/UserAvatar';
 import { EmojiPicker } from '../ui/EmojiPicker';
@@ -58,9 +58,72 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
   const [editContent, setEditContent] = useState(message.content || '');
   const [showActions, setShowActions] = useState(false);
   const [showFullPicker, setShowFullPicker] = useState(false);
+  const [pickerPosition, setPickerPosition] = useState<{
+    top?: number;
+    bottom?: number;
+    right: number;
+  } | null>(null);
+  const emojiTriggerRef = useRef<HTMLButtonElement>(null);
   const [lightboxAttachment, setLightboxAttachment] = useState<{ url: string; name: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pendingReactionRef = useRef(false);
+
+  const calculatePickerPosition = useCallback(() => {
+    if (!emojiTriggerRef.current) return null;
+    const rect = emojiTriggerRef.current.getBoundingClientRect();
+    const pickerHeight = 390; // height of emoji picker
+    const pickerWidth = 340;
+
+    // Check if there's enough space below in the viewport
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpwards = spaceBelow < pickerHeight + 16;
+
+    // Align with trigger button, clamped safely to prevent offscreen overflow
+    let right = window.innerWidth - rect.right;
+    if (rect.right - pickerWidth < 12) {
+      right = window.innerWidth - pickerWidth - 12;
+    }
+    if (right < 12) {
+      right = 12;
+    }
+
+    return {
+      ...(openUpwards
+        ? { bottom: window.innerHeight - rect.top + 8 }
+        : { top: rect.bottom + 8 }),
+      right,
+    };
+  }, []);
+
+  const handleTogglePicker = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!showFullPicker) {
+      const pos = calculatePickerPosition();
+      if (pos) setPickerPosition(pos);
+      setShowFullPicker(true);
+    } else {
+      setShowFullPicker(false);
+    }
+  };
+
+  // Close or reposition on window scroll / resize
+  useEffect(() => {
+    if (!showFullPicker) return;
+
+    const handleScrollOrResize = () => {
+      const pos = calculatePickerPosition();
+      if (pos) {
+        setPickerPosition(pos);
+      }
+    };
+
+    window.addEventListener('resize', handleScrollOrResize, { passive: true });
+    window.addEventListener('scroll', handleScrollOrResize, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScrollOrResize, { capture: true });
+    };
+  }, [showFullPicker, calculatePickerPosition]);
 
   const channelNameLower = typeof activeChannel?.name === 'string' ? activeChannel.name.toLowerCase() : '';
   const isAIChat =
@@ -457,36 +520,20 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
         {!isEditing && !isAIMessage && !isAIChat && (
           <div className={`message__actions ${showFullPicker ? 'message__actions--active' : ''}`}>
             {/* Clean Smiley Reaction Picker Trigger */}
-            <div className="message__more-emoji-wrapper">
-              <button
-                type="button"
-                className={`message__action-btn ${showFullPicker ? 'message__action-btn--active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowFullPicker((prev) => !prev);
-                }}
-                title="Add reaction"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                  <line x1="9" y1="9" x2="9.01" y2="9" />
-                  <line x1="15" y1="9" x2="15.01" y2="9" />
-                </svg>
-              </button>
-
-              {showFullPicker && (
-                <div className="message__full-emoji-picker" onClick={(e) => e.stopPropagation()}>
-                  <EmojiPicker
-                    onSelectEmoji={(emoji) => {
-                      handleToggleReaction(emoji);
-                      setShowFullPicker(false);
-                    }}
-                    onClose={() => setShowFullPicker(false)}
-                  />
-                </div>
-              )}
-            </div>
+            <button
+              ref={emojiTriggerRef}
+              type="button"
+              className={`message__action-btn ${showFullPicker ? 'message__action-btn--active' : ''}`}
+              onClick={handleTogglePicker}
+              title="Add reaction"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                <line x1="9" y1="9" x2="9.01" y2="9" />
+                <line x1="15" y1="9" x2="15.01" y2="9" />
+              </svg>
+            </button>
 
             <button
               type="button"
@@ -605,6 +652,31 @@ export const MessageItem = memo(function MessageItem({ message }: MessageItemPro
                 }}
               />
             </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Floating Reaction Emoji Picker Portal (Avoids clipping & flips up if near bottom) */}
+      {showFullPicker && pickerPosition &&
+        createPortal(
+          <div
+            className="message__portal-emoji-picker"
+            style={{
+              position: 'fixed',
+              top: pickerPosition.top !== undefined ? `${pickerPosition.top}px` : 'auto',
+              bottom: pickerPosition.bottom !== undefined ? `${pickerPosition.bottom}px` : 'auto',
+              right: `${pickerPosition.right}px`,
+              zIndex: 999999,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <EmojiPicker
+              onSelectEmoji={(emoji) => {
+                handleToggleReaction(emoji);
+                setShowFullPicker(false);
+              }}
+              onClose={() => setShowFullPicker(false)}
+            />
           </div>,
           document.body
         )}

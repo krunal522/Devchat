@@ -13,10 +13,22 @@ interface EmojiCategory {
   emojis: { emoji: string; name: string }[];
 }
 
+const QUICK_REACTIONS = [
+  { emoji: '👍', name: 'thumbs up' },
+  { emoji: '❤️', name: 'red heart' },
+  { emoji: '😂', name: 'face with tears of joy' },
+  { emoji: '🔥', name: 'fire' },
+  { emoji: '🚀', name: 'rocket ship' },
+  { emoji: '🎉', name: 'party popper' },
+  { emoji: '👏', name: 'clapping hands' },
+  { emoji: '😮', name: 'face with open mouth' },
+];
+
+// Universal, rock-solid Unicode <= 12 emojis guaranteed to render flawlessly across all Windows, Mac, and mobile browsers
 const EMOJI_CATEGORIES: EmojiCategory[] = [
   {
     id: 'smileys',
-    name: 'Smileys & People',
+    name: 'Smileys & Emotion',
     icon: '😀',
     emojis: [
       { emoji: '😀', name: 'grinning face' },
@@ -29,7 +41,6 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '😂', name: 'face with tears of joy' },
       { emoji: '🙂', name: 'slightly smiling face' },
       { emoji: '🙃', name: 'upside down face' },
-      { emoji: '🫠', name: 'melting face' },
       { emoji: '😉', name: 'winking face' },
       { emoji: '😊', name: 'smiling face with smiling eyes' },
       { emoji: '😇', name: 'smiling face with halo' },
@@ -46,10 +57,9 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '😝', name: 'squinting face with tongue' },
       { emoji: '🤑', name: 'money mouth face' },
       { emoji: '🤗', name: 'smiling face with open hands' },
-      { emoji: '🫣', name: 'peeking eye' },
+      { emoji: '🤭', name: 'face with hand over mouth' },
       { emoji: '🤫', name: 'shushing face' },
       { emoji: '🤔', name: 'thinking face' },
-      { emoji: '🫡', name: 'saluting face' },
       { emoji: '🤐', name: 'zipper mouth face' },
       { emoji: '🤨', name: 'face with raised eyebrow' },
       { emoji: '😐', name: 'neutral face' },
@@ -59,7 +69,6 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '😒', name: 'unamused face' },
       { emoji: '🙄', name: 'face with rolling eyes' },
       { emoji: '😬', name: 'grimacing face' },
-      { emoji: '😮‍💨', name: 'face exhaling' },
       { emoji: '🤥', name: 'lying face' },
       { emoji: '😌', name: 'relieved face' },
       { emoji: '😔', name: 'pensive face' },
@@ -71,6 +80,7 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🤕', name: 'face with head bandage' },
       { emoji: '🤢', name: 'nauseated face' },
       { emoji: '🤮', name: 'face vomiting' },
+      { emoji: '🤧', name: 'sneezing face' },
       { emoji: '🥵', name: 'hot face' },
       { emoji: '🥶', name: 'cold face' },
       { emoji: '🥴', name: 'woozy face' },
@@ -85,33 +95,55 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '😟', name: 'worried face' },
       { emoji: '🙁', name: 'slightly frowning face' },
       { emoji: '😮', name: 'face with open mouth' },
+      { emoji: '😯', name: 'hushed face' },
       { emoji: '😲', name: 'astonished face' },
       { emoji: '😳', name: 'flushed face' },
       { emoji: '🥺', name: 'pleading face' },
-      { emoji: '🥹', name: 'holding back tears' },
       { emoji: '😦', name: 'frowning face with open mouth' },
+      { emoji: '😧', name: 'anguished face' },
+      { emoji: '😨', name: 'fearful face' },
+      { emoji: '😰', name: 'anxious face with sweat' },
+      { emoji: '😥', name: 'sad but relieved face' },
+      { emoji: '😢', name: 'crying face' },
+      { emoji: '😭', name: 'loudly crying face' },
+      { emoji: '😱', name: 'face screaming in fear' },
+      { emoji: '😖', name: 'confounded face' },
+      { emoji: '😣', name: 'persevering face' },
+      { emoji: '😞', name: 'disappointed face' },
+      { emoji: '😓', name: 'downcast face with sweat' },
+      { emoji: '😩', name: 'weary face' },
+      { emoji: '😫', name: 'tired face' },
+      { emoji: '🥱', name: 'yawning face' },
+      { emoji: '😤', name: 'face with steam from nose' },
+      { emoji: '😡', name: 'pouting face angry' },
+      { emoji: '😠', name: 'angry face' },
+      { emoji: '🤬', name: 'face with symbols on mouth' },
       { emoji: '💀', name: 'skull' },
       { emoji: '☠️', name: 'skull and crossbones' },
       { emoji: '💩', name: 'pile of poo' },
       { emoji: '🤡', name: 'clown face' },
       { emoji: '👹', name: 'ogre' },
       { emoji: '👺', name: 'goblin' },
-      { emoji: 'ghost', name: 'ghost' },
       { emoji: '👻', name: 'ghost' },
       { emoji: '👽', name: 'alien' },
       { emoji: '👾', name: 'alien monster' },
       { emoji: '🤖', name: 'robot' },
+    ],
+  },
+  {
+    id: 'people',
+    name: 'Hands & Gestures',
+    icon: '👋',
+    emojis: [
       { emoji: '👋', name: 'waving hand' },
       { emoji: '🤚', name: 'raised back of hand' },
       { emoji: '🖐️', name: 'hand with fingers splayed' },
       { emoji: '✋', name: 'raised hand' },
       { emoji: '🖖', name: 'vulcan salute' },
       { emoji: '👌', name: 'OK hand' },
-      { emoji: '🤌', name: 'pinched fingers' },
       { emoji: '🤏', name: 'pinching hand' },
       { emoji: '✌️', name: 'victory hand' },
       { emoji: '🤞', name: 'crossed fingers' },
-      { emoji: '🫰', name: 'hand with index finger and thumb crossed' },
       { emoji: '🤟', name: 'love you gesture' },
       { emoji: '🤘', name: 'sign of the horns' },
       { emoji: '🤙', name: 'call me hand' },
@@ -129,7 +161,6 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🤜', name: 'right facing fist' },
       { emoji: '👏', name: 'clapping hands' },
       { emoji: '🙌', name: 'raising hands' },
-      { emoji: '🫶', name: 'heart hands' },
       { emoji: '👐', name: 'open hands' },
       { emoji: '🤲', name: 'palms up together' },
       { emoji: '🤝', name: 'handshake' },
@@ -140,18 +171,7 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '💪', name: 'flexed biceps' },
       { emoji: '🧠', name: 'brain' },
       { emoji: '👀', name: 'eyes' },
-      { emoji: '👶', name: 'baby' },
-      { emoji: '🧑‍💻', name: 'technologist developer' },
-      { emoji: '👨‍💻', name: 'man technologist' },
-      { emoji: '👩‍💻', name: 'woman technologist' },
-      { emoji: '🕵️', name: 'detective' },
-      { emoji: '🥷', name: 'ninja' },
-      { emoji: '👮', name: 'police officer' },
-      { emoji: '👷', name: 'construction worker' },
-      { emoji: '🤴', name: 'prince' },
-      { emoji: '👸', name: 'princess' },
-      { emoji: '🦸', name: 'superhero' },
-      { emoji: '🦹', name: 'supervillain' },
+      { emoji: '👁️', name: 'eye' },
     ],
   },
   {
@@ -167,7 +187,6 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🦊', name: 'fox' },
       { emoji: '🐻', name: 'bear' },
       { emoji: '🐼', name: 'panda' },
-      { emoji: '🐻‍❄️', name: 'polar bear' },
       { emoji: '🐨', name: 'koala' },
       { emoji: '🐯', name: 'tiger face' },
       { emoji: '🦁', name: 'lion' },
@@ -182,6 +201,7 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🐧', name: 'penguin' },
       { emoji: '🐦', name: 'bird' },
       { emoji: '🐤', name: 'baby chick' },
+      { emoji: '🦆', name: 'duck' },
       { emoji: '🦅', name: 'eagle' },
       { emoji: '🦉', name: 'owl' },
       { emoji: '🦇', name: 'bat' },
@@ -219,7 +239,7 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🐊', name: 'crocodile' },
       { emoji: '🐅', name: 'tiger' },
       { emoji: '🐆', name: 'leopard' },
-      { emoji: 'Zebra', name: 'zebra' },
+      { emoji: '🦓', name: 'zebra' },
       { emoji: '🦍', name: 'gorilla' },
       { emoji: '🐘', name: 'elephant' },
       { emoji: '🦛', name: 'hippopotamus' },
@@ -227,7 +247,6 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🐪', name: 'camel' },
       { emoji: '🦒', name: 'giraffe' },
       { emoji: '🦘', name: 'kangaroo' },
-      { emoji: '🦬', name: 'bison' },
       { emoji: '🐕', name: 'dog' },
       { emoji: '🐈', name: 'cat' },
       { emoji: '🦚', name: 'peacock' },
@@ -289,7 +308,6 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🍉', name: 'watermelon' },
       { emoji: '🍇', name: 'grapes' },
       { emoji: '🍓', name: 'strawberry' },
-      { emoji: '🫐', name: 'blueberries' },
       { emoji: '🍈', name: 'melon' },
       { emoji: '🍒', name: 'cherries' },
       { emoji: '🍑', name: 'peach' },
@@ -351,13 +369,11 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🍭', name: 'lollipop' },
       { emoji: '🍮', name: 'custard' },
       { emoji: '🍿', name: 'popcorn' },
-      { emoji: '🍩', name: 'donut' },
       { emoji: '🥛', name: 'glass of milk' },
       { emoji: '☕', name: 'hot beverage coffee tea' },
       { emoji: '🍵', name: 'teacup without handle' },
       { emoji: '🧃', name: 'beverage box' },
       { emoji: '🥤', name: 'cup with straw' },
-      { emoji: '🧋', name: 'bubble tea' },
       { emoji: '🍺', name: 'beer mug' },
       { emoji: '🍻', name: 'clinking beer mugs' },
       { emoji: '🥂', name: 'clinking glasses' },
@@ -395,7 +411,6 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🥊', name: 'boxing glove' },
       { emoji: '🥋', name: 'martial arts uniform' },
       { emoji: '🛹', name: 'skateboard' },
-      { emoji: '🛼', name: 'roller skate' },
       { emoji: '🎿', name: 'skis' },
       { emoji: '🧘', name: 'person in lotus position' },
       { emoji: '🏄', name: 'person surfing' },
@@ -448,7 +463,6 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🚒', name: 'fire engine' },
       { emoji: '🚚', name: 'delivery truck' },
       { emoji: '🚜', name: 'tractor' },
-      { emoji: '🏎️', name: 'race car' },
       { emoji: '🏍️', name: 'motorcycle' },
       { emoji: '🛵', name: 'motor scooter' },
       { emoji: '🚲', name: 'bicycle' },
@@ -459,7 +473,6 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '🏨', name: 'hotel' },
       { emoji: '🏫', name: 'school' },
       { emoji: '🏭', name: 'factory' },
-      { emoji: '🏯', name: 'japanese castle' },
       { emoji: '🏰', name: 'castle' },
       { emoji: '🚀', name: 'rocket ship' },
       { emoji: '🛸', name: 'flying saucer ufo' },
@@ -646,50 +659,108 @@ const EMOJI_CATEGORIES: EmojiCategory[] = [
 export function EmojiPicker({ onSelectEmoji, onClose }: EmojiPickerProps) {
   const [activeCategory, setActiveCategory] = useState<string>('smileys');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [hoveredEmoji, setHoveredEmoji] = useState<{ emoji: string; name: string } | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Close on outside click
+  // Close on outside click or Escape key
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         onClose?.();
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose?.();
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [onClose]);
 
-  // Filter emojis by search query
-  const filteredCategories = EMOJI_CATEGORIES.map((cat) => ({
-    ...cat,
-    emojis: cat.emojis.filter((item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
-      item.emoji.includes(searchQuery.trim())
-    ),
-  })).filter((cat) => cat.emojis.length > 0);
+  // Filter emojis by search query or display active category
+  const displayedCategories = searchQuery.trim()
+    ? EMOJI_CATEGORIES.map((cat) => ({
+        ...cat,
+        emojis: cat.emojis.filter(
+          (item) =>
+            item.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+            item.emoji.includes(searchQuery.trim())
+        ),
+      })).filter((cat) => cat.emojis.length > 0)
+    : EMOJI_CATEGORIES.filter((cat) => cat.id === activeCategory);
 
   return (
-    <div className="emoji-picker-container" ref={pickerRef}>
-      {/* Search Bar */}
+    <div className="emoji-picker-container" ref={pickerRef} tabIndex={-1}>
+      {/* Search Header */}
       <div className="emoji-picker__search-wrapper">
-        <span className="emoji-picker__search-icon">🔍</span>
+        <svg
+          className="emoji-picker__search-icon"
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
         <input
+          ref={searchInputRef}
           type="text"
           className="emoji-picker__search-input"
-          placeholder="Search all emojis..."
+          placeholder="Search emojis..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          autoFocus={false}
         />
         {searchQuery && (
           <button
             type="button"
             className="emoji-picker__search-clear"
-            onClick={() => setSearchQuery('')}
+            onClick={() => {
+              setSearchQuery('');
+              searchInputRef.current?.focus();
+            }}
+            title="Clear search"
           >
             ✕
           </button>
         )}
       </div>
+
+      {/* Quick Reactions Strip (Only in default view) */}
+      {!searchQuery && (
+        <div className="emoji-picker__quick-reactions">
+          <span className="emoji-picker__quick-label">QUICK</span>
+          <div className="emoji-picker__quick-list">
+            {QUICK_REACTIONS.map((item) => (
+              <button
+                key={`quick-${item.emoji}`}
+                type="button"
+                className="emoji-picker__quick-btn"
+                onClick={() => {
+                  onSelectEmoji(item.emoji);
+                  onClose?.();
+                }}
+                onMouseEnter={() => setHoveredEmoji(item)}
+                onMouseLeave={() => setHoveredEmoji(null)}
+                title={`:${item.name}:`}
+              >
+                {item.emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Category Tabs */}
       {!searchQuery && (
@@ -702,9 +773,8 @@ export function EmojiPicker({ onSelectEmoji, onClose }: EmojiPickerProps) {
               onClick={() => {
                 setActiveCategory(cat.id);
                 const container = pickerRef.current?.querySelector('.emoji-picker__content');
-                const el = document.getElementById(`emoji-cat-${cat.id}`);
-                if (container && el) {
-                  container.scrollTop = el.offsetTop - 10;
+                if (container) {
+                  container.scrollTop = 0;
                 }
               }}
               title={cat.name}
@@ -717,15 +787,15 @@ export function EmojiPicker({ onSelectEmoji, onClose }: EmojiPickerProps) {
 
       {/* Emoji List Grid */}
       <div className="emoji-picker__content">
-        {filteredCategories.length === 0 ? (
+        {displayedCategories.length === 0 ? (
           <div className="emoji-picker__empty">
-            <span>😕</span>
+            <span className="emoji-picker__empty-icon">🔍</span>
             <p>No emojis found for "{searchQuery}"</p>
           </div>
         ) : (
-          filteredCategories.map((cat) => (
-            <div key={cat.id} id={`emoji-cat-${cat.id}`} className="emoji-picker__section">
-              {!searchQuery && <h4 className="emoji-picker__section-title">{cat.name}</h4>}
+          displayedCategories.map((cat) => (
+            <div key={cat.id} className="emoji-picker__section">
+              <h4 className="emoji-picker__section-title">{cat.name}</h4>
               <div className="emoji-picker__grid">
                 {cat.emojis.map((item, idx) => (
                   <button
@@ -736,6 +806,8 @@ export function EmojiPicker({ onSelectEmoji, onClose }: EmojiPickerProps) {
                       onSelectEmoji(item.emoji);
                       onClose?.();
                     }}
+                    onMouseEnter={() => setHoveredEmoji(item)}
+                    onMouseLeave={() => setHoveredEmoji(null)}
                     title={`:${item.name}:`}
                   >
                     {item.emoji}
@@ -744,6 +816,26 @@ export function EmojiPicker({ onSelectEmoji, onClose }: EmojiPickerProps) {
               </div>
             </div>
           ))
+        )}
+      </div>
+
+      {/* Enterprise Interactive Preview Footer (Slack & Discord Style) */}
+      <div className="emoji-picker__footer">
+        {hoveredEmoji ? (
+          <div className="emoji-picker__preview">
+            <span className="emoji-picker__preview-glyph">{hoveredEmoji.emoji}</span>
+            <div className="emoji-picker__preview-info">
+              <span className="emoji-picker__preview-code">
+                :{hoveredEmoji.name.replace(/\s+/g, '_')}:
+              </span>
+              <span className="emoji-picker__preview-name">{hoveredEmoji.name}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="emoji-picker__footer-idle">
+            <span className="emoji-picker__footer-icon">✨</span>
+            <span>DevChat Emoji Reactions</span>
+          </div>
         )}
       </div>
     </div>
