@@ -248,3 +248,17 @@ model ChannelReadState {
   @@index([userId])
   @@map("channel_read_states")
 }
+
+// ─── File Upload (Persistent binary storage for ephemeral deployments like Render) ──
+model FileUpload {
+  id        String   @id @default(uuid())
+  filename  String   @unique
+  mimeType  String   @map("mime_type")
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([filename])
+  @@map("file_uploads")
+}
+

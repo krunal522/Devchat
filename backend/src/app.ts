@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import fs from 'fs';
+import { prisma } from './config/database.js';
+import { logger } from './utils/logger.js';
 import { env } from './config/env.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -49,8 +52,41 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
-// ─── Static File Uploads Serving ────────────────────────
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+// ─── Static File Uploads Serving & Resilient DB Fallback ────────
+const uploadsDir = path.join(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadsDir));
+
+// Fallback: If file is missing from local disk (e.g. Render/Railway container restarted/redeployed)
+app.get('/uploads/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const fileRecord = await prisma.fileUpload.findUnique({
+      where: { filename },
+    });
+
+    if (!fileRecord) {
+      return res.status(404).send('File not found');
+    }
+
+    // Re-hydrate local disk cache so subsequent requests are served instantly by express.static
+    try {
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(uploadsDir, filename), fileRecord.data);
+    } catch {
+      // Ignore disk write errors if container disk is constrained
+    }
+
+    res.setHeader('Content-Type', fileRecord.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Length', fileRecord.size);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.end(fileRecord.data);
+  } catch (error) {
+    logger.error('Error fetching file from database fallback:', error);
+    return res.status(404).send('File not found');
+  }
+});
 
 // ─── Compression ────────────────────────────────────────
 app.use(compression());

@@ -451,6 +451,27 @@ export async function generateAIImage(prompt: string, userName: string): Promise
     fileUrl = `/uploads/${savedDiskName}`;
     fileSize = imageResult.buffer.length;
     logger.info(`Saved generated AI image to ${filePath} (${fileSize} bytes)`);
+
+    // Resilient DB Persistence for AI images on ephemeral container restarts
+    try {
+      await prisma.fileUpload.upsert({
+        where: { filename: savedDiskName },
+        update: {
+          mimeType,
+          size: fileSize,
+          data: new Uint8Array(imageResult.buffer),
+        },
+        create: {
+          filename: savedDiskName,
+          mimeType,
+          size: fileSize,
+          data: new Uint8Array(imageResult.buffer),
+        },
+      });
+      logger.info(`Persisted AI image ${savedDiskName} to database`);
+    } catch (dbErr) {
+      logger.error('Failed to backup AI image to database:', dbErr);
+    }
   }
 
   // Format cleanly like ChatGPT / DALL-E (Zero third-party credits, dynamic contextual suggestions)
