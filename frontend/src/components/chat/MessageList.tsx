@@ -10,6 +10,7 @@ import { AILogoIcon } from '../ui/AILogoIcon';
 import { UserAvatar } from '../user/UserAvatar';
 import { groupMessagesIntoSessions } from '../../utils/aiSessions';
 import { formatDateSeparator } from '../../utils/formatDate';
+import { WelcomeDashboard } from './WelcomeDashboard';
 import './MessageList.css';
 
 // Stable empty array — prevents new reference on every render
@@ -220,15 +221,7 @@ export function MessageList() {
 
 
   if (!activeChannelId) {
-    return (
-      <div className="message-list__empty">
-        <div className="message-list__empty-content">
-          <span className="message-list__empty-icon">💬</span>
-          <h3>Welcome to DevChat</h3>
-          <p>Select a channel from the sidebar to start chatting</p>
-        </div>
-      </div>
-    );
+    return <WelcomeDashboard />;
   }
 
   // Only show full message list when channel history has actually loaded from the server

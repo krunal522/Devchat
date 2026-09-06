@@ -5,6 +5,7 @@ interface UIState {
   isMemberPanelOpen: boolean;
   isCreateChannelModalOpen: boolean;
   isStartDMModalOpen: boolean;
+  isSearchModalOpen: boolean;
   activeModal: string | null;
   mobileView: 'list' | 'chat' | 'details';
   setMobileView: (view: 'list' | 'chat' | 'details') => void;
@@ -18,6 +19,9 @@ interface UIState {
   closeCreateChannelModal: () => void;
   openStartDMModal: () => void;
   closeStartDMModal: () => void;
+  openSearchModal: () => void;
+  closeSearchModal: () => void;
+  toggleSearchModal: () => void;
   setActiveModal: (modal: string | null) => void;
 }
 
@@ -26,6 +30,7 @@ export const useUIStore = create<UIState>((set) => ({
   isMemberPanelOpen: false,
   isCreateChannelModalOpen: false,
   isStartDMModalOpen: false,
+  isSearchModalOpen: false,
   activeModal: null,
   mobileView: 'list',
   aiTypingChannelId: null,
@@ -38,5 +43,8 @@ export const useUIStore = create<UIState>((set) => ({
   closeCreateChannelModal: () => set({ isCreateChannelModalOpen: false }),
   openStartDMModal: () => set({ isStartDMModalOpen: true }),
   closeStartDMModal: () => set({ isStartDMModalOpen: false }),
+  openSearchModal: () => set({ isSearchModalOpen: true }),
+  closeSearchModal: () => set({ isSearchModalOpen: false }),
+  toggleSearchModal: () => set((s) => ({ isSearchModalOpen: !s.isSearchModalOpen })),
   setActiveModal: (modal) => set({ activeModal: modal }),
 }));

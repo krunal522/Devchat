@@ -34,8 +34,15 @@ export function Header() {
   const dmChannels = useChatStore((s) => s.dmChannels);
   const deleteChannelStore = useChatStore((s) => s.deleteChannel);
   const currentUserId = useAuthStore((s) => s.user?.id);
-  const { toggleMemberPanel, isMemberPanelOpen, setMobileView } = useUIStore();
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const {
+    toggleMemberPanel,
+    isMemberPanelOpen,
+    setMobileView,
+    isSearchModalOpen,
+    openSearchModal,
+    closeSearchModal,
+    toggleSearchModal,
+  } = useUIStore();
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isAIHistoryOpen, setIsAIHistoryOpen] = useState(false);
 
@@ -188,13 +195,13 @@ export function Header() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        setIsSearchOpen((prev) => !prev);
+        toggleSearchModal();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [toggleSearchModal]);
 
   const handleDeleteChannel = async () => {
     if (!channel) return;
@@ -257,7 +264,7 @@ export function Header() {
               )}
             </div>
             {!channel && (
-              <span className="chat-header__subtext">Select a channel or conversation from the sidebar</span>
+              <span className="chat-header__subtext">Command Center • High-Velocity Engineering Hub</span>
             )}
             {isDirect ? (
               presenceStatusText && (
@@ -276,7 +283,7 @@ export function Header() {
         <div className="chat-header__actions">
           <button
             className="chat-header__search-trigger"
-            onClick={() => setIsSearchOpen(true)}
+            onClick={openSearchModal}
             title="Search messages (Ctrl+K)"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -370,7 +377,7 @@ export function Header() {
         </div>
       </header>
 
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <SearchModal isOpen={isSearchModalOpen} onClose={closeSearchModal} />
       {channel && (
         <AddMemberModal
           isOpen={isAddMemberOpen}
