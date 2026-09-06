@@ -124,8 +124,23 @@ export function Sidebar() {
   };
 
   useEffect(() => {
-    loadChannels();
-    loadDMChannels();
+    let isMounted = true;
+
+    const initWorkspaceData = async () => {
+      await Promise.allSettled([loadChannels(), loadDMChannels()]);
+      if (!isMounted) return;
+
+      const storedChannelId =
+        sessionStorage.getItem('devchat_active_channel_id') ||
+        localStorage.getItem('devchat_active_channel_id') ||
+        localStorage.getItem('devchat_last_active_channel');
+
+      if (storedChannelId) {
+        await setActiveChannel(storedChannelId);
+      }
+    };
+
+    initWorkspaceData();
 
     const fetchOnlineUsers = () => {
       userApi
@@ -156,6 +171,7 @@ export function Sidebar() {
     window.addEventListener('focus', handleVisibility);
 
     return () => {
+      isMounted = false;
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', handleVisibility);

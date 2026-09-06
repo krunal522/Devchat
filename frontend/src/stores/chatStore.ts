@@ -109,10 +109,23 @@ function persistUnreads(unreads: Record<string, number>) {
   } catch {}
 }
 
+function getStoredActiveChannelId(): string | null {
+  try {
+    return (
+      sessionStorage.getItem('devchat_active_channel_id') ||
+      localStorage.getItem('devchat_active_channel_id') ||
+      localStorage.getItem('devchat_last_active_channel') ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export const useChatStore = create<ChatState>((set, get) => ({
   channels: [],
   dmChannels: [],
-  activeChannelId: null,
+  activeChannelId: getStoredActiveChannelId(),
   activeChannel: null,
 
   messages: {},
@@ -307,6 +320,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setActiveChannel: async (channelId: string) => {
+    if (!channelId) {
+      try {
+        sessionStorage.removeItem('devchat_active_channel_id');
+        sessionStorage.removeItem('devchat_last_active_channel');
+        localStorage.removeItem('devchat_active_channel_id');
+        localStorage.removeItem('devchat_last_active_channel');
+      } catch {}
+      set({
+        activeChannelId: null,
+        activeChannel: null,
+        activeSessionId: null,
+        isLoadingMessages: false,
+      });
+      return;
+    }
+
+    try {
+      sessionStorage.setItem('devchat_active_channel_id', channelId);
+      sessionStorage.setItem('devchat_last_active_channel', channelId);
+      localStorage.setItem('devchat_active_channel_id', channelId);
+      localStorage.setItem('devchat_last_active_channel', channelId);
+    } catch {}
+
     const { channels, dmChannels, loadMessages, joinChannel } = get();
     let channel = channels.find((c) => c.id === channelId) || null;
 
@@ -352,7 +388,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 avatarUrl: otherMember?.avatarUrl,
               },
             };
-          } else {
+          } else if (rawChannel) {
             channel = rawChannel;
           }
         } catch (fetchErr) {
@@ -361,9 +397,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     }
 
-    try {
-      localStorage.setItem('devchat_last_active_channel', channelId);
-    } catch {}
+    if (!channel) {
+      // Channel does not exist or user doesn't have access -> clean up
+      try {
+        sessionStorage.removeItem('devchat_active_channel_id');
+        sessionStorage.removeItem('devchat_last_active_channel');
+        localStorage.removeItem('devchat_active_channel_id');
+        localStorage.removeItem('devchat_last_active_channel');
+      } catch {}
+      set({
+        activeChannelId: null,
+        activeChannel: null,
+        isLoadingMessages: false,
+      });
+      return;
+    }
 
     const dm = channel?.type === 'DIRECT' ? channel : dmChannels.find((d) => d.id === channelId);
     const otherUserId = (dm as any)?.otherUser?.id;
@@ -477,6 +525,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       const dmChannel = await channelApi.getOrCreateDM(targetUserId);
       try {
+        sessionStorage.setItem('devchat_active_channel_id', dmChannel.id);
+        sessionStorage.setItem('devchat_last_active_channel', dmChannel.id);
+        localStorage.setItem('devchat_active_channel_id', dmChannel.id);
         localStorage.setItem('devchat_last_active_channel', dmChannel.id);
       } catch {}
 

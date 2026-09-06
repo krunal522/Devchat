@@ -55,6 +55,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       const data = await authApi.login({ email, password });
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
+      try {
+        localStorage.removeItem('devchat_active_channel_id');
+        localStorage.removeItem('devchat_last_active_channel');
+        sessionStorage.removeItem('devchat_active_channel_id');
+        sessionStorage.removeItem('devchat_last_active_channel');
+      } catch {}
+      useChatStore.getState().setActiveChannel('');
       initSocket(data.accessToken);
       notificationService.requestPermission();
       set({ user: data.user, isAuthenticated: true, isLoading: false });
@@ -71,6 +78,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       const data = await authApi.register(input);
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
+      try {
+        localStorage.removeItem('devchat_active_channel_id');
+        localStorage.removeItem('devchat_last_active_channel');
+        sessionStorage.removeItem('devchat_active_channel_id');
+        sessionStorage.removeItem('devchat_last_active_channel');
+      } catch {}
+      useChatStore.getState().setActiveChannel('');
       initSocket(data.accessToken);
       set({ user: data.user, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
@@ -89,6 +103,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     destroySocket();
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    try {
+      localStorage.removeItem('devchat_active_channel_id');
+      localStorage.removeItem('devchat_last_active_channel');
+      sessionStorage.removeItem('devchat_active_channel_id');
+      sessionStorage.removeItem('devchat_last_active_channel');
+    } catch {}
+    useChatStore.getState().setActiveChannel('');
     set({ user: null, isAuthenticated: false, isLoading: false, error: null });
   },
 
