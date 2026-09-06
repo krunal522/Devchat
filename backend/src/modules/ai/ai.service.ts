@@ -306,10 +306,12 @@ Respond ONLY with valid JSON (no markdown ticks or extra words):
 
 // Generate image buffer from Hugging Face FLUX model
 async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
-  // Method 1: Hugging Face official FLUX.1-schnell Space via Gradio Client (Zero paid key needed)
+  const hfToken = env.HUGGINGFACE_API_KEY?.trim() || process.env.HF_TOKEN?.trim();
+
+  // Method 1: Hugging Face official FLUX.1-schnell Space via Gradio Client (Authenticated with user token)
   try {
-    logger.info(`Calling Hugging Face black-forest-labs/FLUX.1-schnell space for prompt: "${enhancedPrompt.substring(0, 60)}..."`);
-    const client = await Client.connect('black-forest-labs/FLUX.1-schnell');
+    logger.info(`Calling Hugging Face black-forest-labs/FLUX.1-schnell space with user token (${hfToken ? 'authenticated' : 'anonymous'})...`);
+    const client = await Client.connect('black-forest-labs/FLUX.1-schnell', hfToken ? { token: hfToken as any } : undefined);
     const result = await client.predict('/infer', {
       prompt: enhancedPrompt,
       seed: Math.floor(Math.random() * 10000000),
@@ -337,8 +339,7 @@ async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ bu
     logger.warn(`Hugging Face Space FLUX.1 error: ${err?.message || err}`);
   }
 
-  // Method 2: Hugging Face Inference API with User Token (if configured)
-  const hfToken = env.HUGGINGFACE_API_KEY?.trim();
+  // Method 2: Hugging Face Inference API with User Token (@huggingface/inference)
   if (hfToken) {
     try {
       logger.info('Calling Hugging Face Inference API with user access token...');
@@ -364,22 +365,34 @@ async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ bu
     }
   }
 
-  // Method 3: High-Definition Secondary Backup
+  // Method 3: Hugging Face Alternative High-Speed FLUX Space Backup
   try {
-    const seed = Math.floor(Math.random() * 10000000);
-    const backupUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&seed=${seed}`;
-    const res = await fetch(backupUrl);
-    if (res.ok) {
-      const arrayBuf = await res.arrayBuffer();
-      if (arrayBuf.byteLength > 10000) {
+    logger.info('Calling Hugging Face Alternative FLUX Space backup...');
+    const backupClient = await Client.connect('mrfakename/FLUX.1-schnell', hfToken ? { token: hfToken as any } : undefined);
+    const backupResult = await backupClient.predict('/infer', {
+      prompt: enhancedPrompt,
+      seed: Math.floor(Math.random() * 10000000),
+      randomize_seed: true,
+      width: 1024,
+      height: 1024,
+      num_inference_steps: 4,
+    });
+
+    const backupImg = (backupResult.data as any[])?.[0];
+    const backupUrl = backupImg?.url || backupImg?.path;
+    if (backupUrl && typeof backupUrl === 'string') {
+      const res = await fetch(backupUrl);
+      if (res.ok) {
+        const arrayBuf = await res.arrayBuffer();
+        logger.info(`Successfully generated backup image from Hugging Face (${arrayBuf.byteLength} bytes)`);
         return {
           buffer: Buffer.from(arrayBuf),
-          mimeType: 'image/jpeg',
+          mimeType: res.headers.get('content-type') || 'image/webp',
         };
       }
     }
   } catch (err: any) {
-    logger.warn(`Backup image generation error: ${err?.message || err}`);
+    logger.warn(`Hugging Face Backup Space error: ${err?.message || err}`);
   }
 
   return null;
