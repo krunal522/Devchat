@@ -14,6 +14,10 @@ interface UIState {
   aiTypingMode: 'chat' | 'image';
   setAITypingChannelId: (channelId: string | null, mode?: 'chat' | 'image') => void;
 
+  previewImage: { src: string; title?: string; alt?: string } | null;
+  openImagePreview: (image: { src: string; title?: string; alt?: string }) => void;
+  closeImagePreview: () => void;
+
   toggleSidebar: () => void;
   toggleMemberPanel: () => void;
   openCreateChannelModal: () => void;
@@ -36,6 +40,10 @@ export const useUIStore = create<UIState>((set) => ({
   mobileView: 'list',
   aiTypingChannelId: null,
   aiTypingMode: 'chat',
+  previewImage: null,
+
+  openImagePreview: (image) => set({ previewImage: image }),
+  closeImagePreview: () => set({ previewImage: null }),
 
   setMobileView: (view) => set({ mobileView: view }),
   setAITypingChannelId: (channelId, mode = 'chat') => set({ aiTypingChannelId: channelId, aiTypingMode: mode }),

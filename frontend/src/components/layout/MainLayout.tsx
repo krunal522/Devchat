@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { MemberPanel } from './MemberPanel';
 import { ThreadDrawer } from '../chat/ThreadDrawer';
+import { ImagePreviewModal } from '../chat/ImagePreviewModal';
 import { useUIStore } from '../../stores/uiStore';
 import './MainLayout.css';
 
@@ -22,6 +23,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       </div>
       <MemberPanel />
       <ThreadDrawer />
+      <ImagePreviewModal />
     </div>
   );
 }

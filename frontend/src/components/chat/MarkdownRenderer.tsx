@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { DevChatImage } from '../ui/DevChatImage';
+import { useUIStore } from '../../stores/uiStore';
 import './MarkdownRenderer.css';
 
 interface MarkdownRendererProps {
@@ -10,6 +11,7 @@ interface MarkdownRendererProps {
 
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const openImagePreview = useUIStore((s) => s.openImagePreview);
 
   const handleCopy = (code: string, id: string) => {
     navigator.clipboard.writeText(code);
@@ -164,34 +166,37 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
               );
             }
 
+            const imgTitle = alt || 'AI Generated Image';
+
             return (
               <div className="markdown-img-container">
                 <div className="markdown-img-wrapper">
                   <DevChatImage
                     src={resolvedSrc}
-                    alt={alt || 'AI Generated Image'}
+                    alt={imgTitle}
                     className="markdown-img"
                     logoSize={38}
-                    onClick={() => resolvedSrc && window.open(resolvedSrc, '_blank')}
-                    title="Click to open full resolution"
+                    onClick={() => openImagePreview({ src: resolvedSrc, title: imgTitle, alt: alt || '' })}
+                    title="Click to preview, share & download"
                   />
                   <div className="markdown-img-footer">
-                    <span className="markdown-img-alt">{alt || 'Generated Artwork'}</span>
-                    <a
-                      href={resolvedSrc}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <span className="markdown-img-alt">{imgTitle}</span>
+                    <button
+                      type="button"
                       className="markdown-img-expand-btn"
-                      onClick={(e) => e.stopPropagation()}
-                      download
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openImagePreview({ src: resolvedSrc, title: imgTitle, alt: alt || '' });
+                      }}
+                      title="Preview, Share & Download"
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="7 10 12 15 17 10" />
                         <line x1="12" y1="15" x2="12" y2="3" />
                       </svg>
-                      <span>Full Resolution</span>
-                    </a>
+                      <span>Preview & Download</span>
+                    </button>
                   </div>
                 </div>
               </div>
