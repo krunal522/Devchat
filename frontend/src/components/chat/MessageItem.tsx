@@ -8,6 +8,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useIsUserOnline } from '../../stores/presenceStore';
 import { useSocketActions } from '../../hooks/useSocket';
+import { getSocket } from '../../services/socketManager';
 import { messageApi } from '../../services/messageApi';
 import { formatMessageTime } from '../../utils/formatDate';
 import { FileIcon } from '../ui/FileIcon';
@@ -55,7 +56,7 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
   const isOnlineHook = useIsUserOnline(authorId);
   const isOnline = isAIMessage || isAuthorSelf || isOnlineHook;
 
-  const { editMessage, deleteMessage, toggleReaction } = useSocketActions();
+  const { editMessage, deleteMessage } = useSocketActions();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content || '');
   const [showFullPicker, setShowFullPicker] = useState(false);
@@ -364,7 +365,8 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
     }
   };
 
-  const handleToggleReaction = (emoji: string) => {
+  const handleToggleReaction = (emoji: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!currentUserId || !message?.id) return;
 
     // Prevent spam double clicks from sending conflicting socket packets
@@ -372,21 +374,22 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
     pendingReactionRef.current = true;
     setTimeout(() => {
       pendingReactionRef.current = false;
-    }, 200);
+    }, 250);
 
     const existingReactions = message.reactions || [];
     const hasSameReaction = existingReactions.some(
       (r) => r.userId === currentUserId && r.emoji === emoji
     );
 
-    let newReactions;
+    let newReactions: typeof existingReactions;
     if (hasSameReaction) {
       // Toggle off / remove reaction instantly
       newReactions = existingReactions.filter(
         (r) => !(r.userId === currentUserId && r.emoji === emoji)
       );
     } else {
-      // Remove any previous reaction by this user and add the new one (matches backend behavior)
+      // WhatsApp style: 1 reaction per user per message.
+      // Remove any previous reaction by this user and add the new one
       const withoutUserReactions = existingReactions.filter(
         (r) => r.userId !== currentUserId
       );
@@ -396,25 +399,39 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
           id: `temp-${Date.now()}`,
           emoji,
           userId: currentUserId,
-          messageId: message.id,
-          createdAt: new Date().toISOString(),
         },
       ];
     }
 
     // 1. Instant 0ms optimistic local store update
+    const previousMessage = message;
     const updatedMsg = { ...message, reactions: newReactions };
     useChatStore.getState().updateMessage(updatedMsg);
 
-    // 2. Dispatch event over WebSocket
-    toggleReaction(message.id, emoji);
-
-    // 3. Dual-channel REST sync: guarantees database persistence & broadcast even if socket is reconnecting
-    messageApi.toggleReaction(message.id, emoji).then((serverMsg) => {
-      if (serverMsg) {
-        useChatStore.getState().updateMessage(serverMsg);
-      }
-    }).catch(() => {});
+    // 2. Dispatch via WebSocket if connected, otherwise fallback to REST (NEVER call both!)
+    const sock = getSocket();
+    if (sock && sock.connected) {
+      sock.emit('message:reaction', { messageId: message.id, emoji }, (res: any) => {
+        if (res?.error) {
+          console.warn('Socket reaction error, rolling back:', res.error);
+          useChatStore.getState().updateMessage(previousMessage);
+        } else if (res?.data) {
+          useChatStore.getState().updateMessage(res.data);
+        }
+      });
+    } else {
+      // Fallback to REST when WebSocket is offline/reconnecting
+      messageApi.toggleReaction(message.id, emoji)
+        .then((serverMsg) => {
+          if (serverMsg) {
+            useChatStore.getState().updateMessage(serverMsg);
+          }
+        })
+        .catch((err) => {
+          console.warn('REST reaction error, rolling back:', err);
+          useChatStore.getState().updateMessage(previousMessage);
+        });
+    }
   };
 
   // ─── Deleted Message State (WhatsApp/Slack Tombstone) ───
@@ -607,8 +624,10 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
               {Object.entries(groupedReactions).map(([emoji, data]) => (
                 <button
                   key={emoji}
+                  type="button"
                   className={`message__reaction-badge ${data.hasReacted ? 'message__reaction-badge--active' : ''}`}
-                  onClick={() => handleToggleReaction(emoji)}
+                  onClick={(e) => handleToggleReaction(emoji, e)}
+                  title={data.hasReacted ? 'Click to remove your reaction' : 'Click to react'}
                 >
                   <span>{emoji}</span>
                   <span className="message__reaction-count">{data.count}</span>

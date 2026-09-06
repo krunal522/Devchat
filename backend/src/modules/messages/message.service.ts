@@ -353,26 +353,42 @@ export async function clearChannelMessages(userId: string, channelId: string) {
 }
 
 export async function toggleReaction(userId: string, messageId: string, emoji: string) {
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+    select: { id: true, channelId: true },
+  });
+
+  if (!message) {
+    throw ApiError.notFound('Message not found');
+  }
+
   // 1. Check if user already reacted with THIS EXACT emoji
-  const existingSameEmoji = await prisma.reaction.findUnique({
+  const existingSameEmoji = await prisma.reaction.findFirst({
     where: {
-      userId_messageId_emoji: { userId, messageId, emoji },
+      userId,
+      messageId,
+      emoji,
     },
   });
 
   if (existingSameEmoji) {
     // User clicked the same emoji again -> remove/toggle off
-    await prisma.reaction.delete({ where: { id: existingSameEmoji.id } });
+    try {
+      await prisma.reaction.delete({ where: { id: existingSameEmoji.id } });
+    } catch {}
   } else {
-    // User clicked a new/different emoji -> remove any previous reactions by this user on this message (WhatsApp style replace)
+    // WhatsApp style: 1 reaction per user per message.
+    // Remove any previous reactions by this user on this message
     await prisma.reaction.deleteMany({
       where: { userId, messageId },
-    });
+    }).catch(() => {});
 
     // Add the new reaction
-    await prisma.reaction.create({
-      data: { userId, messageId, emoji },
-    });
+    try {
+      await prisma.reaction.create({
+        data: { userId, messageId, emoji },
+      });
+    } catch {}
   }
 
   // Return updated message with reactions
