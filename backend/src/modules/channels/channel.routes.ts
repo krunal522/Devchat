@@ -10,6 +10,7 @@ const router = Router();
 router.get('/', authenticate, channelController.getChannels);
 router.post('/', authenticate, validate(createChannelSchema), channelController.createChannel);
 router.get('/unreads', authenticate, channelController.getUnreadCounts);
+router.post('/read-all', authenticate, channelController.markAllChannelsAsRead);
 router.get('/dm', authenticate, channelController.getDMChannels);
 router.post('/dm/:userId', authenticate, channelController.getOrCreateDMChannel);
 router.get('/:channelId', authenticate, channelController.getChannelById);

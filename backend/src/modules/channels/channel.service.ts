@@ -539,6 +539,26 @@ export async function markChannelAsRead(userId: string, channelId: string): Prom
 }
 
 /**
+ * Mark ALL channels/DMs as read for a specific user
+ */
+export async function markAllChannelsAsRead(userId: string): Promise<void> {
+  if (!userId) return;
+  try {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO channel_read_states (user_id, channel_id, last_read_at)
+       SELECT $1, cm.channel_id, NOW()
+       FROM channel_members cm
+       WHERE cm.user_id = $1
+       ON CONFLICT (user_id, channel_id)
+       DO UPDATE SET last_read_at = NOW()`,
+      userId
+    );
+  } catch (err) {
+    logger.warn('Failed to mark all channels as read in channel_read_states:', err);
+  }
+}
+
+/**
  * Get unread message counts for all channels & DMs where user is a member
  */
 export async function getUserUnreadCounts(userId: string): Promise<Record<string, number>> {

@@ -78,6 +78,10 @@ interface ChatState {
   bumpDMChannel: (channelId: string) => void;
   syncServerUnreads: () => Promise<void>;
   updateMessageReactions: (messageId: string, reactions: any[]) => void;
+  markChannelAsRead: (channelId: string) => void;
+  markAllAsRead: () => Promise<void>;
+  setChannelRead: (channelId: string) => void;
+  clearAllUnreads: () => void;
 }
 
 function getStoredUnreads(): Record<string, number> {
@@ -233,6 +237,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Mark as read in server database
     channelApi.markAsRead(channelId);
+  },
+
+  markChannelAsRead: (channelId: string) => {
+    get().clearUnread(channelId);
+  },
+
+  markAllAsRead: async () => {
+    persistUnreads({});
+    set({ unreadCounts: {} });
+    await channelApi.markAllAsRead();
+  },
+
+  setChannelRead: (channelId: string) => {
+    set((state) => {
+      const next = { ...state.unreadCounts, [channelId]: 0 };
+      persistUnreads(next);
+      return { unreadCounts: next };
+    });
+  },
+
+  clearAllUnreads: () => {
+    persistUnreads({});
+    set({ unreadCounts: {} });
   },
 
   syncServerUnreads: async () => {

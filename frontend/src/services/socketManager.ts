@@ -333,6 +333,17 @@ function attachListeners(sock: Socket): void {
     }
   });
 
+  // ─── Real-Time Read State Synchronization Across All Browser Windows / Tabs ─
+  sock.on('channel:read', (data: { channelId: string }) => {
+    if (data?.channelId) {
+      useChatStore.getState().setChannelRead(data.channelId);
+    }
+  });
+
+  sock.on('channel:read_all', () => {
+    useChatStore.getState().clearAllUnreads();
+  });
+
 
 
   // ── Typing ────────────────────────────────────────────────────────────────

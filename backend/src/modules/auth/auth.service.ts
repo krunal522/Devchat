@@ -5,6 +5,7 @@ import { safeRedisSet, safeRedisGet, safeRedisDel, RedisKeys } from '../../confi
 import { env } from '../../config/env.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { logger } from '../../utils/logger.js';
+import { markAllChannelsAsRead } from '../channels/channel.service.js';
 import type { RegisterInput, LoginInput } from './auth.schema.js';
 import type { AuthPayload } from '../../middleware/auth.js';
 
@@ -116,6 +117,9 @@ export async function register(input: RegisterInput) {
         });
       }
     }
+
+    // Mark default channels as read so new user starts with a clean 0 unread inbox
+    await markAllChannelsAsRead(user.id);
   } catch (err) {
     logger.warn('Failed to auto-join public channels during registration:', err);
   }

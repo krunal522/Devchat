@@ -74,5 +74,11 @@ export const channelApi = {
       await api.post(`/channels/${channelId}/read`);
     } catch {}
   },
+
+  markAllAsRead: async (): Promise<void> => {
+    try {
+      await api.post('/channels/read-all');
+    } catch {}
+  },
 };
 

@@ -169,7 +169,24 @@ export async function markChannelAsRead(req: Request, res: Response, next: NextF
   try {
     const channelId = req.params.channelId as string;
     await channelService.markChannelAsRead(req.user!.userId, channelId);
+    try {
+      const io = getIO();
+      io.to(`user:${req.user!.userId}`).emit('channel:read', { channelId });
+    } catch {}
     res.json({ success: true, message: 'Channel marked as read' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function markAllChannelsAsRead(req: Request, res: Response, next: NextFunction) {
+  try {
+    await channelService.markAllChannelsAsRead(req.user!.userId);
+    try {
+      const io = getIO();
+      io.to(`user:${req.user!.userId}`).emit('channel:read_all');
+    } catch {}
+    res.json({ success: true, message: 'All channels marked as read' });
   } catch (error) {
     next(error);
   }
