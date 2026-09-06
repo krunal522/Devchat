@@ -142,52 +142,60 @@ export interface MetaAiImagePlan {
 }
 
 // Detect if user is asking to create/generate an image (English, Hindi, Hinglish)
+// Detect if user is asking to create/generate an image (English, Hindi, Hinglish, universal ChatGPT style)
 export function isImageGenerationRequest(prompt: string): boolean {
   const p = prompt.trim().toLowerCase();
-  if (
-    p.startsWith('/image') ||
-    p.startsWith('/imagine') ||
-    p.startsWith('/img') ||
-    p.startsWith('/draw') ||
-    p.startsWith('/generate')
-  ) {
+
+  // Slash commands
+  if (/^\/(?:image|imagine|img|pic|photo|draw|generate|paint|render)\b/i.test(p)) return true;
+
+  // Exact image noun keywords
+  const hasImageNoun = /\b(?:image|images|photo|photos|picture|pictures|pic|pics|portrait|portraits|wallpaper|wallpapers|illustration|illustrations|artwork|drawing|sketch|avatar|avatars|render|renders|tasveer|chhabi)\b/i.test(p);
+
+  // Exact creation verb / intent keywords
+  const hasCreationIntent = /\b(?:create|created|creating|generate|generated|generating|draw|drawing|paint|painting|render|rendering|make|making|produce|design|banao|bana|banaye|banayein|banake|dikhao|dekhao|chahiye|dejiye|dejie|karo|kijiye|nikalo|kheecho|khincho)\b/i.test(p);
+
+  if (hasImageNoun && hasCreationIntent) return true;
+
+  // Direct phrasing like 'image of a cat', 'photo of sunset', 'picture of sports car', 'portrait of a girl'
+  if (/\b(?:image|photo|picture|pic|portrait|wallpaper|drawing|illustration|avatar|tasveer)\s+(?:of|for|showing|depicting|with)\b/i.test(p)) return true;
+
+  // Direct creation starters like 'draw a...', 'can you draw a...', 'paint a...', 'sketch a...'
+  if (/^(?:can\s+you\s+|could\s+you\s+|please\s+)?(?:draw|paint|sketch|render|illustrate)\s+(?:me\s+)?(?:a|an|the|some)?\s*\w+/i.test(p)) return true;
+
+  // Prompts that explicitly end with image/photo/pic/wallpaper/avatar
+  if (/\b(?:avatar\s+image|user\s+avatar|profile\s+picture|profile\s+photo|profile\s+pic)\b/i.test(p)) return true;
+  if (/\b(?:image|images|photo|photos|pic|pics|wallpaper|portrait|illustration)$/i.test(p)) return true;
+
+  // Hindi direct phrasing like '... ki photo', '... ka pic', '... ki tasveer', '... banao'
+  if (/(?:ki|ka|ke)\s+(?:photo|image|tasveer|picture|pic)\b/i.test(p)) return true;
+  if (/\b(?:ek\s+)?(?:photo|image|picture|pic|tasveer)\s+(?:banao|banado|chahiye)/i.test(p)) return true;
+
+  // 'banao ...' or '... banao' for visual entities (unless coding/technical query)
+  const isCoding = /\b(?:code|app|website|page|function|api|component|database|sql|table|hook|script|frontend|backend|server|bug|error)\b/i.test(p);
+  if (!isCoding && /\b(?:banao|bana\s*do|banayein?)\b/i.test(p) && !/\b(?:kaise|kyu|kya|why|how)\b/i.test(p)) {
     return true;
   }
 
-  // Exact intent regexes
-  const patterns = [
-    /\b(?:image|images|photo|photos|picture|pictures|tasveer|pic|pics)\s+(?:create|created|generate|generated)\b/i,
-    /\b(?:create|created|generate|generated|draw|paint|render)\s+(?:an?\s+)?(?:image|photo|picture|pic|illustration|wallpaper|drawing)\b/i,
-    /\b(?:image|photo|tasveer|picture|pic)\s+(?:banao|bana\s*do|banaye|banayein|bana\s*ke\s*do|banake\s*do|chahiye|dejiye|dejie|kijiye)\b/i,
-    /\b(?:banao|bana\s*do|banake\s*do|bana\s*ke\s*do)\s+(?:ek\s+)?(?:image|photo|tasveer|picture)\b/i,
-    /\b(?:ek\s+)?(?:image|photo|tasveer|picture)\s+(?:banao|create|generate)\b/i,
-    /\b(?:draw|paint)\s+(?:me\s+)?(?:a\s+|an\s+)?\w+/i,
-    /\b(?:can you|please|kripya)?\s*(?:create|generate|make|draw)\s+(?:me\s+)?(?:an?\s+)?(?:image|photo|picture)\b/i,
-    /\b(?:photo|image|tasveer)\s+(?:nikalo|dekhao|kheecho|khincho|chahiye)\b/i,
-  ];
-
-  if (patterns.some((regex) => regex.test(p))) return true;
-
-  // Flexible co-occurrence check (e.g. "Swift car images created kar dejie..new model but")
-  const hasImage = /\b(image|images|photo|photos|picture|pictures|tasveer|pic|pics)\b/i.test(p);
-  const hasIntent = /\b(create|created|generate|generated|banao|bana|draw|paint|dejie|dejiye|chahiye|karo|kar|dikhao)\b/i.test(p);
-
-  return hasImage && hasIntent;
+  return false;
 }
 
-// Extract the raw subject if AI parsing is unavailable
+// Extract the raw visual subject cleanly
 export function extractImagePrompt(prompt: string): string {
   let p = prompt.trim();
-  p = p.replace(/^\/(image|imagine|img|draw|generate)\s*/i, '');
-  p = p.replace(/(?:generate|create|make|draw|paint)\s+(?:an?\s+)?(?:image|photo|picture|artwork|illustration)\s+(?:of|for|showing|depicting)?\s*:?/i, '');
-  p = p.replace(/(?:images?|photos?)\s+(?:created|generate|banao)\s+(?:kar\s+dejie|kar\s+do|karo|chahiye)?/i, '');
-  p = p.replace(/\s*(ki|ka)\s+(image|photo|tasveer)\s+(banao|chahiye)$/i, '');
-  p = p.replace(/\s*new\s+model\s*but/i, 'new model');
-  p = p.replace(/^(image|photo)\s+(banao|generate\s+karo)\s*/i, '');
+  p = p.replace(/^\/(?:image|imagine|img|pic|photo|draw|generate|paint|render)\s*/i, '');
+  p = p.replace(/^(?:can\s+you\s+|could\s+you\s+|please\s+)?(?:generate|create|make|draw|paint|render|illustrate)\s+(?:me\s+)?(?:an?\s+)?(?:image|photo|picture|pic|artwork|illustration|portrait|wallpaper)?\s*(?:of|for|showing|depicting)?\s*:?/i, '');
+  p = p.replace(/\b(?:image|images|photo|photos|pic|pics|picture|pictures|tasveer)\s+(?:created|generate|banao|bana\s+do|banaye|chahiye)\b/gi, '');
+  p = p.replace(/^(?:banao|banaye|dikhao)\s+(?:ek\s+)?/i, '');
+  p = p.replace(/\b(?:ki|ka|ke)\s+(?:image|photo|tasveer|picture|pic)\b/gi, '');
+  p = p.replace(/\s*(?:banao|banado|chahiye|kar\s+dejie|kar\s+do|karo|dejiye)$/i, '');
+  p = p.replace(/\s*(?:ki|ka|ke)$/i, '');
+  p = p.replace(/\s*\.{2,}\s*/g, ' ');
+  p = p.replace(/\s+but$/i, '');
   return p.trim() || prompt.trim();
 }
 
-// Generate Meta AI Structured Plan using Gemini
+// Generate ChatGPT-Grade Visual Plan using Gemini
 async function planMetaAiImage(userPrompt: string, userName: string): Promise<MetaAiImagePlan> {
   const cleanKey = env.GEMINI_API_KEY?.trim();
   if (cleanKey) {
@@ -199,20 +207,20 @@ async function planMetaAiImage(userPrompt: string, userName: string): Promise<Me
             role: 'user',
             parts: [
               {
-                text: `You are the Meta AI Art Director & Conversational Assistant for DevChat AI.
-A user named "${userName}" asked: "${userPrompt}".
+                text: `You are the Expert AI Art Director & Visual Creator for DevChat AI (operating with ChatGPT / DALL-E 3 visual mastery).
+A user named "${userName}" requested to create an image: "${userPrompt}".
 
 Your tasks:
-1. Identify the core subject (e.g., "New Maruti Suzuki Swift 2024-2025 model").
-2. Translate & craft an ultra-detailed, photorealistic 8K commercial photography prompt in English for Black Forest Labs FLUX.1 / SDXL (lighting, camera lens, angle, reflections, 8k resolution, photorealistic, sharp focus, no watermarks, realistic).
-3. Write an ultra-engaging, friendly Meta AI-style companion message in the EXACT SAME LANGUAGE and tone as the user (use Hinglish/Hindi if user asked in Hinglish/Hindi, or English if English). Follow Meta AI WhatsApp format:
-   - Greeting: e.g. "Ye lo — New Maruti Suzuki Swift 2024-2025 model 🔥"
-   - Highlights: (e.g. 3 colors or key design features)
-   - Engaging interactive question: (e.g. "New Swift ka front grill aur LED lights ekdum fresh hai. Aapko kaunsa color zyada pasand aaya?")
-   - 3 follow-up generation styles (e.g. interior view, road running shot, custom number plate)
-   - Closing question: e.g. "Batao kis style me aur banau?"
+1. Identify the exact subject the user wants (e.g. portraits, people, user avatars, luxury cars, animals, anime, landscapes, architecture, cyberpunk cities, 3D art, fantasy, product design). NEVER assume it is a car unless the user specifically asked for a vehicle or car!
+2. Translate & craft an ultra-detailed, photorealistic, cinematic prompt in English for Black Forest Labs FLUX.1 (including camera lens, lighting, atmospheric details, composition, 8k resolution, photorealistic, sharp focus, no watermarks, lifelike textures).
+3. Write a sleek, friendly, ChatGPT-style companion message in the EXACT SAME LANGUAGE and tone as the user (Hinglish/Hindi if user asked in Hinglish/Hindi, English if user asked in English):
+   - subjectTitle: Clean, elegant title of the image (e.g., "Cyberpunk Street at Night", "Portrait of a Software Engineer", "Golden Retriever Puppy in Sunshine")
+   - metaAiGreeting: A natural, polite introduction (e.g., "Ye lijiye, aapke liye **${userPrompt}** ki high-definition image taiyar hai ✨" or "Here is your photorealistic image of **[subject]** ✨")
+   - metaAiHighlights: 1-2 sentences highlighting the key visual aesthetic (lighting, mood, textures, composition)
+   - metaAiFollowUps: Array of 3 creative, relevant follow-up variations SPECIFIC to the subject (e.g., for a person: ["Studio cinematic close-up", "Outdoor golden hour lighting", "Black and white editorial portrait"]; for a landscape: ["Sunset golden hour", "Nighttime star-filled sky", "Winter snow atmosphere"]; for a car: ["Cockpit interior view", "Motion blur highway shot", "Track race drifting action"])
+   - metaAiClosing: A short, friendly closing prompt (e.g., "Aapko kaunsa style sabse accha laga?" or "Which variation would you like to see next?")
 
-Respond ONLY with valid JSON (no markdown ticks or extra words):
+Respond ONLY with valid JSON (no markdown ticks or extra text):
 {
   "subjectTitle": "...",
   "enhancedPrompt": "...",
@@ -247,10 +255,10 @@ Respond ONLY with valid JSON (no markdown ticks or extra words):
             return {
               subjectTitle: parsed.subjectTitle,
               enhancedPrompt: parsed.enhancedPrompt,
-              metaAiGreeting: parsed.metaAiGreeting || `Ye lo — ${parsed.subjectTitle} 🔥`,
+              metaAiGreeting: parsed.metaAiGreeting || `Ye lijiye — aapke liye **${parsed.subjectTitle}** taiyar hai ✨`,
               metaAiHighlights: parsed.metaAiHighlights || '',
-              metaAiFollowUps: Array.isArray(parsed.metaAiFollowUps) ? parsed.metaAiFollowUps : ['Interior view', 'Road pe chalta hua view', 'Customized style'],
-              metaAiClosing: parsed.metaAiClosing || 'Batao kis style me aur banau?',
+              metaAiFollowUps: Array.isArray(parsed.metaAiFollowUps) ? parsed.metaAiFollowUps : ['Cinematic close-up detailed shot', 'Dramatic studio lighting variation', 'Vibrant artistic atmosphere'],
+              metaAiClosing: parsed.metaAiClosing || 'Batao kis variation me aur banau?',
             };
           }
         }
@@ -260,39 +268,63 @@ Respond ONLY with valid JSON (no markdown ticks or extra words):
     }
   }
 
-  // Intelligent Fallback (handles Swift / cars / general subjects with perfection)
+  // Intelligent Fallback (handles any subject: people, animals, cars, nature, architecture, art, sci-fi)
   const rawSubject = extractImagePrompt(userPrompt);
-  const isSwift = /swift/i.test(userPrompt);
-  const isCar = /car|gadi|gaadi|vehicle/i.test(userPrompt);
-  const isHindi = /kar\s+dejie|kar\s+do|banao|chahiye|dejiye|karo/i.test(userPrompt);
+  const isHindi = /kar\s+dejie|kar\s+do|banao|chahiye|dejiye|karo|dikhao|kheecho/i.test(userPrompt);
+  const isPerson = /\b(man|woman|boy|girl|person|portrait|face|model|actor|actress|developer|engineer|coder|avatar|ladka|ladki|aadmi|aurat)\b/i.test(userPrompt);
+  const isCar = /\b(car|cars|gadi|gaadi|vehicle|bike|motorcycle|supercar|ferrari|bmw|audi|lamborghini|porsche|swift|tesla|mercedes)\b/i.test(userPrompt);
+  const isAnimal = /\b(cat|dog|puppy|kitten|lion|tiger|bird|eagle|horse|wolf|pet|animal|janwar|kutta|billi|sher)\b/i.test(userPrompt);
+  const isLandscape = /\b(nature|mountain|mountains|sea|ocean|beach|sunset|sunrise|forest|river|sky|space|galaxy|pahar|samundar)\b/i.test(userPrompt);
+  const isArchitecture = /\b(house|home|building|room|interior|mansion|villa|city|street|skyscraper|cafe|ghar|kamra)\b/i.test(userPrompt);
 
-  const subjectTitle = isSwift
-    ? 'New Maruti Suzuki Swift 2024-2025 model'
-    : rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1);
+  const subjectTitle = rawSubject ? rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1) : 'Creative Visual';
 
-  const enhancedPrompt = isSwift
-    ? 'Studio portrait shot of brand new 2024-2025 Maruti Suzuki Swift hatchback, burning red metallic paint with gloss black roof, sleek LED headlights on, front hexagonal grille, modern alloy wheels, clean studio lighting, photorealistic, 8k resolution, commercial automotive photography'
-    : isCar
-      ? `Ultra-realistic 8k commercial automotive photography of modern ${rawSubject}, sleek body design, LED lights on, reflections on glossy showroom floor, cinematic studio lighting, photorealistic, high resolution`
-      : `High-definition 8k photorealistic commercial photograph of ${rawSubject}, highly detailed, sharp focus, beautiful natural studio lighting, professional depth of field, award-winning shot`;
+  let enhancedPrompt = '';
+  let metaAiFollowUps: string[] = [];
+
+  if (isPerson) {
+    enhancedPrompt = `Ultra-detailed photorealistic portrait photograph of ${rawSubject}, natural skin textures, 85mm f/1.4 lens, soft cinematic studio lighting, shallow depth of field, catchlights in eyes, high-fashion editorial aesthetic, 8k resolution, masterpiece`;
+    metaAiFollowUps = isHindi
+      ? ['Cinematic close-up portrait with golden hour lighting', 'Studio black and white editorial style', 'Neon cyberpunk aesthetic look']
+      : ['Cinematic close-up with golden hour lighting', 'Black & white studio editorial portrait', 'Cyberpunk neon atmosphere'];
+  } else if (isCar) {
+    enhancedPrompt = `Commercial automotive photography of modern sleek ${rawSubject}, glossy reflective metallic paint, headlights on, dynamic studio lighting, showroom reflections on polished floor, photorealistic, 8k resolution, octane render`;
+    metaAiFollowUps = isHindi
+      ? ['Cockpit interior and dashboard view', 'Road pe high-speed cinematic shot', 'Night city neon reflections view']
+      : ['Luxury interior and cockpit view', 'Cinematic motion shot on scenic road', 'Night city neon reflection view'];
+  } else if (isAnimal) {
+    enhancedPrompt = `Award-winning National Geographic wildlife photograph of ${rawSubject}, sharp fur details, natural soft sunlight, macro depth of field, beautiful environmental background, 8k resolution, lifelike and photorealistic`;
+    metaAiFollowUps = isHindi
+      ? ['Close-up expressive portrait shot', 'Natural habitat action shot', 'Studio dramatic lighting portrait']
+      : ['Close-up expressive portrait', 'Action shot in natural habitat', 'Dramatic studio lighting variation'];
+  } else if (isLandscape) {
+    enhancedPrompt = `Breathtaking landscape photography of ${rawSubject}, dramatic atmospheric golden hour lighting, volumetric light rays, ultra-wide angle 16mm lens, crisp natural textures, 8k resolution, photorealistic`;
+    metaAiFollowUps = isHindi
+      ? ['Dramatic sunset golden hour view', 'Night scene with Milky Way starry sky', 'Atmospheric foggy morning shot']
+      : ['Golden hour sunset variation', 'Nighttime starry galaxy sky', 'Misty morning aerial perspective'];
+  } else if (isArchitecture) {
+    enhancedPrompt = `Architectural Digest photography of ${rawSubject}, minimalist modern interior design, warm natural ambient lighting, marble and wood textures, clean lines, photorealistic, 8k resolution`;
+    metaAiFollowUps = isHindi
+      ? ['Cozy night illumination view', 'Minimalist daylight interior shot', 'Exterior modern architectural view']
+      : ['Warm night illumination view', 'Minimalist daylight wide interior', 'Modern exterior architectural angle'];
+  } else {
+    enhancedPrompt = `Ultra-high-definition 8k photorealistic commercial photograph of ${rawSubject}, highly detailed textures, beautiful cinematic studio lighting, sharp focus, professional depth of field, award-winning composition, lifelike masterpiece`;
+    metaAiFollowUps = isHindi
+      ? ['Cinematic close-up detailed shot', 'Studio dramatic lighting variation', 'Cyberpunk vibrant color style']
+      : ['Cinematic close-up detailed shot', 'Dramatic studio lighting variation', 'Vibrant artistic atmosphere'];
+  }
 
   const metaAiGreeting = isHindi
-    ? `Ye lo — ${subjectTitle} 🔥`
-    : `Here is your ${subjectTitle}! ✨`;
+    ? `Ye lijiye — aapke liye **${subjectTitle}** ki high-definition visual image taiyar hai ✨`
+    : `Here is your photorealistic image of **${subjectTitle}** ✨`;
 
   const metaAiHighlights = isHindi
-    ? isSwift
-      ? `**3 colors me:**\n• 🔵 Glacier Blue\n• 🔴 Burning Red\n• ⚪ Pearl Silver\n\nNew Swift ka front grill aur LED lights ekdum fresh aur aggressive hain. Aapko kaunsa color zyada pasand aaya?`
-      : `Maine aapke liye ekdum fresh aur high-definition photorealistic visual taiyar kiya hai. Kaisi lagi ye visual presentation?`
-    : `**Key Highlights:**\n• Ultra-HD 1024×1024 resolution\n• Photorealistic lighting & textures\n• Studio-grade commercial aesthetic`;
+    ? `Maine is visual ko 1024×1024 ultra-HD resolution, natural lighting aur realistic textures ke sath craft kiya hai.`
+    : `Rendered with 1024×1024 resolution, balanced cinematic lighting, and realistic details.`;
 
-  const metaAiFollowUps = isHindi
-    ? isSwift
-      ? ['Swift ka luxury interior & cockpit view', 'Road pe chalta hua cinematic high-speed image', 'Aapke naam ki custom number plate wala Swift']
-      : ['Iska close-up detailed shot', 'Realistic outdoor environment shot', 'Night scene with glowing ambient lighting']
-    : ['Close-up detailed view', 'Cinematic outdoor action shot', 'Nighttime neon lighting variation'];
-
-  const metaAiClosing = isHindi ? 'Batao kis style me aur banau?' : 'Let me know which style you would like to generate next!';
+  const metaAiClosing = isHindi
+    ? 'Aapko ye presentation kaisi lagi? Batao kis variation me aur banau?'
+    : 'How does this look? Let me know which variation or perspective you would like next!';
 
   return {
     subjectTitle,
@@ -306,11 +338,61 @@ Respond ONLY with valid JSON (no markdown ticks or extra words):
 
 // Generate image buffer from Hugging Face FLUX model
 async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
-  const hfToken = env.HUGGINGFACE_API_KEY?.trim() || process.env.HF_TOKEN?.trim();
+  const hfToken = env.HUGGINGFACE_API_KEY?.trim() || process.env.HF_TOKEN?.trim() || '';
 
-  // Method 1: Hugging Face official FLUX.1-schnell Space via Gradio Client (Authenticated with user token)
+  // Method 1: Hugging Face Official Inference API with FLUX.1-schnell (Ultra fast ~4-5s with nscale)
+  if (hfToken) {
+    try {
+      logger.info('Calling Hugging Face Inference API with FLUX.1-schnell...');
+      const hf = new HfInference(hfToken);
+      const blob: any = await hf.textToImage({
+        model: 'black-forest-labs/FLUX.1-schnell',
+        inputs: enhancedPrompt,
+      });
+
+      if (blob) {
+        const arrayBuf = await blob.arrayBuffer();
+        if (arrayBuf.byteLength > 1000) {
+          logger.info(`Successfully generated FLUX image (${arrayBuf.byteLength} bytes) in ultra-HD`);
+          return {
+            buffer: Buffer.from(arrayBuf),
+            mimeType: blob.type || 'image/jpeg',
+          };
+        }
+      }
+    } catch (err: any) {
+      logger.warn(`Hugging Face FLUX.1-schnell API error: ${err?.message || err}`);
+    }
+  }
+
+  // Method 2: Hugging Face Official Inference API with Stable Diffusion XL (SDXL 1.0)
+  if (hfToken) {
+    try {
+      logger.info('Calling Hugging Face Inference API with SDXL 1.0 backup...');
+      const hf = new HfInference(hfToken);
+      const blob: any = await hf.textToImage({
+        model: 'stabilityai/stable-diffusion-xl-base-1.0',
+        inputs: enhancedPrompt,
+      });
+
+      if (blob) {
+        const arrayBuf = await blob.arrayBuffer();
+        if (arrayBuf.byteLength > 1000) {
+          logger.info(`Successfully generated SDXL backup image (${arrayBuf.byteLength} bytes)`);
+          return {
+            buffer: Buffer.from(arrayBuf),
+            mimeType: blob.type || 'image/jpeg',
+          };
+        }
+      }
+    } catch (err: any) {
+      logger.warn(`Hugging Face SDXL API error: ${err?.message || err}`);
+    }
+  }
+
+  // Method 3: Hugging Face Gradio Space (black-forest-labs/FLUX.1-schnell)
   try {
-    logger.info(`Calling Hugging Face black-forest-labs/FLUX.1-schnell space with user token (${hfToken ? 'authenticated' : 'anonymous'})...`);
+    logger.info('Calling Hugging Face Gradio Space FLUX.1-schnell backup...');
     const client = await Client.connect('black-forest-labs/FLUX.1-schnell', hfToken ? { token: hfToken as any } : undefined);
     const result = await client.predict('/infer', {
       prompt: enhancedPrompt,
@@ -328,77 +410,22 @@ async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ bu
       const res = await fetch(outputUrl);
       if (res.ok) {
         const arrayBuf = await res.arrayBuffer();
-        logger.info(`Successfully generated and downloaded image from Hugging Face FLUX (${arrayBuf.byteLength} bytes)`);
-        return {
-          buffer: Buffer.from(arrayBuf),
-          mimeType: res.headers.get('content-type') || 'image/webp',
-        };
+        if (arrayBuf.byteLength > 1000) {
+          return {
+            buffer: Buffer.from(arrayBuf),
+            mimeType: res.headers.get('content-type') || 'image/webp',
+          };
+        }
       }
     }
   } catch (err: any) {
-    logger.warn(`Hugging Face Space FLUX.1 error: ${err?.message || err}`);
-  }
-
-  // Method 2: Hugging Face Inference API with User Token (@huggingface/inference)
-  if (hfToken) {
-    try {
-      logger.info('Calling Hugging Face Inference API with user access token...');
-      const hf = new HfInference(hfToken);
-      const blob: any = await hf.textToImage({
-        model: 'black-forest-labs/FLUX.1-schnell',
-        inputs: enhancedPrompt,
-        parameters: {
-          num_inference_steps: 4,
-        },
-      });
-
-      if (blob) {
-        const arrayBuf = await blob.arrayBuffer();
-        logger.info(`Successfully generated image from Hugging Face Token API (${arrayBuf.byteLength} bytes)`);
-        return {
-          buffer: Buffer.from(arrayBuf),
-          mimeType: blob.type || 'image/jpeg',
-        };
-      }
-    } catch (err: any) {
-      logger.warn(`Hugging Face Token API error: ${err?.message || err}`);
-    }
-  }
-
-  // Method 3: Hugging Face Alternative High-Speed FLUX Space Backup
-  try {
-    logger.info('Calling Hugging Face Alternative FLUX Space backup...');
-    const backupClient = await Client.connect('mrfakename/FLUX.1-schnell', hfToken ? { token: hfToken as any } : undefined);
-    const backupResult = await backupClient.predict('/infer', {
-      prompt: enhancedPrompt,
-      seed: Math.floor(Math.random() * 10000000),
-      randomize_seed: true,
-      width: 1024,
-      height: 1024,
-      num_inference_steps: 4,
-    });
-
-    const backupImg = (backupResult.data as any[])?.[0];
-    const backupUrl = backupImg?.url || backupImg?.path;
-    if (backupUrl && typeof backupUrl === 'string') {
-      const res = await fetch(backupUrl);
-      if (res.ok) {
-        const arrayBuf = await res.arrayBuffer();
-        logger.info(`Successfully generated backup image from Hugging Face (${arrayBuf.byteLength} bytes)`);
-        return {
-          buffer: Buffer.from(arrayBuf),
-          mimeType: res.headers.get('content-type') || 'image/webp',
-        };
-      }
-    }
-  } catch (err: any) {
-    logger.warn(`Hugging Face Backup Space error: ${err?.message || err}`);
+    logger.warn(`Hugging Face Gradio Space error: ${err?.message || err}`);
   }
 
   return null;
 }
 
-// Generate AI image using Hugging Face FLUX with Meta AI Experience
+// Generate AI image using Hugging Face FLUX with pure ChatGPT-Grade Experience
 export async function generateAIImage(prompt: string, userName: string): Promise<AIResponseResult> {
   const plan = await planMetaAiImage(prompt, userName);
   const imageResult = await fetchHuggingFaceImageBuffer(plan.enhancedPrompt);
@@ -426,21 +453,20 @@ export async function generateAIImage(prompt: string, userName: string): Promise
     logger.info(`Saved generated AI image to ${filePath} (${fileSize} bytes)`);
   }
 
-  // Format exactly like Meta AI WhatsApp experience
-  const followUpBullets = plan.metaAiFollowUps.map((item, idx) => {
-    const icon = idx === 0 ? '🚗' : idx === 1 ? '🛣️' : '🏷️';
-    return `• ${icon} ${item}`;
-  }).join('\n');
+  // Format cleanly like ChatGPT / DALL-E (Zero third-party credits, dynamic contextual suggestions)
+  const isHindi = /kar\s+dejie|kar\s+do|banao|chahiye|dejiye|karo|dikhao|kheecho/i.test(prompt);
+
+  const followUpBullets = plan.metaAiFollowUps && plan.metaAiFollowUps.length > 0
+    ? plan.metaAiFollowUps.map((item) => `• ✦ ${item}`).join('\n')
+    : '';
+
+  const followUpSection = followUpBullets
+    ? `\n\n${isHindi ? '**Aap chahein toh mai isme aur variations bana sakta hu:**' : '**Looking for variations? You can also explore:**'}\n${followUpBullets}\n\n${plan.metaAiClosing}`
+    : '';
 
   const text = `${plan.metaAiGreeting}
 
-${fileUrl ? `![${plan.subjectTitle}](${fileUrl})\n\n` : ''}${plan.metaAiHighlights ? `${plan.metaAiHighlights}\n\n` : ''}**Agar chahiye to mai:**
-${followUpBullets}
-
-${plan.metaAiClosing}
-
----
-*⚡ Engine: Hugging Face FLUX.1 (1024×1024 Photorealistic)*`;
+${fileUrl ? `![${plan.subjectTitle}](${fileUrl})\n\n` : ''}${plan.metaAiHighlights ? `${plan.metaAiHighlights}` : ''}${followUpSection}`;
 
   return {
     text,
