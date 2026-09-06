@@ -47,6 +47,8 @@ Your responsibilities:
 - Support English, Hindi, and Hinglish naturally.
 - Format code inside markdown code blocks (e.g. \`\`\`tsx, \`\`\`typescript, \`\`\`python).
 - Be concise, direct, and fast. Avoid unnecessary filler or lengthy preambles. Deliver high-value answers immediately. Never fabricate facts.
+- Built-in Image Generator: When a user wants to visualize, draw, create, or generate an image, wallpaper, artwork, vehicle, scene, or visual photography, reply with:
+  { "action": "image_generation", "prompt": "<detailed English visual prompt describing the subject, lighting, camera, and style>" }
 
 Personality: Professional, direct, helpful, friendly.`;
 
@@ -141,16 +143,15 @@ export interface MetaAiImagePlan {
   metaAiClosing: string;
 }
 
-// Detect if user is asking to create/generate an image (English, Hindi, Hinglish)
-// Detect if user is asking to create/generate an image (English, Hindi, Hinglish, universal ChatGPT style)
+// Detect if user is asking to create/generate an image (English, Hindi, Hinglish, universal ChatGPT/Midjourney style)
 export function isImageGenerationRequest(prompt: string): boolean {
   const p = prompt.trim().toLowerCase();
 
   // Slash commands
   if (/^\/(?:image|imagine|img|pic|photo|draw|generate|paint|render)\b/i.test(p)) return true;
 
-  // Exact image noun keywords
-  const hasImageNoun = /\b(?:image|images|photo|photos|picture|pictures|pic|pics|portrait|portraits|wallpaper|wallpapers|illustration|illustrations|artwork|drawing|sketch|avatar|avatars|render|renders|tasveer|chhabi)\b/i.test(p);
+  // Exact image noun keywords (including photography, photograph, etc.)
+  const hasImageNoun = /\b(?:image|images|photo|photos|photograph|photographs|photography|picture|pictures|pic|pics|portrait|portraits|wallpaper|wallpapers|illustration|illustrations|artwork|drawing|drawings|sketch|sketches|avatar|avatars|render|renders|tasveer|chhabi)\b/i.test(p);
 
   // Exact creation verb / intent keywords
   const hasCreationIntent = /\b(?:create|created|creating|generate|generated|generating|draw|drawing|paint|painting|render|rendering|make|making|produce|design|banao|bana|banaye|banayein|banake|dikhao|dekhao|chahiye|dejiye|dejie|karo|kijiye|nikalo|kheecho|khincho)\b/i.test(p);
@@ -158,21 +159,30 @@ export function isImageGenerationRequest(prompt: string): boolean {
   if (hasImageNoun && hasCreationIntent) return true;
 
   // Direct phrasing like 'image of a cat', 'photo of sunset', 'picture of sports car', 'portrait of a girl'
-  if (/\b(?:image|photo|picture|pic|portrait|wallpaper|drawing|illustration|avatar|tasveer)\s+(?:of|for|showing|depicting|with)\b/i.test(p)) return true;
+  if (/\b(?:image|photo|photograph|picture|pic|portrait|wallpaper|drawing|illustration|avatar|tasveer)\s+(?:of|for|showing|depicting|with)\b/i.test(p)) return true;
 
   // Direct creation starters like 'draw a...', 'can you draw a...', 'paint a...', 'sketch a...'
   if (/^(?:can\s+you\s+|could\s+you\s+|please\s+)?(?:draw|paint|sketch|render|illustrate)\s+(?:me\s+)?(?:a|an|the|some)?\s*\w+/i.test(p)) return true;
 
-  // Prompts that explicitly end with image/photo/pic/wallpaper/avatar
+  // Coding guard: prevent coding questions from triggering image generation
+  const isCoding = /\b(?:code|app|website|page|function|api|component|database|sql|table|hook|script|frontend|backend|server|bug|error|npm|install|debug|syntax|compiler|typescript|javascript|python|java|react|nextjs|class|method|interface|schema)\b/i.test(p);
+
+  // Photographic and visual style tags (e.g. "commercial car photography", "cinematic lighting", "8k resolution", "digital art")
+  const hasPhotoStyle = /\b(?:commercial\s+(?:car\s+|product\s+|fashion\s+|portrait\s+)?photography|automotive\s+photography|car\s+photography|portrait\s+photography|product\s+photography|street\s+photography|wildlife\s+photography|landscape\s+photography|fashion\s+photography|nature\s+photography|cinematic\s+photography|macro\s+photography|aerial\s+photography|drone\s+photography|photorealistic|hyperrealistic|hyper-realistic|octane\s+render|unreal\s+engine|concept\s+art|digital\s+art|digital\s+illustration|matte\s+painting|3d\s+render|vector\s+art|cinematic\s+lighting|dramatic\s+lighting|studio\s+lighting|soft\s+lighting|volumetric\s+lighting|motion\s+blur|depth\s+of\s+field|bokeh|sharp\s+focus|8k\s+resolution|4k\s+wallpaper|high-end\s+commercial|shot\s+on\s+35mm|wide\s+angle\s+shot|close-up\s+shot|telephoto|isometric\s+view)\b/i.test(p);
+
+  if (!isCoding && hasPhotoStyle) {
+    return true;
+  }
+
+  // Prompts that explicitly end with image/photo/photography/wallpaper/avatar/render
   if (/\b(?:avatar\s+image|user\s+avatar|profile\s+picture|profile\s+photo|profile\s+pic)\b/i.test(p)) return true;
-  if (/\b(?:image|images|photo|photos|pic|pics|wallpaper|portrait|illustration)$/i.test(p)) return true;
+  if (/\b(?:image|images|photo|photos|photograph|photographs|photography|pic|pics|wallpaper|portrait|illustration|render|drawing|artwork)$/i.test(p) && !isCoding) return true;
 
   // Hindi direct phrasing like '... ki photo', '... ka pic', '... ki tasveer', '... banao'
   if (/(?:ki|ka|ke)\s+(?:photo|image|tasveer|picture|pic)\b/i.test(p)) return true;
   if (/\b(?:ek\s+)?(?:photo|image|picture|pic|tasveer)\s+(?:banao|banado|chahiye)/i.test(p)) return true;
 
   // 'banao ...' or '... banao' for visual entities (unless coding/technical query)
-  const isCoding = /\b(?:code|app|website|page|function|api|component|database|sql|table|hook|script|frontend|backend|server|bug|error)\b/i.test(p);
   if (!isCoding && /\b(?:banao|bana\s*do|banayein?)\b/i.test(p) && !/\b(?:kaise|kyu|kya|why|how)\b/i.test(p)) {
     return true;
   }
@@ -697,6 +707,28 @@ export async function generateAIResponse(
 
       if (text && text.trim() !== '') {
         logger.info(`AI Response generated with key ${i + 1} (${text.length} chars)`);
+
+        // ⚡ Intercept tool/action call JSON for image generation from Gemini
+        if (text.includes('"action"') && text.includes('"image_generation"')) {
+          logger.info('Detected Gemini image_generation action JSON — intercepting and executing image generator');
+          let extractedPrompt = userPrompt;
+          try {
+            const actionMatch = text.match(/\{[\s\S]*?"action"\s*:\s*"image_generation"[\s\S]*?\}/);
+            if (actionMatch) {
+              const parsed = JSON.parse(actionMatch[0]);
+              if (parsed.prompt && typeof parsed.prompt === 'string' && parsed.prompt.trim()) {
+                extractedPrompt = parsed.prompt.trim();
+              }
+            }
+          } catch {
+            const promptMatch = text.match(/"prompt"\s*:\s*"([^"]+)"/);
+            if (promptMatch && promptMatch[1]) {
+              extractedPrompt = promptMatch[1];
+            }
+          }
+          return await generateAIImage(extractedPrompt, userName);
+        }
+
         return { text };
       }
     } catch (error: any) {
