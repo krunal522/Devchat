@@ -84,33 +84,17 @@ interface ChatState {
   clearAllUnreads: () => void;
 }
 
+// Ensure any stale legacy unread cache is wiped so reload never resurrects phantom unread counts
+try {
+  localStorage.removeItem('devchat_unread_counts');
+} catch {}
+
 function getStoredUnreads(): Record<string, number> {
-  try {
-    const raw = localStorage.getItem('devchat_unread_counts');
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    const cleaned: Record<string, number> = {};
-    let hasUserKey = false;
-    for (const [k, v] of Object.entries(parsed)) {
-      if (k.startsWith('user:')) {
-        hasUserKey = true;
-      } else if (typeof v === 'number') {
-        cleaned[k] = v;
-      }
-    }
-    if (hasUserKey) {
-      localStorage.setItem('devchat_unread_counts', JSON.stringify(cleaned));
-    }
-    return cleaned;
-  } catch {
-    return {};
-  }
+  return {};
 }
 
-function persistUnreads(unreads: Record<string, number>) {
-  try {
-    localStorage.setItem('devchat_unread_counts', JSON.stringify(unreads));
-  } catch {}
+function persistUnreads(_unreads: Record<string, number>) {
+  // WhatsApp style: unread counts live in-memory and are synchronized via server and WebSockets
 }
 
 function getStoredActiveChannelId(): string | null {
@@ -227,16 +211,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
           .filter((d) => d.otherUser?.id === otherUserId)
           .forEach((d) => {
             nextUnreads[d.id] = 0;
+            channelApi.markAsRead(d.id).catch(() => {});
           });
       }
-      persistUnreads(nextUnreads);
       return {
         unreadCounts: nextUnreads,
       };
     });
 
     // Mark as read in server database
-    channelApi.markAsRead(channelId);
+    channelApi.markAsRead(channelId).catch(() => {});
   },
 
   markChannelAsRead: (channelId: string) => {
@@ -268,13 +252,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!serverMap || typeof serverMap !== 'object') return;
       const activeId = get().activeChannelId;
 
-      set((state) => {
-        const next = { ...state.unreadCounts };
+      set(() => {
+        const next: Record<string, number> = {};
         for (const [chId, count] of Object.entries(serverMap)) {
-          if (chId === activeId) {
-            next[chId] = 0;
-          } else {
-            next[chId] = Number(count) || 0;
+          const num = Number(count) || 0;
+          if (chId !== activeId && num > 0) {
+            next[chId] = num;
           }
         }
         persistUnreads(next);
@@ -458,10 +441,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         .filter((d) => d.otherUser?.id === otherUserId)
         .forEach((d) => {
           nextUnreads[d.id] = 0;
+          channelApi.markAsRead(d.id).catch(() => {});
         });
     }
-    persistUnreads(nextUnreads);
-    channelApi.markAsRead(channelId);
+    channelApi.markAsRead(channelId).catch(() => {});
 
     set((state) => ({
       activeChannelId: channelId,

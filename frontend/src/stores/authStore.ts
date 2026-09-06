@@ -58,9 +58,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       try {
         localStorage.removeItem('devchat_active_channel_id');
         localStorage.removeItem('devchat_last_active_channel');
+        localStorage.removeItem('devchat_unread_counts');
         sessionStorage.removeItem('devchat_active_channel_id');
         sessionStorage.removeItem('devchat_last_active_channel');
       } catch {}
+      useChatStore.getState().clearAllUnreads();
       useChatStore.getState().setActiveChannel('');
       initSocket(data.accessToken);
       notificationService.requestPermission();
@@ -81,9 +83,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       try {
         localStorage.removeItem('devchat_active_channel_id');
         localStorage.removeItem('devchat_last_active_channel');
+        localStorage.removeItem('devchat_unread_counts');
         sessionStorage.removeItem('devchat_active_channel_id');
         sessionStorage.removeItem('devchat_last_active_channel');
       } catch {}
+      useChatStore.getState().clearAllUnreads();
       useChatStore.getState().setActiveChannel('');
       initSocket(data.accessToken);
       set({ user: data.user, isAuthenticated: true, isLoading: false });
@@ -106,9 +110,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       localStorage.removeItem('devchat_active_channel_id');
       localStorage.removeItem('devchat_last_active_channel');
+      localStorage.removeItem('devchat_unread_counts');
       sessionStorage.removeItem('devchat_active_channel_id');
       sessionStorage.removeItem('devchat_last_active_channel');
     } catch {}
+    useChatStore.getState().clearAllUnreads();
     useChatStore.getState().setActiveChannel('');
     set({ user: null, isAuthenticated: false, isLoading: false, error: null });
   },

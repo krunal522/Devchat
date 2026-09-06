@@ -102,6 +102,7 @@ model User {
   workspaceMemberships WorkspaceMember[]
   sentInvitations      WorkspaceInvitation[] @relation("invitation_creator")
   auditLogs            AuditLog[]
+  readStates           ChannelReadState[]
 
   @@map("users")
 }
@@ -122,8 +123,9 @@ model Channel {
   // Relations
   createdBy User            @relation("channel_creator", fields: [createdById], references: [id])
   workspace Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  messages  Message[]
-  members   ChannelMember[]
+  messages   Message[]
+  members    ChannelMember[]
+  readStates ChannelReadState[]
 
   @@index([type])
   @@index([slug])
@@ -229,4 +231,19 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@map("audit_logs")
+}
+
+// ─── Channel Read State ─────────────────────────────────
+
+model ChannelReadState {
+  userId     String   @map("user_id")
+  channelId  String   @map("channel_id")
+  lastReadAt DateTime @default(now()) @map("last_read_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@id([userId, channelId])
+  @@index([userId])
+  @@map("channel_read_states")
 }

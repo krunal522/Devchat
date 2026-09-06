@@ -268,25 +268,13 @@ export function Sidebar() {
               <span className="sidebar__section-title">
                 Channels {totalChannelsUnread > 0 && <span className="sidebar__section-count">({totalChannelsUnread})</span>}
               </span>
-              <div className="sidebar__section-actions">
-                {(totalChannelsUnread > 0 || totalDMsUnread > 0) && (
-                  <button
-                    type="button"
-                    className="sidebar__mark-all-btn"
-                    onClick={() => useChatStore.getState().markAllAsRead()}
-                    title="Mark all messages as read"
-                  >
-                    ✓✓ Read
-                  </button>
-                )}
-                <button
-                  className="sidebar__add-btn"
-                  onClick={openCreateChannelModal}
-                  title="Create channel"
-                >
-                  +
-                </button>
-              </div>
+              <button
+                className="sidebar__add-btn"
+                onClick={openCreateChannelModal}
+                title="Create channel"
+              >
+                +
+              </button>
             </div>
 
             <div className="sidebar__list">
@@ -320,25 +308,13 @@ export function Sidebar() {
               <span className="sidebar__section-title">
                 Direct Messages {totalDMsUnread > 0 && <span className="sidebar__section-count">({totalDMsUnread})</span>}
               </span>
-              <div className="sidebar__section-actions">
-                {totalDMsUnread > 0 && (
-                  <button
-                    type="button"
-                    className="sidebar__mark-all-btn"
-                    onClick={() => useChatStore.getState().markAllAsRead()}
-                    title="Mark all DMs as read"
-                  >
-                    ✓✓ Read
-                  </button>
-                )}
-                <button
-                  className="sidebar__add-btn"
-                  onClick={openStartDMModal}
-                  title="Start a direct message"
-                >
-                  +
-                </button>
-              </div>
+              <button
+                className="sidebar__add-btn"
+                onClick={openStartDMModal}
+                title="Start a direct message"
+              >
+                +
+              </button>
             </div>
 
             <div className="sidebar__list">

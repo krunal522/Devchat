@@ -571,7 +571,7 @@ export async function getUserUnreadCounts(userId: string): Promise<Record<string
          JOIN channel_members cm ON cm.channel_id = m.channel_id AND cm.user_id = $1
          LEFT JOIN channel_read_states crs ON crs.channel_id = m.channel_id AND crs.user_id = $1
          WHERE m.user_id != $1
-           AND m.created_at > COALESCE(crs.last_read_at, cm.joined_at)
+           AND m.created_at > COALESCE(crs.last_read_at, NOW())
          GROUP BY m.channel_id`,
         userId
       );

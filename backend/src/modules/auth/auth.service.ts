@@ -201,6 +201,16 @@ export async function login(input: LoginInput) {
   // Remove passwordHash from response
   const { passwordHash: _, ...userWithoutPassword } = user;
 
+  // Ensure read states exist for any channels user is part of (prevents historical unread spam)
+  prisma.$executeRawUnsafe(
+    `INSERT INTO channel_read_states (user_id, channel_id, last_read_at)
+     SELECT $1, cm.channel_id, NOW()
+     FROM channel_members cm
+     WHERE cm.user_id = $1
+     ON CONFLICT (user_id, channel_id) DO NOTHING`,
+    user.id
+  ).catch(() => {});
+
   logger.info(`User logged in: ${user.username} (${user.id})`);
 
   return { user: userWithoutPassword, ...tokens };

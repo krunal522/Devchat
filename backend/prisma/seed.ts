@@ -343,6 +343,23 @@ async function seed() {
 
   console.log(`✅ Created DM channel with ${dmMessages.length} messages`);
 
+  // Initialize read states for all users across all channels so demo users start with 0 unreads
+  try {
+    for (const u of users) {
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO channel_read_states (user_id, channel_id, last_read_at)
+        SELECT $1, cm.channel_id, NOW()
+        FROM channel_members cm
+        WHERE cm.user_id = $1
+        ON CONFLICT (user_id, channel_id)
+        DO UPDATE SET last_read_at = NOW()
+      `, u.id);
+    }
+    console.log('✅ Initialized clean read states for all users');
+  } catch (err) {
+    console.warn('⚠️ Could not initialize channel read states:', err);
+  }
+
   console.log('\n✅ Database seeding completed!\n');
   console.log('Demo accounts (all use password "Password123"):');
   users.forEach((u) => {
