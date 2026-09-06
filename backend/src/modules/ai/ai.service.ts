@@ -225,6 +225,13 @@ A user named "${userName}" requested to create an image: "${userPrompt}".
 Your tasks:
 1. Identify the exact subject the user wants (e.g. portraits, people, user avatars, luxury cars, animals, anime, landscapes, architecture, cyberpunk cities, 3D art, fantasy, product design). NEVER assume it is a car unless the user specifically asked for a vehicle or car!
 2. Translate & craft an ultra-detailed, photorealistic, cinematic prompt in English for Black Forest Labs FLUX.1 (including camera lens, lighting, atmospheric details, composition, 8k resolution, photorealistic, sharp focus, no watermarks, lifelike textures).
+CRITICAL FOR TECH & BRAND LOGOS (e.g. React, React Native, Python, JavaScript, Docker, Flutter, Android, Apple, Node.js):
+- You MUST preserve and explicitly describe the EXACT REAL-WORLD ICONIC SHAPE, GEOMETRY, AND OFFICIAL COLOR CODES!
+- For React / React Native: Describe the "official iconic cyan blue (#61DAFB) atom symbol with three intersecting elliptical orbital rings and central circular nucleus dot on clean dark background". NEVER replace it with a generic sphere, bowling ball, or unrelated glass orb!
+- For Python: Two interlocking snakes in official blue (#306998) and yellow (#FFD438).
+- For Node.js: Green hexagon (#339933) with clean Node geometry.
+- For Docker: Blue whale carrying shipping containers.
+- If it's a general company/startup logo, design a clean vector tech emblem with geometric precision.
 3. Write a sleek, friendly, ChatGPT-style companion message in the EXACT SAME LANGUAGE and tone as the user (Hinglish/Hindi if user asked in Hinglish/Hindi, English if user asked in English):
    - subjectTitle: Clean, elegant title of the image (e.g., "Cyberpunk Street at Night", "Portrait of a Software Engineer", "Golden Retriever Puppy in Sunshine")
    - metaAiGreeting: A natural, polite introduction (e.g., "Ye lijiye, aapke liye **${userPrompt}** ki high-definition image taiyar hai ✨" or "Here is your photorealistic image of **[subject]** ✨")
@@ -246,7 +253,7 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
           },
         ],
         generationConfig: {
-          temperature: 0.4,
+          temperature: 0.3,
           maxOutputTokens: 1024,
         },
       };
@@ -284,18 +291,46 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
   const rawSubject = extractImagePrompt(userPrompt);
   const isHindi = /kar\s+dejie|kar\s+do|banao|chahiye|chiye|dejiye|karo|dikhao|kheecho/i.test(userPrompt);
   const isLogo = /\b(logo|logos|icon|icons|badge|emblem|symbol|branding|mascot)\b/i.test(userPrompt);
+  const isReact = /\b(react|react\s*js|reactjs|react\s*native)\b/i.test(userPrompt);
+  const isPython = /\bpython\b/i.test(userPrompt);
+  const isNode = /\b(node|nodejs|node\s*js)\b/i.test(userPrompt);
+  const isDocker = /\bdocker\b/i.test(userPrompt);
   const isPerson = /\b(man|woman|boy|girl|person|portrait|face|model|actor|actress|developer|engineer|coder|avatar|ladka|ladki|aadmi|aurat)\b/i.test(userPrompt);
   const isCar = /\b(car|cars|gadi|gaadi|vehicle|bike|motorcycle|supercar|ferrari|bmw|audi|lamborghini|porsche|swift|tesla|mercedes)\b/i.test(userPrompt);
   const isAnimal = /\b(cat|dog|puppy|kitten|lion|tiger|bird|eagle|horse|wolf|pet|animal|janwar|kutta|billi|sher)\b/i.test(userPrompt);
   const isLandscape = /\b(nature|mountain|mountains|sea|ocean|beach|sunset|sunrise|forest|river|sky|space|galaxy|pahar|samundar)\b/i.test(userPrompt);
   const isArchitecture = /\b(house|home|building|room|interior|mansion|villa|city|street|skyscraper|cafe|ghar|kamra)\b/i.test(userPrompt);
 
-  const subjectTitle = rawSubject ? rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1) : 'Creative Visual';
+  let subjectTitle = rawSubject ? rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1) : 'Creative Visual';
 
   let enhancedPrompt = '';
   let metaAiFollowUps: string[] = [];
 
-  if (isLogo) {
+  if (isReact) {
+    subjectTitle = 'Official React JS Atom Logo';
+    enhancedPrompt = 'High-end 3D render of the official React JS logo, iconic glowing electric cyan blue (#61DAFB) atom symbol with three intersecting elliptical orbital rings around a central circular nucleus dot, clean dark charcoal studio background, ray-tracing, cinematic lighting, 8k resolution, sharp focus, masterpiece';
+    metaAiFollowUps = isHindi
+      ? ['Minimalist flat cyan vector React logo', 'Neon glowing cyberpunk React atom wallpaper', 'Metallic embossed React 3D badge']
+      : ['Minimalist flat cyan vector React logo', 'Neon glowing cyberpunk React atom wallpaper', 'Metallic embossed React 3D badge'];
+  } else if (isPython) {
+    subjectTitle = 'Official Python Logo';
+    enhancedPrompt = 'High-end 3D render of the official Python programming language logo, two interlocking snakes in official vibrant blue (#306998) and yellow (#FFD438), clean dark background, ray-tracing, 8k resolution, masterpiece';
+    metaAiFollowUps = isHindi
+      ? ['Flat minimalist vector Python logo', 'Cyberpunk neon Python emblem', 'Gold and metallic Python badge']
+      : ['Flat minimalist vector Python logo', 'Cyberpunk neon Python emblem', 'Gold and metallic Python badge'];
+  } else if (isNode) {
+    subjectTitle = 'Official Node.js Logo';
+    enhancedPrompt = 'High-end 3D render of the official Node.js hexagon logo, vibrant emerald green (#339933), clean dark background, ray-tracing, 8k resolution, masterpiece';
+    metaAiFollowUps = isHindi
+      ? ['Minimalist green vector Node.js icon', 'Glowing neon Node.js hexagon', 'Metallic 3D badge look']
+      : ['Minimalist green vector Node.js icon', 'Glowing neon Node.js hexagon', 'Metallic 3D badge look'];
+  } else if (isDocker) {
+    subjectTitle = 'Official Docker Logo';
+    enhancedPrompt = 'High-end 3D render of the official Docker logo, iconic blue whale carrying stacked shipping containers, ocean ambient reflections, 8k resolution, masterpiece';
+    metaAiFollowUps = isHindi
+      ? ['Flat vector Docker whale logo', 'Cyberpunk neon Docker graphic', 'Minimalist container badge']
+      : ['Flat vector Docker whale logo', 'Cyberpunk neon Docker graphic', 'Minimalist container badge'];
+  } else if (isLogo) {
     enhancedPrompt = `Professional modern vector logo design for ${rawSubject}, sharp geometric lines, clean minimalist tech branding aesthetic, centered vector graphic, balanced corporate identity, dark mode background, 8k resolution, vector art, masterpiece`;
     metaAiFollowUps = isHindi
       ? ['Dark mode glowing neon effect logo', 'Minimalist black and white monochrome version', '3D embossed metallic badge variation']
