@@ -134,6 +134,7 @@ export async function sendMessage(userId: string, channelId: string, input: Send
 
   const rawMessage = await prisma.message.create({
     data: {
+      ...(input.id ? { id: input.id } : {}),
       content: input.content,
       userId,
       channelId,

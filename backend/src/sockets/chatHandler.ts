@@ -12,6 +12,7 @@
  *    to trigger Google Gemini response pipelines with typing indicators.
  */
 
+import crypto from 'crypto';
 import { Server, Socket } from 'socket.io';
 import { logger } from '../utils/logger.js';
 import { prisma } from '../config/database.js';
@@ -115,7 +116,7 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         avatarUrl: socket.data.avatarUrl || null,
       };
 
-      const serverMsgId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const serverMsgId = crypto.randomUUID();
       const clientTempId = (payload as any).tempId || null;
       const instantMessage = {
         id: serverMsgId,
@@ -148,17 +149,18 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
 
       // ⚡ 4. Background DB persistence (non-blocking)
       messageService.sendMessage(userId, channelId, {
+        id: serverMsgId,
         content: content ? content.trim() : '',
         parentId,
         attachments,
         isForwarded: Boolean(payload.isForwarded),
         skipMembershipCheck: true,
       }).then((savedMessage) => {
-        if (savedMessage && savedMessage.id !== serverMsgId) {
+        if (savedMessage && clientTempId && clientTempId !== serverMsgId) {
           const syncRooms = [`channel:${channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
           io.to(syncRooms).emit('message:saved', {
-            tempId: clientTempId || serverMsgId,
-            realId: savedMessage.id,
+            tempId: clientTempId,
+            realId: serverMsgId,
             channelId,
           });
         }
@@ -209,7 +211,7 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
               }
 
               // ⚡ 2. Instant broadcast to channel (0ms DB delay!)
-              const instantAiId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+              const instantAiId = crypto.randomUUID();
               const instantAiMessage = {
                 id: instantAiId,
                 content: aiReplyText,
@@ -232,20 +234,13 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
               // Broadcast AI message immediately over WebSockets
               await broadcastMessageToChannel(io, channelId, instantAiMessage, memberUserIds);
 
-              // ⚡ 3. Background DB persistence (non-blocking)
+              // ⚡ 3. Background DB persistence (non-blocking) with identical permanent UUID
               messageService.sendMessage(AI_BOT_ID, channelId, {
+                id: instantAiId,
                 content: aiReplyText,
                 parentId: isAIMentioned ? instantMessage.id : parentId,
                 attachments: aiAttachments,
                 skipMembershipCheck: true,
-              }).then((savedMessage) => {
-                if (savedMessage && savedMessage.id !== instantAiId) {
-                  io.to(`channel:${channelId}`).emit('message:saved', {
-                    tempId: instantAiId,
-                    realId: savedMessage.id,
-                    channelId,
-                  });
-                }
               }).catch((err) => {
                 logger.error(`Background AI DB save error: ${err.message}`);
               });
@@ -257,7 +252,7 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
                 const senderName = socket.data.displayName || socket.data.username || 'Developer';
                 const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim();
                 const fallbackText = generateSmartFallbackResponse(cleanPrompt, senderName, Boolean(attachments && attachments.length > 0));
-                const instantAiId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+                const instantAiId = crypto.randomUUID();
                 const fallbackMessage = {
                   id: instantAiId,
                   content: fallbackText,
@@ -278,6 +273,7 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
                 };
                 await broadcastMessageToChannel(io, channelId, fallbackMessage, memberUserIds);
                 messageService.sendMessage(AI_BOT_ID, channelId, {
+                  id: instantAiId,
                   content: fallbackText,
                   parentId: isAIMentioned ? instantMessage.id : parentId,
                   skipMembershipCheck: true,

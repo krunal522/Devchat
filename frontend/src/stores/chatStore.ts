@@ -965,6 +965,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   updateMessageId: (channelId: string, oldId: string, newId: string) => {
+    if (!oldId || !newId || oldId === newId) return;
     set((state) => {
       const channelMsgs = state.messages[channelId] || [];
       const updated = channelMsgs.map((m) => (m.id === oldId ? { ...m, id: newId } : m));

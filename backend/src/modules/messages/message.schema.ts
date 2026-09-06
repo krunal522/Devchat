@@ -9,6 +9,7 @@ export const attachmentInputSchema = z.object({
 });
 
 export const sendMessageSchema = z.object({
+  id: z.string().uuid().optional(),
   content: z.string().max(4000, 'Message must be at most 4000 characters').default(''),
   parentId: z.string().uuid().optional(),
   attachments: z.array(attachmentInputSchema).optional(),

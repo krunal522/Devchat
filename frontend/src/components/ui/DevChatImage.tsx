@@ -15,6 +15,8 @@ interface DevChatImageProps {
   loading?: 'lazy' | 'eager';
 }
 
+const loadedImagesCache = new Set<string>();
+
 export const DevChatImage = memo(function DevChatImage({
   src,
   alt = 'Image',
@@ -27,22 +29,27 @@ export const DevChatImage = memo(function DevChatImage({
   logoSize = 34,
   loading = 'lazy',
 }: DevChatImageProps) {
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(() => loadedImagesCache.has(src));
   const [hasError, setHasError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const imgRef = useRef<HTMLImageElement>(null);
 
   // Check if image is already cached in browser memory on mount or src change
   useEffect(() => {
-    setIsLoaded(false);
+    if (loadedImagesCache.has(src)) {
+      setIsLoaded(true);
+      return;
+    }
     setHasError(false);
 
     if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      loadedImagesCache.add(src);
       setIsLoaded(true);
     }
   }, [src, retryKey]);
 
   const handleLoad = () => {
+    loadedImagesCache.add(src);
     setIsLoaded(true);
     setHasError(false);
   };
