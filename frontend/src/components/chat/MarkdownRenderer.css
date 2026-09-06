@@ -281,33 +281,35 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  max-width: 520px;
+  max-width: 320px;
   width: 100%;
 }
 
 .markdown-img-wrapper {
   width: 100%;
-  max-width: 520px;
-  min-height: 180px;
+  max-width: 320px;
+  min-height: 160px;
+  aspect-ratio: 1 / 1;
   border-radius: 14px;
   background: #15161e;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
   overflow: hidden;
   position: relative;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .markdown-img-wrapper:hover {
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(99, 102, 241, 0.15);
+  transform: translateY(-2px);
+  border-color: rgba(108, 92, 231, 0.5);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(108, 92, 231, 0.25);
 }
 
 .markdown-img {
   width: 100%;
-  max-width: 520px;
-  max-height: 520px;
-  height: auto;
+  max-width: 320px;
+  max-height: 320px;
+  height: 100%;
   object-fit: cover;
   display: block;
   cursor: pointer;
@@ -315,7 +317,7 @@
 }
 
 .markdown-img:hover {
-  transform: scale(1.015);
+  transform: scale(1.02);
 }
 
 .markdown-img-footer {

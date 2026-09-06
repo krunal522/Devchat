@@ -16,7 +16,7 @@ import { Server, Socket } from 'socket.io';
 import { logger } from '../utils/logger.js';
 import { prisma } from '../config/database.js';
 import * as messageService from '../modules/messages/message.service.js';
-import { AI_BOT_ID, generateAIResponse } from '../modules/ai/ai.service.js';
+import { AI_BOT_ID, generateAIResponse, generateSmartFallbackResponse } from '../modules/ai/ai.service.js';
 import { cacheGetMembers, cacheSetMembers } from './channelMemberCache.js';
 
 interface SendMessagePayload {
@@ -201,8 +201,12 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
               }
 
               const aiResult = await generateAIResponse(cleanPrompt, senderName, history, attachments as any);
-              const aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
+              let aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
               const aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
+
+              if (!aiReplyText && (!aiAttachments || aiAttachments.length === 0)) {
+                aiReplyText = generateSmartFallbackResponse(cleanPrompt, senderName, Boolean(attachments && attachments.length > 0));
+              }
 
               // ⚡ 2. Instant broadcast to channel (0ms DB delay!)
               const instantAiId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -248,6 +252,39 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
 
             } catch (aiErr) {
               logger.error(`Error in AI Bot auto-reply: ${aiErr}`);
+              // Resilient Recovery: Never leave user with no response or blank screen!
+              try {
+                const senderName = socket.data.displayName || socket.data.username || 'Developer';
+                const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim();
+                const fallbackText = generateSmartFallbackResponse(cleanPrompt, senderName, Boolean(attachments && attachments.length > 0));
+                const instantAiId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+                const fallbackMessage = {
+                  id: instantAiId,
+                  content: fallbackText,
+                  channelId,
+                  parentId: isAIMentioned ? instantMessage.id : parentId || null,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  isEdited: false,
+                  user: {
+                    id: AI_BOT_ID,
+                    username: 'devchat_ai',
+                    displayName: '🤖 DevChat AI',
+                    avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=DevChatAI',
+                  },
+                  reactions: [],
+                  attachments: [],
+                  _count: { replies: 0 },
+                };
+                await broadcastMessageToChannel(io, channelId, fallbackMessage, memberUserIds);
+                messageService.sendMessage(AI_BOT_ID, channelId, {
+                  content: fallbackText,
+                  parentId: isAIMentioned ? instantMessage.id : parentId,
+                  skipMembershipCheck: true,
+                }).catch(() => {});
+              } catch (fallbackErr) {
+                logger.error('Failed to send fallback AI message:', fallbackErr);
+              }
             } finally {
               // 🟢 Stop typing indicator immediately
               io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });

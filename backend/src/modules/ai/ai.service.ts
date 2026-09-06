@@ -728,7 +728,7 @@ export async function generateAIResponse(
   return { text: generateSmartFallbackResponse(userPrompt, userName, imageParts.length > 0) };
 }
 
-function generateSmartFallbackResponse(prompt: string, userName: string, hasImage: boolean = false): string {
+export function generateSmartFallbackResponse(prompt: string, userName: string, hasImage: boolean = false): string {
   if (hasImage) {
     return `Hey @${userName}! I received your image attachment. Since my online AI API keys are currently unavailable or quota reached, I couldn't run optical vision analysis on this image right now. Please ensure a valid \`GEMINI_API_KEY\` is configured in \`backend/.env\`! 🖼️`;
   }
