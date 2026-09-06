@@ -13,6 +13,7 @@ export const sendMessageSchema = z.object({
   parentId: z.string().uuid().optional(),
   attachments: z.array(attachmentInputSchema).optional(),
   skipMembershipCheck: z.boolean().optional(),
+  isForwarded: z.boolean().optional(),
 });
 
 export const updateMessageSchema = z.object({

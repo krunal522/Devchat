@@ -20,6 +20,7 @@ export interface Message {
   content: string;
   isEdited: boolean;
   isDeleted?: boolean;
+  isForwarded?: boolean;
   parentId: string | null;
   channelId: string;
   createdAt: string;

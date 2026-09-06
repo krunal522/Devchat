@@ -224,8 +224,8 @@ export function MessageList() {
     return <WelcomeDashboard />;
   }
 
-  // Only show full message list when channel history has actually loaded from the server
-  if (!isChannelLoaded) {
+  // Only show skeleton loader while messages are actively loading for this channel
+  if (!isChannelLoaded && isLoading) {
     return (
       <div className="message-list">
         <div className="message-list__skeleton">
@@ -284,6 +284,26 @@ export function MessageList() {
   return (
     <div className="message-list" ref={containerRef} onScroll={handleScroll}>
       <div className="message-list__inner">
+        {displayMessages.length === 0 && (
+          <div className="message-list__empty">
+            <div className="message-list__empty-content">
+              <span className="message-list__empty-icon">
+                {activeChannel?.type === 'DIRECT' ? '👋' : '#'}
+              </span>
+              <h3>
+                {activeChannel?.type === 'DIRECT'
+                  ? `This is the start of your direct conversation with ${activeChannel.name}`
+                  : `Welcome to #${activeChannel?.name || 'channel'}!`}
+              </h3>
+              <p>
+                {activeChannel?.description ||
+                  (activeChannel?.type === 'DIRECT'
+                    ? 'Send a message or share an image to begin chatting.'
+                    : 'This is the start of this channel. Send the first message below!')}
+              </p>
+            </div>
+          </div>
+        )}
 
         {displayMessages.map((message) => {
           const messageDate = new Date(message.createdAt).toDateString();

@@ -13,6 +13,7 @@ import { messageApi } from '../../services/messageApi';
 import { formatMessageTime } from '../../utils/formatDate';
 import { FileIcon } from '../ui/FileIcon';
 import { DevChatImage } from '../ui/DevChatImage';
+import { ForwardModal } from './ForwardModal';
 import { useToastStore } from '../../stores/toastStore';
 import type { Message } from '../../types/message';
 import '../ui/FileIcon.css';
@@ -76,6 +77,7 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
   } | null>(null);
   const moreMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showForwardModal, setShowForwardModal] = useState(false);
 
   const [lightboxAttachment, setLightboxAttachment] = useState<{ url: string; name: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -477,6 +479,17 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
             {message.isEdited && <span className="message__edited">(edited)</span>}
           </div>
 
+          {/* WhatsApp / Telegram style Forwarded indicator */}
+          {message.isForwarded && (
+            <div className="message__forwarded-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 14 20 9 15 4" />
+                <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
+              </svg>
+              <span>Forwarded</span>
+            </div>
+          )}
+
           {/* Quoted Parent Reply Card (Only shown if replying directly) */}
           {message.parent && !message.parentId && (
             <div className="message__quoted-reply">
@@ -643,66 +656,110 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
           )}
         </div>
 
-        {/* Hover Action Toolbar (Completely disabled for DevChat AI and while editing) */}
-        {!isEditing && !isAIMessage && !isAIChat && (
+        {/* Hover Action Toolbar */}
+        {!isEditing && (
           <div className={`message__actions ${showFullPicker || showMoreMenu ? 'message__actions--active' : ''}`}>
-            {/* 1. Clean Smiley Reaction Picker Trigger */}
-            <button
-              ref={emojiTriggerRef}
-              type="button"
-              className={`message__action-btn ${showFullPicker ? 'message__action-btn--active' : ''}`}
-              onClick={handleTogglePicker}
-              title="Add reaction"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                <line x1="9" y1="9" x2="9.01" y2="9" />
-                <line x1="15" y1="9" x2="15.01" y2="9" />
-              </svg>
-            </button>
+            {!isAIMessage && !isAIChat ? (
+              <>
+                {/* 1. Clean Smiley Reaction Picker Trigger */}
+                <button
+                  ref={emojiTriggerRef}
+                  type="button"
+                  className={`message__action-btn ${showFullPicker ? 'message__action-btn--active' : ''}`}
+                  onClick={handleTogglePicker}
+                  title="Add reaction"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                    <line x1="9" y1="9" x2="9.01" y2="9" />
+                    <line x1="15" y1="9" x2="15.01" y2="9" />
+                  </svg>
+                </button>
 
-            {/* 2. Reply in Thread (hidden if already the thread parent) */}
-            {!isThreadParent && (
-              <button
-                type="button"
-                className="message__action-btn"
-                onClick={() => openThread(message)}
-                title="Reply in thread"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-              </button>
+                {/* 2. Reply in Thread (hidden if already the thread parent) */}
+                {!isThreadParent && (
+                  <button
+                    type="button"
+                    className="message__action-btn"
+                    onClick={() => openThread(message)}
+                    title="Reply in thread"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                  </button>
+                )}
+
+                {/* 3. Reply Directly in Chat */}
+                <button
+                  type="button"
+                  className="message__action-btn"
+                  onClick={() => useChatStore.getState().setReplyingToMessage(message)}
+                  title="Reply directly in chat"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 17 4 12 9 7" />
+                    <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                  </svg>
+                </button>
+
+                {/* 4. Forward Message */}
+                <button
+                  type="button"
+                  className="message__action-btn"
+                  onClick={() => setShowForwardModal(true)}
+                  title="Forward message"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 14 20 9 15 4" />
+                    <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
+                  </svg>
+                </button>
+
+                {/* 5. Slack-style More Actions (⋯) Trigger */}
+                <button
+                  ref={moreMenuTriggerRef}
+                  type="button"
+                  className={`message__action-btn ${showMoreMenu ? 'message__action-btn--active' : ''}`}
+                  onClick={handleToggleMoreMenu}
+                  title="More actions"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="5" cy="12" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="19" cy="12" r="2" />
+                  </svg>
+                </button>
+              </>
+            ) : (
+              <>
+                {message.content && (
+                  <button
+                    type="button"
+                    className="message__action-btn"
+                    onClick={handleCopyText}
+                    title="Copy message"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="message__action-btn"
+                  onClick={() => setShowForwardModal(true)}
+                  title="Forward message"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 14 20 9 15 4" />
+                    <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
+                  </svg>
+                </button>
+              </>
             )}
-
-            {/* 3. Reply Directly in Chat */}
-            <button
-              type="button"
-              className="message__action-btn"
-              onClick={() => useChatStore.getState().setReplyingToMessage(message)}
-              title="Reply directly in chat"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 17 4 12 9 7" />
-                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-              </svg>
-            </button>
-
-            {/* 4. Slack-style More Actions (⋯) Trigger */}
-            <button
-              ref={moreMenuTriggerRef}
-              type="button"
-              className={`message__action-btn ${showMoreMenu ? 'message__action-btn--active' : ''}`}
-              onClick={handleToggleMoreMenu}
-              title="More actions"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="5" cy="12" r="2" />
-                <circle cx="12" cy="12" r="2" />
-                <circle cx="19" cy="12" r="2" />
-              </svg>
-            </button>
           </div>
         )}
       </div>
@@ -719,6 +776,19 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
               </div>
 
               <div className="image-lightbox-actions">
+                <button
+                  type="button"
+                  className="image-lightbox-action-btn"
+                  onClick={() => setShowForwardModal(true)}
+                  title="Forward Image"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 14 20 9 15 4" />
+                    <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
+                  </svg>
+                  <span>Forward</span>
+                </button>
+
                 <a
                   href={lightboxAttachment.url}
                   download={lightboxAttachment.name}
@@ -844,6 +914,22 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
               <span>Reply to message</span>
             </button>
 
+            {/* Forward Message */}
+            <button
+              type="button"
+              className="message__more-menu-item"
+              onClick={() => {
+                setShowMoreMenu(false);
+                setShowForwardModal(true);
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 14 20 9 15 4" />
+                <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
+              </svg>
+              <span>Forward message</span>
+            </button>
+
             {canEditOrDelete && (
               <>
                 <div className="message__more-menu-divider" />
@@ -943,6 +1029,13 @@ export const MessageItem = memo(function MessageItem({ message, isThreadParent }
           </div>,
           document.body
         )}
+
+      {/* WhatsApp / Slack-style Forward Modal */}
+      <ForwardModal
+        message={message}
+        isOpen={showForwardModal}
+        onClose={() => setShowForwardModal(false)}
+      />
     </>
   );
 });

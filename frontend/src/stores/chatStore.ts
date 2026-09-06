@@ -646,9 +646,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
     } catch (error) {
       console.error('Failed to load messages:', error);
-      if (get().activeChannelId === channelId) {
-        set({ isLoadingMessages: false });
-      }
+      set((state) => ({
+        isLoadingMessages: state.activeChannelId === channelId ? false : state.isLoadingMessages,
+        isChannelLoaded: { ...state.isChannelLoaded, [channelId]: true },
+        messages: { ...state.messages, [channelId]: state.messages[channelId] || [] },
+      }));
     }
   },
 

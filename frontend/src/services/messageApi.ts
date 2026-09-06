@@ -27,12 +27,14 @@ export const messageApi = {
     channelId: string,
     content: string,
     parentId?: string,
-    attachments?: Omit<Attachment, 'id'>[]
+    attachments?: Omit<Attachment, 'id'>[],
+    isForwarded?: boolean
   ): Promise<Message> => {
     const res = await api.post(`/channels/${channelId}/messages`, {
       content,
       parentId,
       attachments,
+      isForwarded,
     });
     return res.data.data;
   },

@@ -30,6 +30,7 @@ interface SendMessagePayload {
     fileSize: number;
     mimeType: string;
   }>;
+  isForwarded?: boolean;
 }
 
 interface EditMessagePayload {
@@ -126,6 +127,7 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         isEdited: false,
+        isForwarded: Boolean(payload.isForwarded),
         reactions: [],
         attachments: (attachments as any) || [],
         parent: null,
@@ -149,6 +151,7 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         content: content ? content.trim() : '',
         parentId,
         attachments,
+        isForwarded: Boolean(payload.isForwarded),
         skipMembershipCheck: true,
       }).then((savedMessage) => {
         if (savedMessage && savedMessage.id !== serverMsgId) {

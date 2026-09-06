@@ -26,7 +26,8 @@ export function useSocketActions() {
         fileType: string;
         fileSize: number;
         mimeType: string;
-      }>
+      }>,
+      isForwarded?: boolean
     ) => {
       const currentUser = useAuthStore.getState().user;
       const dmChannels = useChatStore.getState().dmChannels;
@@ -63,6 +64,7 @@ export function useSocketActions() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           isEdited: false,
+          isForwarded: Boolean(isForwarded),
           reactions: [],
           attachments: (attachments as any) || [],
           _count: { replies: 0 },
@@ -76,14 +78,14 @@ export function useSocketActions() {
 
       const socket = getSocket();
       if (socket && socket.connected) {
-        socket.emit('message:send', { channelId, content, parentId, attachments, tempId }, (res: any) => {
+        socket.emit('message:send', { channelId, content, parentId, attachments, isForwarded, tempId }, (res: any) => {
           if (res?.error) {
             console.error('[Socket] message:send error:', res.error);
           }
         });
       } else {
         try {
-          const msg = await messageApi.sendMessage(channelId, content, parentId, attachments as any);
+          const msg = await messageApi.sendMessage(channelId, content, parentId, attachments as any, isForwarded);
           useChatStore.getState().addMessage(msg);
         } catch (err) {
           console.error('Failed to send message via REST fallback:', err);

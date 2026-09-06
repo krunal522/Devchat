@@ -7,6 +7,7 @@ const MESSAGE_SELECT = {
   id: true,
   content: true,
   isEdited: true,
+  isForwarded: true,
   parentId: true,
   channelId: true,
   createdAt: true,
@@ -61,6 +62,7 @@ const MESSAGE_SELECT_CREATE = {
   id: true,
   content: true,
   isEdited: true,
+  isForwarded: true,
   parentId: true,
   channelId: true,
   createdAt: true,
@@ -96,13 +98,27 @@ export async function sendMessage(userId: string, channelId: string, input: Send
       create: { userId: 'devchat-ai-bot-id', channelId, role: 'MEMBER' },
       update: {},
     });
-  } else if (!input.skipMembershipCheck) {
-    // Verify user is a member of the channel (skip when socket handler pre-validates via findMany)
-    const membership = await prisma.channelMember.findUnique({
-      where: { userId_channelId: { userId, channelId } },
+  } else {
+    // Check channel type: auto-join public channels
+    const channel = await prisma.channel.findUnique({
+      where: { id: channelId },
+      select: { type: true },
     });
-    if (!membership) {
-      throw ApiError.forbidden('You are not a member of this channel');
+
+    if (channel?.type === 'PUBLIC') {
+      await prisma.channelMember.upsert({
+        where: { userId_channelId: { userId, channelId } },
+        create: { userId, channelId, role: 'MEMBER' },
+        update: {},
+      });
+    } else if (!input.skipMembershipCheck) {
+      // Verify user is a member of the channel
+      const membership = await prisma.channelMember.findUnique({
+        where: { userId_channelId: { userId, channelId } },
+      });
+      if (!membership) {
+        throw ApiError.forbidden('You are not a member of this channel');
+      }
     }
   }
 
@@ -122,6 +138,7 @@ export async function sendMessage(userId: string, channelId: string, input: Send
       userId,
       channelId,
       parentId: input.parentId || null,
+      isForwarded: Boolean(input.isForwarded),
       ...(input.attachments && input.attachments.length > 0
         ? {
             attachments: {
@@ -166,20 +183,24 @@ export async function getMessages(
   cursor?: string,
   limit: number = 50
 ) {
-  // Verify access
-  const membership = await prisma.channelMember.findUnique({
-    where: { userId_channelId: { userId, channelId } },
-  });
-
-  if (!membership) {
-    throw ApiError.forbidden('You are not a member of this channel');
-  }
-
-  // Check if this channel is a DIRECT channel to aggregate all messages between contact
+  // Check if channel exists and check permissions
   const targetChannel = await prisma.channel.findUnique({
     where: { id: channelId },
     select: { type: true, members: { select: { userId: true } } },
   });
+
+  if (!targetChannel) {
+    throw ApiError.notFound('Channel not found');
+  }
+
+  // PUBLIC channels are viewable by all authenticated workspace users.
+  // Only PRIVATE and DIRECT channels require explicit membership.
+  if (targetChannel.type === 'PRIVATE' || targetChannel.type === 'DIRECT') {
+    const isMember = targetChannel.members.some((m) => m.userId === userId);
+    if (!isMember) {
+      throw ApiError.forbidden('You are not a member of this channel');
+    }
+  }
 
   let matchingChannelIds = [channelId];
 
