@@ -224,12 +224,16 @@ export async function joinWorkspaceByInviteCode(userId: string, input: JoinWorks
     },
   });
 
-  // Auto-join public channels of this workspace
-  const publicChannels = await prisma.channel.findMany({
-    where: { workspaceId: workspace.id, type: 'PUBLIC' },
+  // Auto-join default public channels of this workspace (e.g. general, random)
+  const defaultChannels = await prisma.channel.findMany({
+    where: {
+      workspaceId: workspace.id,
+      type: 'PUBLIC',
+      name: { in: ['general', 'random'] },
+    },
   });
 
-  for (const ch of publicChannels) {
+  for (const ch of defaultChannels) {
     await prisma.channelMember.upsert({
       where: { userId_channelId: { userId, channelId: ch.id } },
       update: {},
@@ -496,13 +500,17 @@ export async function acceptInvitation(userId: string, token: string) {
       data: { status: 'ACCEPTED' },
     });
 
-    // Auto-join public channels
-    const publicChannels = await tx.channel.findMany({
-      where: { workspaceId: invitation.workspaceId, type: 'PUBLIC' },
+    // Auto-join default public channels (general, random)
+    const defaultChannels = await tx.channel.findMany({
+      where: {
+        workspaceId: invitation.workspaceId,
+        type: 'PUBLIC',
+        name: { in: ['general', 'random'] },
+      },
       select: { id: true },
     });
 
-    for (const ch of publicChannels) {
+    for (const ch of defaultChannels) {
       await tx.channelMember.upsert({
         where: { userId_channelId: { userId, channelId: ch.id } },
         update: {},

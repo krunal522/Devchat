@@ -314,6 +314,16 @@ function attachListeners(sock: Socket): void {
     useChatStore.getState().loadChannels();
   });
 
+  sock.on('channel:member_added', () => {
+    // Keep channel member counts synced in real-time
+    useChatStore.getState().loadChannels();
+  });
+
+  sock.on('channel:member_removed', () => {
+    // Keep channel member counts synced in real-time
+    useChatStore.getState().loadChannels();
+  });
+
   // ─── DM Room Auto-Join ──────────────────────────────────────────────────────
   // Server emits this when a new DM channel is created, so this user's socket joins the room
   sock.on('dm:join_room', (data: { channelId: string }) => {

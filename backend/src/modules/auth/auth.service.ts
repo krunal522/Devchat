@@ -99,13 +99,16 @@ export async function register(input: RegisterInput) {
       });
     }
 
-    const publicChannels = await prisma.channel.findMany({
-      where: { type: 'PUBLIC' },
+    const defaultChannels = await prisma.channel.findMany({
+      where: {
+        type: 'PUBLIC',
+        name: { in: ['general', 'random'] },
+      },
       select: { id: true },
     });
 
-    if (publicChannels.length > 0) {
-      for (const channel of publicChannels) {
+    if (defaultChannels.length > 0) {
+      for (const channel of defaultChannels) {
         await prisma.channelMember.upsert({
           where: { userId_channelId: { userId: user.id, channelId: channel.id } },
           update: {},

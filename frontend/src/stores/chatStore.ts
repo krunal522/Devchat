@@ -272,7 +272,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadChannels: async () => {
     try {
       const channels = await channelApi.getChannels();
-      set({ channels });
+      set((state) => {
+        const updatedActive =
+          state.activeChannel && state.activeChannel.type !== 'DIRECT'
+            ? channels.find((c) => c.id === state.activeChannel?.id) || state.activeChannel
+            : state.activeChannel;
+        return { channels, activeChannel: updatedActive };
+      });
       get().syncServerUnreads().catch(() => {});
     } catch (error) {
       console.error('Failed to load channels:', error);
@@ -440,15 +446,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Join room over WebSocket so real-time messages arrive instantly
     getSocket()?.emit('channel:join', channelId);
-
-    // If channel exists but user is not a member yet (e.g. public channel), auto-join
-    if (channel && channel.type !== 'DIRECT' && channel.isMember === false) {
-      try {
-        await joinChannel(channelId);
-      } catch (err) {
-        console.error('Failed to auto-join channel:', err);
-      }
-    }
 
     // Always load full message history from server when activating channel
     await loadMessages(channelId);
