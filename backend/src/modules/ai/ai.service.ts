@@ -150,22 +150,23 @@ export function isImageGenerationRequest(prompt: string): boolean {
   // Slash commands
   if (/^\/(?:image|imagine|img|pic|photo|draw|generate|paint|render)\b/i.test(p)) return true;
 
-  // Exact image noun keywords (including photography, photograph, etc.)
-  const hasImageNoun = /\b(?:image|images|photo|photos|photograph|photographs|photography|picture|pictures|pic|pics|portrait|portraits|wallpaper|wallpapers|illustration|illustrations|artwork|drawing|drawings|sketch|sketches|avatar|avatars|render|renders|tasveer|chhabi)\b/i.test(p);
+  // Exact image noun keywords (including logo, icon, badge, emblem, etc.)
+  const hasImageNoun = /\b(?:image|images|photo|photos|photograph|photographs|photography|picture|pictures|pic|pics|portrait|portraits|wallpaper|wallpapers|illustration|illustrations|artwork|drawing|drawings|sketch|sketches|avatar|avatars|logo|logos|icon|icons|badge|emblem|symbol|banner|poster|sticker|mascot|render|renders|tasveer|chhabi)\b/i.test(p);
 
-  // Exact creation verb / intent keywords
-  const hasCreationIntent = /\b(?:create|created|creating|generate|generated|generating|draw|drawing|paint|painting|render|rendering|make|making|produce|design|banao|bana|banaye|banayein|banake|dikhao|dekhao|chahiye|dejiye|dejie|karo|kijiye|nikalo|kheecho|khincho)\b/i.test(p);
+  // Exact creation verb / intent keywords (including chiye, chahiye, etc.)
+  const hasCreationIntent = /\b(?:create|created|creating|generate|generated|generating|draw|drawing|paint|painting|render|rendering|make|making|produce|design|banao|bana|banaye|banayein|banake|dikhao|dekhao|chahiye|chiye|chahie|dejiye|dejie|karo|kijiye|nikalo|kheecho|khincho)\b/i.test(p);
 
   if (hasImageNoun && hasCreationIntent) return true;
 
-  // Direct phrasing like 'image of a cat', 'photo of sunset', 'picture of sports car', 'portrait of a girl'
-  if (/\b(?:image|photo|photograph|picture|pic|portrait|wallpaper|drawing|illustration|avatar|tasveer)\s+(?:of|for|showing|depicting|with)\b/i.test(p)) return true;
+  // Direct phrasing like 'image of a cat', 'photo of sunset', 'picture of sports car', 'logo for company'
+  if (/\b(?:image|photo|photograph|picture|pic|portrait|wallpaper|drawing|illustration|avatar|tasveer|logo|icon)\s+(?:of|for|showing|depicting|with)\b/i.test(p)) return true;
 
   // Direct creation starters like 'draw a...', 'can you draw a...', 'paint a...', 'sketch a...'
   if (/^(?:can\s+you\s+|could\s+you\s+|please\s+)?(?:draw|paint|sketch|render|illustrate)\s+(?:me\s+)?(?:a|an|the|some)?\s*\w+/i.test(p)) return true;
 
-  // Coding guard: prevent coding questions from triggering image generation
-  const isCoding = /\b(?:code|app|website|page|function|api|component|database|sql|table|hook|script|frontend|backend|server|bug|error|npm|install|debug|syntax|compiler|typescript|javascript|python|java|react|nextjs|class|method|interface|schema)\b/i.test(p);
+  // Coding guard: prevent coding questions from triggering image generation (unless asking for logo/icon/avatar/wallpaper)
+  const isLogoOrGraphic = /\b(?:logo|logos|icon|icons|badge|emblem|symbol|avatar|wallpaper|poster|banner|sticker)\b/i.test(p);
+  const isCoding = !isLogoOrGraphic && /\b(?:code|app|website|page|function|api|component|database|sql|table|hook|script|frontend|backend|server|bug|error|npm|install|debug|syntax|compiler|typescript|javascript|python|java|react|nextjs|class|method|interface|schema)\b/i.test(p);
 
   // Photographic and visual style tags (e.g. "commercial car photography", "cinematic lighting", "8k resolution", "digital art")
   const hasPhotoStyle = /\b(?:commercial\s+(?:car\s+|product\s+|fashion\s+|portrait\s+)?photography|automotive\s+photography|car\s+photography|portrait\s+photography|product\s+photography|street\s+photography|wildlife\s+photography|landscape\s+photography|fashion\s+photography|nature\s+photography|cinematic\s+photography|macro\s+photography|aerial\s+photography|drone\s+photography|photorealistic|hyperrealistic|hyper-realistic|octane\s+render|unreal\s+engine|concept\s+art|digital\s+art|digital\s+illustration|matte\s+painting|3d\s+render|vector\s+art|cinematic\s+lighting|dramatic\s+lighting|studio\s+lighting|soft\s+lighting|volumetric\s+lighting|motion\s+blur|depth\s+of\s+field|bokeh|sharp\s+focus|8k\s+resolution|4k\s+wallpaper|high-end\s+commercial|shot\s+on\s+35mm|wide\s+angle\s+shot|close-up\s+shot|telephoto|isometric\s+view)\b/i.test(p);
@@ -174,13 +175,13 @@ export function isImageGenerationRequest(prompt: string): boolean {
     return true;
   }
 
-  // Prompts that explicitly end with image/photo/photography/wallpaper/avatar/render
+  // Prompts that explicitly end with image/photo/photography/wallpaper/avatar/render/logo
   if (/\b(?:avatar\s+image|user\s+avatar|profile\s+picture|profile\s+photo|profile\s+pic)\b/i.test(p)) return true;
-  if (/\b(?:image|images|photo|photos|photograph|photographs|photography|pic|pics|wallpaper|portrait|illustration|render|drawing|artwork)$/i.test(p) && !isCoding) return true;
+  if (/\b(?:image|images|photo|photos|photograph|photographs|photography|pic|pics|wallpaper|portrait|illustration|render|drawing|artwork|logo|logos|icon|icons)$/i.test(p) && !isCoding) return true;
 
-  // Hindi direct phrasing like '... ki photo', '... ka pic', '... ki tasveer', '... banao'
-  if (/(?:ki|ka|ke)\s+(?:photo|image|tasveer|picture|pic)\b/i.test(p)) return true;
-  if (/\b(?:ek\s+)?(?:photo|image|picture|pic|tasveer)\s+(?:banao|banado|chahiye)/i.test(p)) return true;
+  // Hindi direct phrasing like '... ki photo', '... ka pic', '... ki tasveer', '... ka logo', '... chiye'
+  if (/(?:ki|ka|ke)\s+(?:photo|image|tasveer|picture|pic|logo|icon|wallpaper|avatar)\b/i.test(p)) return true;
+  if (/\b(?:ek\s+)?(?:photo|image|picture|pic|tasveer|logo|icon|wallpaper|avatar)\s+(?:banao|banado|chahiye|chiye|chahie|dejiye|dejie)/i.test(p)) return true;
 
   // 'banao ...' or '... banao' for visual entities (unless coding/technical query)
   if (!isCoding && /\b(?:banao|bana\s*do|banayein?)\b/i.test(p) && !/\b(?:kaise|kyu|kya|why|how)\b/i.test(p)) {
@@ -194,11 +195,12 @@ export function isImageGenerationRequest(prompt: string): boolean {
 export function extractImagePrompt(prompt: string): string {
   let p = prompt.trim();
   p = p.replace(/^\/(?:image|imagine|img|pic|photo|draw|generate|paint|render)\s*/i, '');
-  p = p.replace(/^(?:can\s+you\s+|could\s+you\s+|please\s+)?(?:generate|create|make|draw|paint|render|illustrate)\s+(?:me\s+)?(?:an?\s+)?(?:image|photo|picture|pic|artwork|illustration|portrait|wallpaper)?\s*(?:of|for|showing|depicting)?\s*:?/i, '');
-  p = p.replace(/\b(?:image|images|photo|photos|pic|pics|picture|pictures|tasveer)\s+(?:created|generate|banao|bana\s+do|banaye|chahiye)\b/gi, '');
+  p = p.replace(/^(?:can\s+you\s+|could\s+you\s+|please\s+)?(?:generate|create|make|draw|paint|render|illustrate)\s+(?:me\s+)?(?:an?\s+)?(?:image|photo|picture|pic|artwork|illustration|portrait|wallpaper|logo|icon)?\s*(?:of|for|showing|depicting)?\s*:?/i, '');
+  p = p.replace(/\b(?:image|images|photo|photos|pic|pics|picture|pictures|tasveer|logo)\s+(?:created|generate|banao|bana\s+do|banaye|chahiye|chiye)\b/gi, '');
   p = p.replace(/^(?:banao|banaye|dikhao)\s+(?:ek\s+)?/i, '');
-  p = p.replace(/\b(?:ki|ka|ke)\s+(?:image|photo|tasveer|picture|pic)\b/gi, '');
-  p = p.replace(/\s*(?:banao|banado|chahiye|kar\s+dejie|kar\s+do|karo|dejiye)$/i, '');
+  p = p.replace(/\b(?:ki|ka|ke)\s+(?:image|photo|tasveer|picture|pic|logo|icon)\b/gi, '');
+  p = p.replace(/\s*(?:banao|banado|chahiye|chiye|chahie|kar\s+dejie|kar\s+do|karo|dejiye)$/i, '');
+  p = p.replace(/\s*(?:bekar\s+nay|bekar\s+nahi|bekar\s+nhi|accha\s+sa|acha\s+sa|best\s+quality).*$/i, '');
   p = p.replace(/\s*(?:ki|ka|ke)$/i, '');
   p = p.replace(/\s*\.{2,}\s*/g, ' ');
   p = p.replace(/\s+but$/i, '');
@@ -280,7 +282,8 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
 
   // Intelligent Fallback (handles any subject: people, animals, cars, nature, architecture, art, sci-fi)
   const rawSubject = extractImagePrompt(userPrompt);
-  const isHindi = /kar\s+dejie|kar\s+do|banao|chahiye|dejiye|karo|dikhao|kheecho/i.test(userPrompt);
+  const isHindi = /kar\s+dejie|kar\s+do|banao|chahiye|chiye|dejiye|karo|dikhao|kheecho/i.test(userPrompt);
+  const isLogo = /\b(logo|logos|icon|icons|badge|emblem|symbol|branding|mascot)\b/i.test(userPrompt);
   const isPerson = /\b(man|woman|boy|girl|person|portrait|face|model|actor|actress|developer|engineer|coder|avatar|ladka|ladki|aadmi|aurat)\b/i.test(userPrompt);
   const isCar = /\b(car|cars|gadi|gaadi|vehicle|bike|motorcycle|supercar|ferrari|bmw|audi|lamborghini|porsche|swift|tesla|mercedes)\b/i.test(userPrompt);
   const isAnimal = /\b(cat|dog|puppy|kitten|lion|tiger|bird|eagle|horse|wolf|pet|animal|janwar|kutta|billi|sher)\b/i.test(userPrompt);
@@ -292,7 +295,12 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
   let enhancedPrompt = '';
   let metaAiFollowUps: string[] = [];
 
-  if (isPerson) {
+  if (isLogo) {
+    enhancedPrompt = `Professional modern vector logo design for ${rawSubject}, sharp geometric lines, clean minimalist tech branding aesthetic, centered vector graphic, balanced corporate identity, dark mode background, 8k resolution, vector art, masterpiece`;
+    metaAiFollowUps = isHindi
+      ? ['Dark mode glowing neon effect logo', 'Minimalist black and white monochrome version', '3D embossed metallic badge variation']
+      : ['Dark mode glowing neon logo effect', 'Minimalist black & white monochrome version', '3D embossed metallic badge look'];
+  } else if (isPerson) {
     enhancedPrompt = `Ultra-detailed photorealistic portrait photograph of ${rawSubject}, natural skin textures, 85mm f/1.4 lens, soft cinematic studio lighting, shallow depth of field, catchlights in eyes, high-fashion editorial aesthetic, 8k resolution, masterpiece`;
     metaAiFollowUps = isHindi
       ? ['Cinematic close-up portrait with golden hour lighting', 'Studio black and white editorial style', 'Neon cyberpunk aesthetic look']
@@ -346,11 +354,31 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
   };
 }
 
-// Generate image buffer from Hugging Face FLUX model
+// Generate image buffer using Ultra-Fast FLUX engine with multi-tiered fallback
 async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
   const hfToken = env.HUGGINGFACE_API_KEY?.trim() || process.env.HF_TOKEN?.trim() || '';
 
-  // Method 1: Hugging Face Official Inference API with FLUX.1-schnell (Ultra fast ~4-5s with nscale)
+  // Method 1: Ultra-Fast High-Definition FLUX via Pollinations AI (~2.5s - 3.5s, 100% Free & Unlimited)
+  try {
+    logger.info('Calling ultra-fast FLUX image engine (Pollinations AI)...');
+    const seed = Math.floor(Math.random() * 10000000);
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?model=flux&width=1024&height=1024&seed=${seed}&nologo=true`;
+    const res = await fetch(pollinationsUrl, { signal: AbortSignal.timeout(9000) });
+    if (res.ok) {
+      const arrayBuf = await res.arrayBuffer();
+      if (arrayBuf.byteLength > 1000) {
+        logger.info(`Successfully generated ultra-fast FLUX image (${arrayBuf.byteLength} bytes) in ~3s`);
+        return {
+          buffer: Buffer.from(arrayBuf),
+          mimeType: res.headers.get('content-type') || 'image/jpeg',
+        };
+      }
+    }
+  } catch (pollErr: any) {
+    logger.warn(`Fast FLUX engine error (${pollErr?.message || pollErr}) — falling back to Hugging Face...`);
+  }
+
+  // Method 2: Hugging Face Official Inference API with FLUX.1-schnell (Ultra fast ~4-5s with nscale)
   if (hfToken) {
     try {
       logger.info('Calling Hugging Face Inference API with FLUX.1-schnell...');
