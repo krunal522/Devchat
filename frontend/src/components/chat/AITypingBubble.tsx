@@ -4,10 +4,10 @@ import { useUIStore } from '../../stores/uiStore';
 import './MarkdownRenderer.css';
 
 const IMAGE_PHASES = [
-  'Refining visual prompt & geometry...',
-  'Synthesizing 1024×1024 pixels with FLUX.1...',
+  'Refining visual composition & geometry...',
+  'Synthesizing 1024×1024 high-definition pixels...',
   'Applying lighting, reflections & textures...',
-  'Finalizing high-definition render...',
+  'Finalizing studio-grade render...',
 ];
 
 export const AITypingBubble = React.memo(function AITypingBubble() {
@@ -32,7 +32,7 @@ export const AITypingBubble = React.memo(function AITypingBubble() {
           <div className="ai-image-loader-meta">
             <div className="ai-image-loader-title-row">
               <span className="ai-typing-bubble__name">DevChat AI</span>
-              <span className="ai-loader-badge">⚡ FLUX.1 Ultra-HD</span>
+              <span className="ai-loader-badge">✨ Creative Studio</span>
             </div>
             <span className="ai-image-loader-status">{IMAGE_PHASES[phaseIndex]}</span>
           </div>
@@ -45,7 +45,7 @@ export const AITypingBubble = React.memo(function AITypingBubble() {
             <span className="ai-image-spinner-icon">🎨</span>
           </div>
           <div className="ai-image-loader-bottom-bar">
-            <span className="ai-image-loader-hint">Generating with Black Forest Labs FLUX.1 (~3-5s)</span>
+            <span className="ai-image-loader-hint">Crafting high-definition visual in real-time (~3-5s)</span>
           </div>
         </div>
       </div>
