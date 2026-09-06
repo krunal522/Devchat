@@ -7,7 +7,7 @@
  */
 
 import { useCallback } from 'react';
-import { getSocket } from '../services/socketManager';
+import { getSocket, queueOutboxMessage } from '../services/socketManager';
 import { messageApi } from '../services/messageApi';
 import { useChatStore } from '../stores/chatStore';
 import { useAuthStore } from '../stores/authStore';
@@ -84,12 +84,19 @@ export function useSocketActions() {
           }
         });
       } else {
-        try {
-          const msg = await messageApi.sendMessage(channelId, content, parentId, attachments as any, isForwarded);
-          useChatStore.getState().addMessage(msg);
-        } catch (err) {
-          console.error('Failed to send message via REST fallback:', err);
-        }
+        // Socket is offline/reconnecting (e.g. Render restart/deploy):
+        // Queue for instant delivery as soon as socket connects!
+        queueOutboxMessage({ channelId, content, parentId, attachments: attachments as any, isForwarded, tempId });
+
+        // Also attempt REST API in parallel
+        messageApi
+          .sendMessage(channelId, content, parentId, attachments as any, isForwarded)
+          .then((msg) => {
+            useChatStore.getState().addMessage(msg);
+          })
+          .catch((err) => {
+            console.warn('[Socket] REST fallback waiting for server wake-up:', err?.message || err);
+          });
       }
     },
     []

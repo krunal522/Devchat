@@ -123,6 +123,35 @@ export function getSocket(): Socket | null {
 
 // ─── Internal ────────────────────────────────────────────────────────────────
 
+export interface PendingOutboxMessage {
+  channelId: string;
+  content: string;
+  parentId?: string;
+  attachments?: any[];
+  isForwarded?: boolean;
+  tempId?: string;
+}
+
+const outboxQueue: PendingOutboxMessage[] = [];
+
+export function queueOutboxMessage(msg: PendingOutboxMessage) {
+  outboxQueue.push(msg);
+}
+
+function flushOutboxQueue(sock: Socket) {
+  while (outboxQueue.length > 0) {
+    const msg = outboxQueue.shift();
+    if (msg) {
+      console.log('[Socket] Flushing queued outbox message to server:', msg.tempId);
+      sock.emit('message:send', msg, (res: any) => {
+        if (res?.error) {
+          console.error('[Socket] Queued message error:', res.error);
+        }
+      });
+    }
+  }
+}
+
 function attachListeners(sock: Socket): void {
   if (listenersAttached) return;
   listenersAttached = true;
@@ -134,6 +163,9 @@ function attachListeners(sock: Socket): void {
     if (currentUser?.id) {
       usePresenceStore.getState().addOnlineUser(currentUser.id);
     }
+
+    // Flush any pending messages that were queued during Render container restart / deploy
+    flushOutboxQueue(sock);
 
     // Re-join ALL channel and DM rooms (important for Render cold-start reconnects)
     const rejoinAllRooms = () => {
