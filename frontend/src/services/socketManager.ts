@@ -214,9 +214,9 @@ function attachListeners(sock: Socket): void {
   });
 
   // ── AI Typing Indicator ──────────────────────────────────────────────────
-  sock.on('ai:typing:start', (data: { channelId: string }) => {
+  sock.on('ai:typing:start', (data: { channelId: string; mode?: 'chat' | 'image' }) => {
     if (data?.channelId) {
-      useUIStore.getState().setAITypingChannelId(data.channelId);
+      useUIStore.getState().setAITypingChannelId(data.channelId, data.mode || 'chat');
     }
   });
 

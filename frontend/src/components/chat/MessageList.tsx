@@ -67,11 +67,17 @@ export function MessageList() {
   const scrollAnchorRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
 
   const dmInfo = dmChannels.find((d) => d.id === activeChannelId);
-  const isAIChat = activeChannel?.type === 'DIRECT' && (
-    activeChannel?.name?.toLowerCase().includes('devchat ai') ||
-    dmInfo?.otherUser?.username === 'devchat_ai' ||
-    (activeChannel?.createdBy as any)?.username === 'devchat_ai'
-  );
+  const channelNameLower = typeof activeChannel?.name === 'string' ? activeChannel.name.toLowerCase() : '';
+  const isAIChat =
+    activeChannel?.type === 'DIRECT' &&
+    (channelNameLower.includes('devchat ai') ||
+      channelNameLower.includes('devchat_ai') ||
+      channelNameLower.includes('devchat') ||
+      dmInfo?.otherUser?.username === 'devchat_ai' ||
+      dmInfo?.otherUser?.id === 'devchat-ai-bot-id' ||
+      (activeChannel as any)?.slug?.includes('devchat-ai-bot-id') ||
+      (activeChannel as any)?.members?.some((m: any) => m.userId === 'devchat-ai-bot-id' || m.user?.username === 'devchat_ai') ||
+      (activeChannel?.createdBy as any)?.username === 'devchat_ai');
 
   // Continuous chat display for AI conversations
   let displayMessages = messages;

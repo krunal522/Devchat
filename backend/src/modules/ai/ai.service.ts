@@ -209,6 +209,11 @@ export function extractImagePrompt(prompt: string): string {
 
 // Generate ChatGPT-Grade Visual Plan using Gemini
 async function planMetaAiImage(userPrompt: string, userName: string): Promise<MetaAiImagePlan> {
+  const isReact = /\b(react|react\s*js|reactjs|react\s*native)\b/i.test(userPrompt);
+  const isPython = /\bpython\b/i.test(userPrompt);
+  const isNode = /\b(node|nodejs|node\s*js)\b/i.test(userPrompt);
+  const isDocker = /\bdocker\b/i.test(userPrompt);
+
   const cleanKey = env.GEMINI_API_KEY?.trim();
   if (cleanKey) {
     try {
@@ -271,9 +276,16 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
           if (parsed.enhancedPrompt && parsed.subjectTitle) {
+            let finalPrompt = parsed.enhancedPrompt;
+            if (isReact && (!finalPrompt.toLowerCase().includes('atom') && !finalPrompt.toLowerCase().includes('orbital'))) {
+              finalPrompt = 'Official React JS cyan blue (#61DAFB) atom logo with three intersecting elliptical orbital rings and central circular nucleus dot on clean black background, vector style, 8k resolution, masterpiece';
+            }
+            if (isPython && !finalPrompt.toLowerCase().includes('snake')) {
+              finalPrompt = 'Official Python programming language logo, two interlocking snakes in vibrant blue (#306998) and yellow (#FFD438), clean dark background, 8k resolution, crisp vector logo';
+            }
             return {
               subjectTitle: parsed.subjectTitle,
-              enhancedPrompt: parsed.enhancedPrompt,
+              enhancedPrompt: finalPrompt,
               metaAiGreeting: parsed.metaAiGreeting || `Ye lijiye — aapke liye **${parsed.subjectTitle}** taiyar hai ✨`,
               metaAiHighlights: parsed.metaAiHighlights || '',
               metaAiFollowUps: Array.isArray(parsed.metaAiFollowUps) ? parsed.metaAiFollowUps : ['Cinematic close-up detailed shot', 'Dramatic studio lighting variation', 'Vibrant artistic atmosphere'],
@@ -291,10 +303,6 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
   const rawSubject = extractImagePrompt(userPrompt);
   const isHindi = /kar\s+dejie|kar\s+do|banao|chahiye|chiye|dejiye|karo|dikhao|kheecho/i.test(userPrompt);
   const isLogo = /\b(logo|logos|icon|icons|badge|emblem|symbol|branding|mascot)\b/i.test(userPrompt);
-  const isReact = /\b(react|react\s*js|reactjs|react\s*native)\b/i.test(userPrompt);
-  const isPython = /\bpython\b/i.test(userPrompt);
-  const isNode = /\b(node|nodejs|node\s*js)\b/i.test(userPrompt);
-  const isDocker = /\bdocker\b/i.test(userPrompt);
   const isPerson = /\b(man|woman|boy|girl|person|portrait|face|model|actor|actress|developer|engineer|coder|avatar|ladka|ladki|aadmi|aurat)\b/i.test(userPrompt);
   const isCar = /\b(car|cars|gadi|gaadi|vehicle|bike|motorcycle|supercar|ferrari|bmw|audi|lamborghini|porsche|swift|tesla|mercedes)\b/i.test(userPrompt);
   const isAnimal = /\b(cat|dog|puppy|kitten|lion|tiger|bird|eagle|horse|wolf|pet|animal|janwar|kutta|billi|sher)\b/i.test(userPrompt);
@@ -334,37 +342,37 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
     enhancedPrompt = `Professional modern vector logo design for ${rawSubject}, sharp geometric lines, clean minimalist tech branding aesthetic, centered vector graphic, balanced corporate identity, dark mode background, 8k resolution, vector art, masterpiece`;
     metaAiFollowUps = isHindi
       ? ['Dark mode glowing neon effect logo', 'Minimalist black and white monochrome version', '3D embossed metallic badge variation']
-      : ['Dark mode glowing neon logo effect', 'Minimalist black & white monochrome version', '3D embossed metallic badge look'];
+      : ['Dark mode glowing neon effect logo', 'Minimalist black and white monochrome version', '3D embossed metallic badge variation'];
   } else if (isPerson) {
-    enhancedPrompt = `Ultra-detailed photorealistic portrait photograph of ${rawSubject}, natural skin textures, 85mm f/1.4 lens, soft cinematic studio lighting, shallow depth of field, catchlights in eyes, high-fashion editorial aesthetic, 8k resolution, masterpiece`;
+    enhancedPrompt = `High-end commercial portrait photography of ${rawSubject}, shot on Hasselblad H6D-100c, 85mm f/1.4 lens, natural skin textures, subtle studio rim lighting, soft depth of field, balanced bokeh background, 8k resolution, photorealistic, masterpiece`;
     metaAiFollowUps = isHindi
-      ? ['Cinematic close-up portrait with golden hour lighting', 'Studio black and white editorial style', 'Neon cyberpunk aesthetic look']
-      : ['Cinematic close-up with golden hour lighting', 'Black & white studio editorial portrait', 'Cyberpunk neon atmosphere'];
+      ? ['Dramatic studio lighting black and white portrait', 'Golden hour natural sunlight outdoor shot', 'Cyberpunk neon backlight aesthetic']
+      : ['Dramatic studio lighting black and white portrait', 'Golden hour natural sunlight outdoor shot', 'Cyberpunk neon backlight aesthetic'];
   } else if (isCar) {
-    enhancedPrompt = `Commercial automotive photography of modern sleek ${rawSubject}, glossy reflective metallic paint, headlights on, dynamic studio lighting, showroom reflections on polished floor, photorealistic, 8k resolution, octane render`;
+    enhancedPrompt = `Automotive commercial photography of ${rawSubject}, dynamic 3/4 front angle, reflections on sleek polished metallic body, dramatic studio lighting, wet asphalt floor, sharp focus, 8k resolution, photorealistic masterpiece`;
     metaAiFollowUps = isHindi
-      ? ['Cockpit interior and dashboard view', 'Road pe high-speed cinematic shot', 'Night city neon reflections view']
-      : ['Luxury interior and cockpit view', 'Cinematic motion shot on scenic road', 'Night city neon reflection view'];
+      ? ['Night city neon lights reflection shot', 'Track race high-speed action shot with motion blur', 'Luxury showroom studio presentation']
+      : ['Night city neon lights reflection shot', 'Track race high-speed action shot with motion blur', 'Luxury showroom studio presentation'];
   } else if (isAnimal) {
-    enhancedPrompt = `Award-winning National Geographic wildlife photograph of ${rawSubject}, sharp fur details, natural soft sunlight, macro depth of field, beautiful environmental background, 8k resolution, lifelike and photorealistic`;
+    enhancedPrompt = `National Geographic wildlife portrait photography of ${rawSubject}, detailed fur and eyes, natural atmospheric lighting, 200mm telephoto lens, soft blurred natural background, 8k resolution, photorealistic, masterpiece`;
     metaAiFollowUps = isHindi
-      ? ['Close-up expressive portrait shot', 'Natural habitat action shot', 'Studio dramatic lighting portrait']
-      : ['Close-up expressive portrait', 'Action shot in natural habitat', 'Dramatic studio lighting variation'];
+      ? ['Sunset silhouette action shot', 'Close-up detailed portrait with intense gaze', 'Playful movement in natural habitat']
+      : ['Sunset silhouette action shot', 'Close-up detailed portrait with intense gaze', 'Playful movement in natural habitat'];
   } else if (isLandscape) {
-    enhancedPrompt = `Breathtaking landscape photography of ${rawSubject}, dramatic atmospheric golden hour lighting, volumetric light rays, ultra-wide angle 16mm lens, crisp natural textures, 8k resolution, photorealistic`;
+    enhancedPrompt = `Stunning landscape photography of ${rawSubject}, ultra-wide angle, golden hour sunlight, majestic atmospheric depth, crisp reflections, rich natural colors, 8k resolution, award-winning photography, masterpiece`;
     metaAiFollowUps = isHindi
-      ? ['Dramatic sunset golden hour view', 'Night scene with Milky Way starry sky', 'Atmospheric foggy morning shot']
-      : ['Golden hour sunset variation', 'Nighttime starry galaxy sky', 'Misty morning aerial perspective'];
+      ? ['Milky way night sky star-filled view', 'Moody mist and morning fog atmosphere', 'Dramatic storm clouds and sunbeam highlights']
+      : ['Milky way night sky star-filled view', 'Moody mist and morning fog atmosphere', 'Dramatic storm clouds and sunbeam highlights'];
   } else if (isArchitecture) {
-    enhancedPrompt = `Architectural Digest photography of ${rawSubject}, minimalist modern interior design, warm natural ambient lighting, marble and wood textures, clean lines, photorealistic, 8k resolution`;
+    enhancedPrompt = `Architectural Digest photography of ${rawSubject}, modern luxury interior and exterior, warm ambient architectural lighting, clean geometric perspective, wide-angle lens, 8k resolution, photorealistic, masterpiece`;
     metaAiFollowUps = isHindi
-      ? ['Cozy night illumination view', 'Minimalist daylight interior shot', 'Exterior modern architectural view']
-      : ['Warm night illumination view', 'Minimalist daylight wide interior', 'Modern exterior architectural angle'];
+      ? ['Twilight evening lighting with illuminated windows', 'Minimalist Scandinavian interior aesthetic', 'Futuristic cyberpunk building concept']
+      : ['Twilight evening lighting with illuminated windows', 'Minimalist Scandinavian interior aesthetic', 'Futuristic cyberpunk building concept'];
   } else {
-    enhancedPrompt = `Ultra-high-definition 8k photorealistic commercial photograph of ${rawSubject}, highly detailed textures, beautiful cinematic studio lighting, sharp focus, professional depth of field, award-winning composition, lifelike masterpiece`;
+    enhancedPrompt = `High-definition visual artwork of ${rawSubject}, cinematic lighting, balanced composition, vibrant colors, rich textures, 8k resolution, photorealistic, masterpiece`;
     metaAiFollowUps = isHindi
-      ? ['Cinematic close-up detailed shot', 'Studio dramatic lighting variation', 'Cyberpunk vibrant color style']
-      : ['Cinematic close-up detailed shot', 'Dramatic studio lighting variation', 'Vibrant artistic atmosphere'];
+      ? ['Cinematic wide-angle cinematic presentation', 'Minimalist clean aesthetic variation', 'Dramatic studio lighting contrast']
+      : ['Cinematic wide-angle cinematic presentation', 'Minimalist clean aesthetic variation', 'Dramatic studio lighting contrast'];
   }
 
   const metaAiGreeting = isHindi
@@ -389,44 +397,29 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
   };
 }
 
-// Generate image buffer using Ultra-Fast FLUX engine with multi-tiered fallback
+// Generate image buffer using Black Forest Labs FLUX.1 with multi-tiered fallback
 async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
   const hfToken = env.HUGGINGFACE_API_KEY?.trim() || process.env.HF_TOKEN?.trim() || '';
 
-  // Method 1: Ultra-Fast High-Definition FLUX via Pollinations AI (~2.5s - 3.5s, 100% Free & Unlimited)
-  try {
-    logger.info('Calling ultra-fast FLUX image engine (Pollinations AI)...');
-    const seed = Math.floor(Math.random() * 10000000);
-    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?model=flux&width=1024&height=1024&seed=${seed}&nologo=true`;
-    const res = await fetch(pollinationsUrl, { signal: AbortSignal.timeout(9000) });
-    if (res.ok) {
-      const arrayBuf = await res.arrayBuffer();
-      if (arrayBuf.byteLength > 1000) {
-        logger.info(`Successfully generated ultra-fast FLUX image (${arrayBuf.byteLength} bytes) in ~3s`);
-        return {
-          buffer: Buffer.from(arrayBuf),
-          mimeType: res.headers.get('content-type') || 'image/jpeg',
-        };
-      }
-    }
-  } catch (pollErr: any) {
-    logger.warn(`Fast FLUX engine error (${pollErr?.message || pollErr}) — falling back to Hugging Face...`);
-  }
-
-  // Method 2: Hugging Face Official Inference API with FLUX.1-schnell (Ultra fast ~4-5s with nscale)
+  // Method 1: Hugging Face Official Inference API with Black Forest Labs FLUX.1-schnell (Ultra fast ~4-5s, 8k true fidelity)
   if (hfToken) {
     try {
-      logger.info('Calling Hugging Face Inference API with FLUX.1-schnell...');
+      logger.info('Calling Hugging Face Inference API with FLUX.1-schnell (Black Forest Labs)...');
       const hf = new HfInference(hfToken);
-      const blob: any = await hf.textToImage({
-        model: 'black-forest-labs/FLUX.1-schnell',
-        inputs: enhancedPrompt,
-      });
+      const blob: any = await hf.textToImage(
+        {
+          model: 'black-forest-labs/FLUX.1-schnell',
+          inputs: enhancedPrompt,
+        },
+        {
+          signal: AbortSignal.timeout(12000),
+        }
+      );
 
       if (blob) {
         const arrayBuf = await blob.arrayBuffer();
         if (arrayBuf.byteLength > 1000) {
-          logger.info(`Successfully generated FLUX image (${arrayBuf.byteLength} bytes) in ultra-HD`);
+          logger.info(`Successfully generated Black Forest Labs FLUX image (${arrayBuf.byteLength} bytes) in ultra-HD`);
           return {
             buffer: Buffer.from(arrayBuf),
             mimeType: blob.type || 'image/jpeg',
@@ -434,7 +427,7 @@ async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ bu
         }
       }
     } catch (err: any) {
-      logger.warn(`Hugging Face FLUX.1-schnell API error: ${err?.message || err}`);
+      logger.warn(`Hugging Face FLUX.1-schnell API error: ${err?.message || err} — falling back to SDXL/Pollinations...`);
     }
   }
 
@@ -443,10 +436,15 @@ async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ bu
     try {
       logger.info('Calling Hugging Face Inference API with SDXL 1.0 backup...');
       const hf = new HfInference(hfToken);
-      const blob: any = await hf.textToImage({
-        model: 'stabilityai/stable-diffusion-xl-base-1.0',
-        inputs: enhancedPrompt,
-      });
+      const blob: any = await hf.textToImage(
+        {
+          model: 'stabilityai/stable-diffusion-xl-base-1.0',
+          inputs: enhancedPrompt,
+        },
+        {
+          signal: AbortSignal.timeout(12000),
+        }
+      );
 
       if (blob) {
         const arrayBuf = await blob.arrayBuffer();
@@ -461,6 +459,26 @@ async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ bu
     } catch (err: any) {
       logger.warn(`Hugging Face SDXL API error: ${err?.message || err}`);
     }
+  }
+
+  // Method 3: Ultra-Fast High-Definition FLUX via Pollinations AI (~2.5s - 3.5s, 100% Free & Unlimited)
+  try {
+    logger.info('Calling fallback FLUX image engine (Pollinations AI)...');
+    const seed = Math.floor(Math.random() * 10000000);
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?model=flux&width=1024&height=1024&seed=${seed}&nologo=true`;
+    const res = await fetch(pollinationsUrl, { signal: AbortSignal.timeout(9000) });
+    if (res.ok) {
+      const arrayBuf = await res.arrayBuffer();
+      if (arrayBuf.byteLength > 1000) {
+        logger.info(`Successfully generated fallback FLUX image (${arrayBuf.byteLength} bytes)`);
+        return {
+          buffer: Buffer.from(arrayBuf),
+          mimeType: res.headers.get('content-type') || 'image/jpeg',
+        };
+      }
+    }
+  } catch (pollErr: any) {
+    logger.warn(`Fast FLUX engine error (${pollErr?.message || pollErr})`);
   }
 
   // Method 3: Hugging Face Gradio Space (black-forest-labs/FLUX.1-schnell)

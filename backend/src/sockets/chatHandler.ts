@@ -17,7 +17,7 @@ import { Server, Socket } from 'socket.io';
 import { logger } from '../utils/logger.js';
 import { prisma } from '../config/database.js';
 import * as messageService from '../modules/messages/message.service.js';
-import { AI_BOT_ID, generateAIResponse, generateSmartFallbackResponse } from '../modules/ai/ai.service.js';
+import { AI_BOT_ID, generateAIResponse, generateSmartFallbackResponse, isImageGenerationRequest } from '../modules/ai/ai.service.js';
 import { cacheGetMembers, cacheSetMembers } from './channelMemberCache.js';
 
 interface SendMessagePayload {
@@ -176,8 +176,9 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
 
         if (isDMWithAI || isAIMentioned) {
+          const isImageMode = isImageGenerationRequest(content);
           // ⚡ 1. Emit AI typing start IMMEDIATELY (<1ms) to channel
-          io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
+          io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId, mode: isImageMode ? 'image' : 'chat' });
 
           // Run AI generation asynchronously
           (async () => {

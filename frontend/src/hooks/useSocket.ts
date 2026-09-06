@@ -38,12 +38,23 @@ export function useSocketActions() {
       const isAIChat =
         activeChannel?.type === 'DIRECT' &&
         (channelNameLower.includes('devchat ai') ||
+          channelNameLower.includes('devchat_ai') ||
+          channelNameLower.includes('devchat') ||
           dmInfo?.otherUser?.username === 'devchat_ai' ||
+          dmInfo?.otherUser?.id === 'devchat-ai-bot-id' ||
+          (activeChannel as any)?.slug?.includes('devchat-ai-bot-id') ||
+          (activeChannel as any)?.members?.some((m: any) => m.userId === 'devchat-ai-bot-id' || m.user?.username === 'devchat_ai') ||
           (activeChannel?.createdBy as any)?.username === 'devchat_ai');
       const isAIMentioned = Boolean(content && typeof content === 'string' && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content));
 
       if (isAIChat || isAIMentioned) {
-        useUIStore.getState().setAITypingChannelId(channelId);
+        const isImageRequest = Boolean(
+          content &&
+            typeof content === 'string' &&
+            (/\b(image|images|photo|photos|picture|pic|draw|paint|sketch|wallpaper|render|illustration|generate|artwork|logo|logos|icon|icons|tasveer|banao|chahiye|chiye)\b/i.test(content) ||
+              content.trim().startsWith('/image'))
+        );
+        useUIStore.getState().setAITypingChannelId(channelId, isImageRequest ? 'image' : 'chat');
       }
 
       // Optimistic UI Update — render message instantly (0ms latency)

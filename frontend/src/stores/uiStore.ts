@@ -11,7 +11,8 @@ interface UIState {
   setMobileView: (view: 'list' | 'chat' | 'details') => void;
 
   aiTypingChannelId: string | null;
-  setAITypingChannelId: (channelId: string | null) => void;
+  aiTypingMode: 'chat' | 'image';
+  setAITypingChannelId: (channelId: string | null, mode?: 'chat' | 'image') => void;
 
   toggleSidebar: () => void;
   toggleMemberPanel: () => void;
@@ -34,9 +35,10 @@ export const useUIStore = create<UIState>((set) => ({
   activeModal: null,
   mobileView: 'list',
   aiTypingChannelId: null,
+  aiTypingMode: 'chat',
 
   setMobileView: (view) => set({ mobileView: view }),
-  setAITypingChannelId: (channelId) => set({ aiTypingChannelId: channelId }),
+  setAITypingChannelId: (channelId, mode = 'chat') => set({ aiTypingChannelId: channelId, aiTypingMode: mode }),
   toggleSidebar: () => set((s) => ({ isSidebarOpen: !s.isSidebarOpen })),
   toggleMemberPanel: () => set((s) => ({ isMemberPanelOpen: !s.isMemberPanelOpen })),
   openCreateChannelModal: () => set({ isCreateChannelModalOpen: true }),
