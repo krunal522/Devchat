@@ -22,6 +22,7 @@ const envSchema = z.object({
 
   GEMINI_API_KEY: z.string().optional().default(''),
   GEMINI_API_KEY_2: z.string().optional().default(''),
+  HUGGINGFACE_API_KEY: z.string().optional().default(''),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -42,6 +43,7 @@ export const env = parsed.success
       RATE_LIMIT_MAX_REQUESTS: 10000,
       GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
       GEMINI_API_KEY_2: process.env.GEMINI_API_KEY_2 || '',
+      HUGGINGFACE_API_KEY: process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || '',
     };
 
 export type Env = typeof env;

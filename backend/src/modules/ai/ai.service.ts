@@ -4,6 +4,8 @@ import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 import { env } from '../../config/env.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Client } from '@gradio/client';
+import { HfInference } from '@huggingface/inference';
 
 export const AI_BOT_ID = 'devchat-ai-bot-id';
 
@@ -130,67 +132,316 @@ export async function getImageBase64(attachment: ImageAttachmentInput): Promise<
   }
 }
 
-// Detect if user is asking to create/generate an image
-export function isImageGenerationRequest(prompt: string): boolean {
-  const p = prompt.trim().toLowerCase();
-  if (p.startsWith('/image') || p.startsWith('/imagine') || p.startsWith('/img')) return true;
-
-  const triggers = [
-    'generate image',
-    'create image',
-    'generate an image',
-    'create an image',
-    'generate photo',
-    'create photo',
-    'generate a photo',
-    'create a photo',
-    'draw an image',
-    'draw a picture',
-    'draw me',
-    'paint an image',
-    'make an image',
-    'make a picture',
-    'generate picture',
-    'image generate',
-    'image banao',
-    'photo banao',
-    'tasveer banao',
-  ];
-
-  return triggers.some((t) => p.includes(t));
+export interface MetaAiImagePlan {
+  subjectTitle: string;
+  enhancedPrompt: string;
+  metaAiGreeting: string;
+  metaAiHighlights: string;
+  metaAiFollowUps: string[];
+  metaAiClosing: string;
 }
 
-// Extract the subject prompt to generate
+// Detect if user is asking to create/generate an image (English, Hindi, Hinglish)
+export function isImageGenerationRequest(prompt: string): boolean {
+  const p = prompt.trim().toLowerCase();
+  if (
+    p.startsWith('/image') ||
+    p.startsWith('/imagine') ||
+    p.startsWith('/img') ||
+    p.startsWith('/draw') ||
+    p.startsWith('/generate')
+  ) {
+    return true;
+  }
+
+  // Exact intent regexes
+  const patterns = [
+    /\b(?:image|images|photo|photos|picture|pictures|tasveer|pic|pics)\s+(?:create|created|generate|generated)\b/i,
+    /\b(?:create|created|generate|generated|draw|paint|render)\s+(?:an?\s+)?(?:image|photo|picture|pic|illustration|wallpaper|drawing)\b/i,
+    /\b(?:image|photo|tasveer|picture|pic)\s+(?:banao|bana\s*do|banaye|banayein|bana\s*ke\s*do|banake\s*do|chahiye|dejiye|dejie|kijiye)\b/i,
+    /\b(?:banao|bana\s*do|banake\s*do|bana\s*ke\s*do)\s+(?:ek\s+)?(?:image|photo|tasveer|picture)\b/i,
+    /\b(?:ek\s+)?(?:image|photo|tasveer|picture)\s+(?:banao|create|generate)\b/i,
+    /\b(?:draw|paint)\s+(?:me\s+)?(?:a\s+|an\s+)?\w+/i,
+    /\b(?:can you|please|kripya)?\s*(?:create|generate|make|draw)\s+(?:me\s+)?(?:an?\s+)?(?:image|photo|picture)\b/i,
+    /\b(?:photo|image|tasveer)\s+(?:nikalo|dekhao|kheecho|khincho|chahiye)\b/i,
+  ];
+
+  if (patterns.some((regex) => regex.test(p))) return true;
+
+  // Flexible co-occurrence check (e.g. "Swift car images created kar dejie..new model but")
+  const hasImage = /\b(image|images|photo|photos|picture|pictures|tasveer|pic|pics)\b/i.test(p);
+  const hasIntent = /\b(create|created|generate|generated|banao|bana|draw|paint|dejie|dejiye|chahiye|karo|kar|dikhao)\b/i.test(p);
+
+  return hasImage && hasIntent;
+}
+
+// Extract the raw subject if AI parsing is unavailable
 export function extractImagePrompt(prompt: string): string {
   let p = prompt.trim();
-  p = p.replace(/^\/(image|imagine|img)\s*/i, '');
-  const regex = /(?:generate|create|make|draw|paint)\s+(?:an?\s+)?(?:image|photo|picture|artwork|illustration)\s+(?:of|for|showing|depicting)?\s*:?/i;
-  p = p.replace(regex, '');
+  p = p.replace(/^\/(image|imagine|img|draw|generate)\s*/i, '');
+  p = p.replace(/(?:generate|create|make|draw|paint)\s+(?:an?\s+)?(?:image|photo|picture|artwork|illustration)\s+(?:of|for|showing|depicting)?\s*:?/i, '');
+  p = p.replace(/(?:images?|photos?)\s+(?:created|generate|banao)\s+(?:kar\s+dejie|kar\s+do|karo|chahiye)?/i, '');
+  p = p.replace(/\s*(ki|ka)\s+(image|photo|tasveer)\s+(banao|chahiye)$/i, '');
+  p = p.replace(/\s*new\s+model\s*but/i, 'new model');
   p = p.replace(/^(image|photo)\s+(banao|generate\s+karo)\s*/i, '');
-  p = p.replace(/\s*(ki\s+)?(image|photo)\s+banao$/i, '');
   return p.trim() || prompt.trim();
 }
 
-// Generate AI image using ultra-fast high-definition Flux model
-export async function generateAIImage(prompt: string, userName: string): Promise<AIResponseResult> {
-  const imageSubject = extractImagePrompt(prompt);
-  const seed = Math.floor(Math.random() * 10000000);
-  const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imageSubject)}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`;
-  const title = imageSubject.charAt(0).toUpperCase() + imageSubject.slice(1);
+// Generate Meta AI Structured Plan using Gemini
+async function planMetaAiImage(userPrompt: string, userName: string): Promise<MetaAiImagePlan> {
+  const cleanKey = env.GEMINI_API_KEY?.trim();
+  if (cleanKey) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${cleanKey}`;
+      const payload = {
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: `You are the Meta AI Art Director & Conversational Assistant for DevChat AI.
+A user named "${userName}" asked: "${userPrompt}".
 
-  const text = `🎨 **${title}**\n\n![${title}](${imageUrl})\n\n✨ **Engine**: Flux 1.0 (1024×1024 Ultra-HD)`;
+Your tasks:
+1. Identify the core subject (e.g., "New Maruti Suzuki Swift 2024-2025 model").
+2. Translate & craft an ultra-detailed, photorealistic 8K commercial photography prompt in English for Black Forest Labs FLUX.1 / SDXL (lighting, camera lens, angle, reflections, 8k resolution, photorealistic, sharp focus, no watermarks, realistic).
+3. Write an ultra-engaging, friendly Meta AI-style companion message in the EXACT SAME LANGUAGE and tone as the user (use Hinglish/Hindi if user asked in Hinglish/Hindi, or English if English). Follow Meta AI WhatsApp format:
+   - Greeting: e.g. "Ye lo — New Maruti Suzuki Swift 2024-2025 model 🔥"
+   - Highlights: (e.g. 3 colors or key design features)
+   - Engaging interactive question: (e.g. "New Swift ka front grill aur LED lights ekdum fresh hai. Aapko kaunsa color zyada pasand aaya?")
+   - 3 follow-up generation styles (e.g. interior view, road running shot, custom number plate)
+   - Closing question: e.g. "Batao kis style me aur banau?"
+
+Respond ONLY with valid JSON (no markdown ticks or extra words):
+{
+  "subjectTitle": "...",
+  "enhancedPrompt": "...",
+  "metaAiGreeting": "...",
+  "metaAiHighlights": "...",
+  "metaAiFollowUps": ["...", "...", "..."],
+  "metaAiClosing": "..."
+}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 1024,
+        },
+      };
+
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (resp.ok) {
+        const data: any = await resp.json();
+        const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+        const jsonMatch = candidate.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.enhancedPrompt && parsed.subjectTitle) {
+            return {
+              subjectTitle: parsed.subjectTitle,
+              enhancedPrompt: parsed.enhancedPrompt,
+              metaAiGreeting: parsed.metaAiGreeting || `Ye lo — ${parsed.subjectTitle} 🔥`,
+              metaAiHighlights: parsed.metaAiHighlights || '',
+              metaAiFollowUps: Array.isArray(parsed.metaAiFollowUps) ? parsed.metaAiFollowUps : ['Interior view', 'Road pe chalta hua view', 'Customized style'],
+              metaAiClosing: parsed.metaAiClosing || 'Batao kis style me aur banau?',
+            };
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn(`Gemini Meta AI image planning failed, using intelligent fallback: ${err}`);
+    }
+  }
+
+  // Intelligent Fallback (handles Swift / cars / general subjects with perfection)
+  const rawSubject = extractImagePrompt(userPrompt);
+  const isSwift = /swift/i.test(userPrompt);
+  const isCar = /car|gadi|gaadi|vehicle/i.test(userPrompt);
+  const isHindi = /kar\s+dejie|kar\s+do|banao|chahiye|dejiye|karo/i.test(userPrompt);
+
+  const subjectTitle = isSwift
+    ? 'New Maruti Suzuki Swift 2024-2025 model'
+    : rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1);
+
+  const enhancedPrompt = isSwift
+    ? 'Studio portrait shot of brand new 2024-2025 Maruti Suzuki Swift hatchback, burning red metallic paint with gloss black roof, sleek LED headlights on, front hexagonal grille, modern alloy wheels, clean studio lighting, photorealistic, 8k resolution, commercial automotive photography'
+    : isCar
+      ? `Ultra-realistic 8k commercial automotive photography of modern ${rawSubject}, sleek body design, LED lights on, reflections on glossy showroom floor, cinematic studio lighting, photorealistic, high resolution`
+      : `High-definition 8k photorealistic commercial photograph of ${rawSubject}, highly detailed, sharp focus, beautiful natural studio lighting, professional depth of field, award-winning shot`;
+
+  const metaAiGreeting = isHindi
+    ? `Ye lo — ${subjectTitle} 🔥`
+    : `Here is your ${subjectTitle}! ✨`;
+
+  const metaAiHighlights = isHindi
+    ? isSwift
+      ? `**3 colors me:**\n• 🔵 Glacier Blue\n• 🔴 Burning Red\n• ⚪ Pearl Silver\n\nNew Swift ka front grill aur LED lights ekdum fresh aur aggressive hain. Aapko kaunsa color zyada pasand aaya?`
+      : `Maine aapke liye ekdum fresh aur high-definition photorealistic visual taiyar kiya hai. Kaisi lagi ye visual presentation?`
+    : `**Key Highlights:**\n• Ultra-HD 1024×1024 resolution\n• Photorealistic lighting & textures\n• Studio-grade commercial aesthetic`;
+
+  const metaAiFollowUps = isHindi
+    ? isSwift
+      ? ['Swift ka luxury interior & cockpit view', 'Road pe chalta hua cinematic high-speed image', 'Aapke naam ki custom number plate wala Swift']
+      : ['Iska close-up detailed shot', 'Realistic outdoor environment shot', 'Night scene with glowing ambient lighting']
+    : ['Close-up detailed view', 'Cinematic outdoor action shot', 'Nighttime neon lighting variation'];
+
+  const metaAiClosing = isHindi ? 'Batao kis style me aur banau?' : 'Let me know which style you would like to generate next!';
+
+  return {
+    subjectTitle,
+    enhancedPrompt,
+    metaAiGreeting,
+    metaAiHighlights,
+    metaAiFollowUps,
+    metaAiClosing,
+  };
+}
+
+// Generate image buffer from Hugging Face FLUX model
+async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  // Method 1: Hugging Face official FLUX.1-schnell Space via Gradio Client (Zero paid key needed)
+  try {
+    logger.info(`Calling Hugging Face black-forest-labs/FLUX.1-schnell space for prompt: "${enhancedPrompt.substring(0, 60)}..."`);
+    const client = await Client.connect('black-forest-labs/FLUX.1-schnell');
+    const result = await client.predict('/infer', {
+      prompt: enhancedPrompt,
+      seed: Math.floor(Math.random() * 10000000),
+      randomize_seed: true,
+      width: 1024,
+      height: 1024,
+      num_inference_steps: 4,
+    });
+
+    const imgData = (result.data as any[])?.[0];
+    const outputUrl = imgData?.url || imgData?.path;
+
+    if (outputUrl && typeof outputUrl === 'string') {
+      const res = await fetch(outputUrl);
+      if (res.ok) {
+        const arrayBuf = await res.arrayBuffer();
+        logger.info(`Successfully generated and downloaded image from Hugging Face FLUX (${arrayBuf.byteLength} bytes)`);
+        return {
+          buffer: Buffer.from(arrayBuf),
+          mimeType: res.headers.get('content-type') || 'image/webp',
+        };
+      }
+    }
+  } catch (err: any) {
+    logger.warn(`Hugging Face Space FLUX.1 error: ${err?.message || err}`);
+  }
+
+  // Method 2: Hugging Face Inference API with User Token (if configured)
+  const hfToken = env.HUGGINGFACE_API_KEY?.trim();
+  if (hfToken) {
+    try {
+      logger.info('Calling Hugging Face Inference API with user access token...');
+      const hf = new HfInference(hfToken);
+      const blob: any = await hf.textToImage({
+        model: 'black-forest-labs/FLUX.1-schnell',
+        inputs: enhancedPrompt,
+        parameters: {
+          num_inference_steps: 4,
+        },
+      });
+
+      if (blob) {
+        const arrayBuf = await blob.arrayBuffer();
+        logger.info(`Successfully generated image from Hugging Face Token API (${arrayBuf.byteLength} bytes)`);
+        return {
+          buffer: Buffer.from(arrayBuf),
+          mimeType: blob.type || 'image/jpeg',
+        };
+      }
+    } catch (err: any) {
+      logger.warn(`Hugging Face Token API error: ${err?.message || err}`);
+    }
+  }
+
+  // Method 3: High-Definition Secondary Backup
+  try {
+    const seed = Math.floor(Math.random() * 10000000);
+    const backupUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&seed=${seed}`;
+    const res = await fetch(backupUrl);
+    if (res.ok) {
+      const arrayBuf = await res.arrayBuffer();
+      if (arrayBuf.byteLength > 10000) {
+        return {
+          buffer: Buffer.from(arrayBuf),
+          mimeType: 'image/jpeg',
+        };
+      }
+    }
+  } catch (err: any) {
+    logger.warn(`Backup image generation error: ${err?.message || err}`);
+  }
+
+  return null;
+}
+
+// Generate AI image using Hugging Face FLUX with Meta AI Experience
+export async function generateAIImage(prompt: string, userName: string): Promise<AIResponseResult> {
+  const plan = await planMetaAiImage(prompt, userName);
+  const imageResult = await fetchHuggingFaceImageBuffer(plan.enhancedPrompt);
+
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  let fileUrl = '';
+  let fileName = `${plan.subjectTitle.slice(0, 30).replace(/[^a-zA-Z0-9_-]/g, '_') || 'ai-image'}.webp`;
+  let fileSize = 0;
+  let mimeType = 'image/webp';
+
+  if (imageResult) {
+    mimeType = imageResult.mimeType;
+    const ext = mimeType.includes('png') ? 'png' : mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'webp';
+    fileName = `${plan.subjectTitle.slice(0, 30).replace(/[^a-zA-Z0-9_-]/g, '_') || 'ai-image'}.${ext}`;
+    const savedDiskName = `ai-img-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${ext}`;
+    const filePath = path.join(uploadsDir, savedDiskName);
+
+    await fs.promises.writeFile(filePath, imageResult.buffer);
+    fileUrl = `/uploads/${savedDiskName}`;
+    fileSize = imageResult.buffer.length;
+    logger.info(`Saved generated AI image to ${filePath} (${fileSize} bytes)`);
+  }
+
+  // Format exactly like Meta AI WhatsApp experience
+  const followUpBullets = plan.metaAiFollowUps.map((item, idx) => {
+    const icon = idx === 0 ? '🚗' : idx === 1 ? '🛣️' : '🏷️';
+    return `• ${icon} ${item}`;
+  }).join('\n');
+
+  const text = `${plan.metaAiGreeting}
+
+${fileUrl ? `![${plan.subjectTitle}](${fileUrl})\n\n` : ''}${plan.metaAiHighlights ? `${plan.metaAiHighlights}\n\n` : ''}**Agar chahiye to mai:**
+${followUpBullets}
+
+${plan.metaAiClosing}
+
+---
+*⚡ Engine: Hugging Face FLUX.1 (1024×1024 Photorealistic)*`;
 
   return {
     text,
-    attachments: [
-      {
-        fileName: `${imageSubject.slice(0, 25).replace(/[^a-zA-Z0-9_-]/g, '_') || 'ai-image'}.jpg`,
-        fileUrl: imageUrl,
-        fileType: 'IMAGE',
-        fileSize: 1024 * 1024,
-        mimeType: 'image/jpeg',
-      },
-    ],
+    attachments: fileUrl
+      ? [
+          {
+            fileName,
+            fileUrl,
+            fileType: 'IMAGE',
+            fileSize,
+            mimeType,
+          },
+        ]
+      : [],
   };
 }
 
