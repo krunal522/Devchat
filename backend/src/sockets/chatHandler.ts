@@ -171,9 +171,8 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
 
         if (isDMWithAI || isAIMentioned) {
-          // ⚡ 1. Emit AI typing start IMMEDIATELY (<1ms) with deduplicated rooms
-          const typingRooms = [`channel:${channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
-          io.to(typingRooms).emit('ai:typing:start', { channelId });
+          // ⚡ 1. Emit AI typing start IMMEDIATELY (<1ms) to channel
+          io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
 
           // Run AI generation asynchronously
           (async () => {
@@ -247,9 +246,8 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
             } catch (aiErr) {
               logger.error(`Error in AI Bot auto-reply: ${aiErr}`);
             } finally {
-              // 🟢 Stop typing indicator immediately with deduplicated rooms
-              const stopTypingRooms = [`channel:${channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
-              io.to(stopTypingRooms).emit('ai:typing:stop', { channelId });
+              // 🟢 Stop typing indicator immediately
+              io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
             }
           })();
         }

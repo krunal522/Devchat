@@ -43,9 +43,6 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
               });
 
               io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
-              members.forEach((m) => {
-                io.to(`user:${m.userId}`).emit('ai:typing:start', { channelId });
-              });
 
               try {
                 const aiResult = await generateAIResponse(cleanPrompt, senderName, [], req.body.attachments);
@@ -61,9 +58,6 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
                 await broadcastMessageToChannel(io, channelId, aiMessage);
               } finally {
                 io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
-                members.forEach((m) => {
-                  io.to(`user:${m.userId}`).emit('ai:typing:stop', { channelId });
-                });
               }
             }
           } catch (aiErr) {

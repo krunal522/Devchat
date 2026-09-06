@@ -2,9 +2,9 @@ import React from 'react';
 import { AILogoIcon } from '../ui/AILogoIcon';
 import './MarkdownRenderer.css';
 
-export function AITypingBubble() {
+export const AITypingBubble = React.memo(function AITypingBubble() {
   return (
-    <div className="ai-typing-bubble">
+    <div className="ai-typing-bubble" key="ai-typing-bubble-container">
       <div className="ai-typing-bubble__avatar">
         <AILogoIcon size={26} />
       </div>
@@ -18,4 +18,4 @@ export function AITypingBubble() {
       </div>
     </div>
   );
-}
+});
