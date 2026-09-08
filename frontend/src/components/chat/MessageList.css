@@ -7,6 +7,9 @@
   flex-direction: column;
   overflow-anchor: auto;
   scroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
 }
 
 .message-list__row {

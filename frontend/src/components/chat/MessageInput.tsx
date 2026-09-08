@@ -289,7 +289,12 @@ export function MessageInput() {
 
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
+      // Keep textarea focused so mobile virtual keyboard does not dismiss after sending
+      textareaRef.current.focus();
     }
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -573,6 +578,11 @@ export function MessageInput() {
                 <button
                   type="button"
                   className="message-input__tool-btn message-input__tool-btn--fmt"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    insertText('**', '**');
+                  }}
                   onClick={() => insertText('**', '**')}
                   title="Bold (**text** or Ctrl+B)"
                 >
@@ -581,6 +591,11 @@ export function MessageInput() {
                 <button
                   type="button"
                   className="message-input__tool-btn message-input__tool-btn--fmt"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    insertText('*', '*');
+                  }}
                   onClick={() => insertText('*', '*')}
                   title="Italic (*text* or Ctrl+I)"
                 >
@@ -589,6 +604,11 @@ export function MessageInput() {
                 <button
                   type="button"
                   className="message-input__tool-btn message-input__tool-btn--fmt"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    insertText('<u>', '</u>');
+                  }}
                   onClick={() => insertText('<u>', '</u>')}
                   title="Underline (<u>text</u> or Ctrl+U)"
                 >
@@ -597,6 +617,11 @@ export function MessageInput() {
                 <button
                   type="button"
                   className="message-input__tool-btn message-input__tool-btn--fmt"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    insertText('~~', '~~');
+                  }}
                   onClick={() => insertText('~~', '~~')}
                   title="Strikethrough (~~text~~)"
                 >
@@ -605,6 +630,11 @@ export function MessageInput() {
                 <button
                   type="button"
                   className="message-input__tool-btn message-input__tool-btn--fmt"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    insertText('`', '`');
+                  }}
                   onClick={() => insertText('`', '`')}
                   title="Code (`code` or Ctrl+E)"
                 >
@@ -647,6 +677,17 @@ export function MessageInput() {
                 type="button"
                 className={`message-input__send-btn ${hasInput ? 'message-input__send-btn--active' : ''}`}
                 onClick={handleSubmit}
+                onMouseDown={(e) => {
+                  // Prevent textarea from losing focus on mouse / pointer click
+                  e.preventDefault();
+                }}
+                onTouchEnd={(e) => {
+                  // Prevent blur on mobile touch and submit directly
+                  if (hasInput && !isUploading) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
                 disabled={!hasInput || isUploading}
                 title="Send message (Enter)"
               >

@@ -165,6 +165,20 @@ export function MessageList() {
     }
   }, [isAITyping, scrollToBottomInstant]);
 
+  // Re-anchor to bottom when navigating back to chat view on mobile
+  useEffect(() => {
+    if (mobileView === 'chat' && containerRef.current && isNearBottomRef.current) {
+      const raf = requestAnimationFrame(() => {
+        scrollToBottomInstant();
+      });
+      const timer = setTimeout(scrollToBottomInstant, 60);
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
+    }
+  }, [mobileView, scrollToBottomInstant]);
+
   // ─── Always re-join socket room when channel changes ─────────────────────────
   useEffect(() => {
     if (!activeChannelId) return;

@@ -210,6 +210,9 @@
   display: flex !important;
   flex-direction: column !important;
   gap: 1rem;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
 }
 
 /* ── Section Headers ───────────────────────────────────── */

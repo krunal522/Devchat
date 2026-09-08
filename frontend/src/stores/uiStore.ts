@@ -19,6 +19,8 @@ interface UIState {
   closeImagePreview: () => void;
 
   toggleSidebar: () => void;
+  openMemberPanel: () => void;
+  closeMemberPanel: () => void;
   toggleMemberPanel: () => void;
   openCreateChannelModal: () => void;
   closeCreateChannelModal: () => void;
@@ -48,6 +50,8 @@ export const useUIStore = create<UIState>((set) => ({
   setMobileView: (view) => set({ mobileView: view }),
   setAITypingChannelId: (channelId, mode = 'chat') => set({ aiTypingChannelId: channelId, aiTypingMode: mode }),
   toggleSidebar: () => set((s) => ({ isSidebarOpen: !s.isSidebarOpen })),
+  openMemberPanel: () => set({ isMemberPanelOpen: true }),
+  closeMemberPanel: () => set({ isMemberPanelOpen: false }),
   toggleMemberPanel: () => set((s) => ({ isMemberPanelOpen: !s.isMemberPanelOpen })),
   openCreateChannelModal: () => set({ isCreateChannelModalOpen: true }),
   closeCreateChannelModal: () => set({ isCreateChannelModalOpen: false }),

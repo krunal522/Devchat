@@ -17,6 +17,8 @@
   padding: 2.5rem 1.5rem 3rem;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 /* Ambient Radial Glow & Grid Pattern */

@@ -35,8 +35,11 @@ export function Header() {
   const deleteChannelStore = useChatStore((s) => s.deleteChannel);
   const currentUserId = useAuthStore((s) => s.user?.id);
   const {
+    openMemberPanel,
+    closeMemberPanel,
     toggleMemberPanel,
     isMemberPanelOpen,
+    mobileView,
     setMobileView,
     isSearchModalOpen,
     openSearchModal,
@@ -46,8 +49,27 @@ export function Header() {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isAIHistoryOpen, setIsAIHistoryOpen] = useState(false);
 
-  // Try to get channel info from store
-  const channel = activeChannel || channels.find((c) => c.id === activeChannelId);
+  // Try to get channel info from store with DM and channels fallback
+  const channel =
+    activeChannel ||
+    channels.find((c) => c.id === activeChannelId) ||
+    (dmChannels.find((d) => d.id === activeChannelId) as any);
+
+  const isDetailsActive = isMemberPanelOpen || mobileView === 'details';
+
+  const handleToggleDetails = () => {
+    if (!channel && !activeChannelId) return;
+    if (isDetailsActive) {
+      closeMemberPanel();
+      setMobileView('chat');
+    } else {
+      openMemberPanel();
+      if (typeof window !== 'undefined' && window.innerWidth <= 1024) {
+        setMobileView('details');
+      }
+    }
+  };
+
   const isAdmin = channel?.myRole === 'ADMIN' || channel?.createdById === currentUserId;
 
   const isDirect = channel?.type === 'DIRECT';
@@ -241,7 +263,19 @@ export function Header() {
           </svg>
         </button>
 
-        <div className="chat-header__info" onClick={() => channel && toggleMemberPanel()} style={{ cursor: channel ? 'pointer' : 'default' }}>
+        <div
+          className="chat-header__info"
+          onClick={handleToggleDetails}
+          role={channel ? "button" : undefined}
+          tabIndex={channel ? 0 : undefined}
+          onKeyDown={(e) => {
+            if (channel && (e.key === 'Enter' || e.key === ' ')) {
+              handleToggleDetails();
+            }
+          }}
+          style={{ cursor: channel ? 'pointer' : 'default' }}
+          title={channel ? 'View details & members' : undefined}
+        >
           {isDirect ? (
             <UserAvatar
               src={avatarUrl}
@@ -359,9 +393,11 @@ export function Header() {
               )}
 
               <button
-                className={`chat-header__members-count-btn ${isMemberPanelOpen ? 'chat-header__members-count-btn--active' : ''}`}
-                onClick={toggleMemberPanel}
+                type="button"
+                className={`chat-header__members-count-btn ${isDetailsActive ? 'chat-header__members-count-btn--active' : ''}`}
+                onClick={handleToggleDetails}
                 title="View channel members"
+                aria-label="View channel members"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -375,8 +411,9 @@ export function Header() {
               </button>
 
               <button
-                className={`chat-header__action-btn ${isMemberPanelOpen ? 'chat-header__action-btn--active' : ''}`}
-                onClick={toggleMemberPanel}
+                type="button"
+                className={`chat-header__action-btn ${isDetailsActive ? 'chat-header__action-btn--active' : ''}`}
+                onClick={handleToggleDetails}
                 title="Toggle members panel"
                 aria-label="Toggle members panel"
               >
