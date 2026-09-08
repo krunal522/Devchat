@@ -272,9 +272,12 @@ function attachListeners(sock: Socket): void {
     }
 
     // Join channel room if not already in it (non-blocking socket emit — no API call)
-    // Only refresh DM list from server if this channel is completely unknown to us
+    // Only refresh DM list from server if this channel is a new unknown DM (never for known group channels or AI)
+    const isKnownPublicChannel = chatStore.channels.some((c) => c.id === message.channelId && c.type !== 'DIRECT');
     const isDMInStore = chatStore.dmChannels.some((d) => d.id === message.channelId);
-    if (!isDMInStore) {
+    const isAIChannel = message.channelId === 'devchat-ai-channel';
+
+    if (!isKnownPublicChannel && !isAIChannel && !isDMInStore) {
       sock.emit('channel:join', message.channelId);
       // Defer DM list sync to next tick so it NEVER blocks instant message rendering
       setTimeout(() => {

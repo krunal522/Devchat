@@ -200,20 +200,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   clearUnread: (channelId: string) => {
     set((state) => {
-      const dm = state.dmChannels.find((d) => d.id === channelId);
-      const otherUserId = dm?.otherUser?.id;
+      const isGroup = state.channels.some((c) => c.id === channelId && c.type !== 'DIRECT');
       const nextUnreads = {
         ...state.unreadCounts,
         [channelId]: 0,
       };
-      if (otherUserId) {
-        state.dmChannels
-          .filter((d) => d.otherUser?.id === otherUserId)
-          .forEach((d) => {
-            nextUnreads[d.id] = 0;
-            channelApi.markAsRead(d.id).catch(() => {});
-          });
+      if (!isGroup) {
+        const dm = state.dmChannels.find((d) => d.id === channelId);
+        const otherUserId = dm?.otherUser?.id;
+        if (otherUserId) {
+          state.dmChannels
+            .filter((d) => d.otherUser?.id === otherUserId && !state.channels.some((c) => c.id === d.id))
+            .forEach((d) => {
+              nextUnreads[d.id] = 0;
+              channelApi.markAsRead(d.id).catch(() => {});
+            });
+        }
       }
+      persistUnreads(nextUnreads);
       return {
         unreadCounts: nextUnreads,
       };
@@ -298,15 +302,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadDMChannels: async () => {
     try {
       const dmChannels = await channelApi.getDMChannels();
-      set({ dmChannels });
+      const currentPublicChannelIds = new Set(
+        get().channels.filter((c) => c.type !== 'DIRECT').map((c) => c.id)
+      );
+      const currentUserId = useAuthStore.getState().user?.id;
+      const sanitizedDMs: DMChannel[] = [];
+      const seenUserIds = new Set<string>();
+
+      (Array.isArray(dmChannels) ? dmChannels : []).forEach((dm) => {
+        if (!dm || !dm.id) return;
+        if (currentPublicChannelIds.has(dm.id) || dm.id === 'devchat-ai-channel') return;
+        if (!dm.otherUser || dm.otherUser.id === currentUserId) return;
+        if (seenUserIds.has(dm.otherUser.id)) return;
+        seenUserIds.add(dm.otherUser.id);
+        sanitizedDMs.push(dm);
+      });
+
+      set({ dmChannels: sanitizedDMs });
       get().syncServerUnreads().catch(() => {});
 
       // If current active channel is a DM, update activeChannel object to ensure latest user details
       const activeId = get().activeChannelId;
       const currentActiveChannel = get().activeChannel;
-      const currentUserId = useAuthStore.getState().user?.id;
       if (activeId && currentActiveChannel?.type === 'DIRECT') {
-        const dm = dmChannels.find((d) => d.id === activeId);
+        const dm = sanitizedDMs.find((d) => d.id === activeId);
         if (dm && dm.otherUser && dm.otherUser.id !== currentUserId) {
           set({
             activeChannel: {
@@ -429,21 +448,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return;
     }
 
-    const dm = channel?.type === 'DIRECT' ? channel : dmChannels.find((d) => d.id === channelId);
+    const isDM = channel?.type === 'DIRECT';
+    const dm = isDM ? (channel.otherUser ? channel : dmChannels.find((d) => d.id === channelId)) : null;
     const otherUserId = (dm as any)?.otherUser?.id;
 
     const nextUnreads = {
       ...get().unreadCounts,
       [channelId]: 0,
     };
-    if (otherUserId) {
+    if (isDM && otherUserId) {
       dmChannels
-        .filter((d) => d.otherUser?.id === otherUserId)
+        .filter((d) => d.otherUser?.id === otherUserId && !channels.some((c) => c.id === d.id))
         .forEach((d) => {
           nextUnreads[d.id] = 0;
           channelApi.markAsRead(d.id).catch(() => {});
         });
     }
+    persistUnreads(nextUnreads);
     channelApi.markAsRead(channelId).catch(() => {});
 
     set((state) => ({
@@ -519,7 +540,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             };
             if (targetUserId) {
               state.dmChannels
-                .filter((d) => d.otherUser?.id === targetUserId)
+                .filter((d) => d.otherUser?.id === targetUserId && !state.channels.some((c) => c.id === d.id))
                 .forEach((d) => {
                   next[d.id] = 0;
                 });
@@ -565,7 +586,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
       if (otherUser?.id) {
         get().dmChannels
-          .filter((d) => d.otherUser?.id === otherUser.id)
+          .filter((d) => d.otherUser?.id === otherUser.id && !get().channels.some((c) => c.id === d.id))
           .forEach((d) => {
             finalUnreads[d.id] = 0;
           });
@@ -727,15 +748,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       // Update DM channels list (WhatsApp style: bump / add DM channel to top instantly)
       let newDmChannels = state.dmChannels;
+      const isGroupChannel = state.channels.some(
+        (c) => c.id === targetChannelId && c.type !== 'DIRECT'
+      );
+      const isAIChannel = targetChannelId === 'devchat-ai-channel';
+
+      // It is ONLY a DM message if it is definitely NOT a group channel, NOT the AI channel,
+      // and either already exists in dmChannels or is currently active as a DIRECT channel.
       const isDMMessage =
-        activeChannel?.type === 'DIRECT' ||
-        state.dmChannels.some((d) => d.id === targetChannelId) ||
-        (!state.channels.some((c) => c.id === targetChannelId) && targetChannelId !== 'devchat-ai-channel');
+        !isGroupChannel &&
+        !isAIChannel &&
+        (state.dmChannels.some((d) => d.id === targetChannelId) ||
+          (state.activeChannelId === targetChannelId && state.activeChannel?.type === 'DIRECT'));
 
       if (isDMMessage) {
-        const existingDMIdx = state.dmChannels.findIndex(
-          (d) => d.id === targetChannelId || (d.otherUser?.id && message.user?.id && d.otherUser.id === message.user.id)
-        );
+        const existingDMIdx = state.dmChannels.findIndex((d) => d.id === targetChannelId);
 
         const lastMsgObj = {
           content: message.content || '',
@@ -748,27 +775,39 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const [targetDM] = updatedDMs.splice(existingDMIdx, 1);
           const updatedTargetDM = {
             ...targetDM,
-            id: targetChannelId,
             lastMessage: lastMsgObj,
             updatedAt: message.createdAt || new Date().toISOString(),
           };
           updatedDMs.unshift(updatedTargetDM);
           newDmChannels = updatedDMs;
         } else if (!isOwnMessage && message.user?.id && message.user.id !== currentUserId) {
-          const newDMItem: DMChannel = {
-            id: targetChannelId,
-            otherUser: {
-              id: message.user.id,
-              username: message.user.username,
-              displayName: message.user.displayName,
-              avatarUrl: message.user.avatarUrl ?? null,
-              isOnline: true,
-              lastSeenAt: new Date().toISOString(),
-            },
-            lastMessage: lastMsgObj,
-            updatedAt: message.createdAt || new Date().toISOString(),
-          };
-          newDmChannels = [newDMItem, ...state.dmChannels];
+          // If this DM channel wasn't in state.dmChannels yet, check if this other user already exists in DM list
+          const existingUserDMIdx = state.dmChannels.findIndex((d) => d.otherUser?.id === message.user?.id);
+          if (existingUserDMIdx >= 0) {
+            const updatedDMs = [...state.dmChannels];
+            const [targetDM] = updatedDMs.splice(existingUserDMIdx, 1);
+            updatedDMs.unshift({
+              ...targetDM,
+              lastMessage: lastMsgObj,
+              updatedAt: message.createdAt || new Date().toISOString(),
+            });
+            newDmChannels = updatedDMs;
+          } else {
+            const newDMItem: DMChannel = {
+              id: targetChannelId,
+              otherUser: {
+                id: message.user.id,
+                username: message.user.username,
+                displayName: message.user.displayName,
+                avatarUrl: message.user.avatarUrl ?? null,
+                isOnline: true,
+                lastSeenAt: new Date().toISOString(),
+              },
+              lastMessage: lastMsgObj,
+              updatedAt: message.createdAt || new Date().toISOString(),
+            };
+            newDmChannels = [newDMItem, ...state.dmChannels];
+          }
         }
       }
 

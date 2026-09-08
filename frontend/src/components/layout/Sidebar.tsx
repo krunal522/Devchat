@@ -196,6 +196,8 @@ export function Sidebar() {
     if (dm.otherUser.username === 'devchat_ai' || dm.otherUser.id === 'devchat-ai-bot-id') return;
     // Skip self-DMs (where otherUser is the current user — happens with duplicate channel entries)
     if (dm.otherUser.id === currentUserId) return;
+    // Skip any channel whose ID matches a public channel
+    if (publicChannels.some((c) => c.id === dm.id)) return;
 
     const targetId = dm.otherUser.id;
     if (!uniqueDMMap.has(targetId)) {
@@ -207,10 +209,7 @@ export function Sidebar() {
   // Calculate Overall Total Unread Counts (WhatsApp style across channels and DMs)
   const totalChannelsUnread = publicChannels.reduce((sum, c) => sum + (unreadCounts[c.id] || 0), 0);
   const totalDMsUnread = filteredDMChannels.reduce((sum, dm) => {
-    const channelUnread = dmChannels
-      .filter((d) => d.id === dm.id || (d.otherUser?.id && dm.otherUser?.id && d.otherUser.id === dm.otherUser.id))
-      .reduce((s, d) => s + (unreadCounts[d.id] || 0), 0) || (unreadCounts[dm.id] || 0);
-    return sum + channelUnread;
+    return sum + (unreadCounts[dm.id] || 0);
   }, 0);
   const totalUnread = totalChannelsUnread + totalDMsUnread;
 
@@ -319,9 +318,7 @@ export function Sidebar() {
 
             <div className="sidebar__list">
               {filteredDMChannels.map((dm) => {
-                const channelUnread = dmChannels
-                  .filter((d) => d.id === dm.id || (d.otherUser?.id && dm.otherUser?.id && d.otherUser.id === dm.otherUser.id))
-                  .reduce((sum, d) => sum + (unreadCounts[d.id] || 0), 0) || (unreadCounts[dm.id] || 0);
+                const channelUnread = unreadCounts[dm.id] || 0;
 
                 return (
                   <SidebarDMItem
