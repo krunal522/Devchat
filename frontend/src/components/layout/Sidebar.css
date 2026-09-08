@@ -442,3 +442,10 @@
 .sidebar__logout-btn:hover svg {
   color: #f87171;
 }
+
+@media (max-width: 768px) {
+  .sidebar__content {
+    overscroll-behavior-y: auto;
+  }
+}
+

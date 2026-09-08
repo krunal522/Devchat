@@ -5,6 +5,7 @@ import { MemberPanel } from './MemberPanel';
 import { ThreadDrawer } from '../chat/ThreadDrawer';
 import { ImagePreviewModal } from '../chat/ImagePreviewModal';
 import { useUIStore } from '../../stores/uiStore';
+import { PullToRefresh } from './PullToRefresh';
 import './MainLayout.css';
 
 interface MainLayoutProps {
@@ -16,6 +17,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div className={`main-layout main-layout--mobile-${mobileView}`}>
+      <PullToRefresh />
       <Sidebar />
       <div className="main-layout__center">
         <Header />

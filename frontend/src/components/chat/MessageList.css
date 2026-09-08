@@ -344,4 +344,11 @@
   font-weight: 600;
 }
 
+@media (max-width: 768px) {
+  .message-list {
+    overscroll-behavior-y: auto;
+  }
+}
+
+
 
