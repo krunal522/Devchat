@@ -323,12 +323,36 @@
   color: #a29bfe;
 }
 
+.sidebar__item-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
 .sidebar__item-name {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.84375rem;
+  line-height: 1.25;
+}
+
+.sidebar__item-handle {
+  font-size: 0.6875rem;
+  color: var(--text-tertiary, #6b7280);
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__item:hover .sidebar__item-handle,
+.sidebar__item--active .sidebar__item-handle {
+  color: #a29bfe;
 }
 
 .sidebar__item-badge {

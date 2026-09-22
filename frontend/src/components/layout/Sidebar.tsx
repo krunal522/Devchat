@@ -52,6 +52,12 @@ function SidebarDMItem({
       ? realTimeIsOnline
       : (realTimeIsOnline || Boolean(dm.otherUser?.isOnline));
 
+  const rawName = dm.otherUser?.displayName || dm.otherUser?.username || 'Unknown';
+  // Strip any misleading leading '#' from user display names so they don't look like channels in DMs
+  const cleanedName = rawName.replace(/^#+\s*/, '');
+  const username = dm.otherUser?.username;
+  const showHandle = username && username.toLowerCase() !== cleanedName.toLowerCase();
+
   return (
     <button
       className={`sidebar__item ${isActive ? 'sidebar__item--active' : ''} ${unread > 0 ? 'sidebar__item--unread' : ''}`}
@@ -59,14 +65,17 @@ function SidebarDMItem({
     >
       <UserAvatar
         src={dm.otherUser?.avatarUrl}
-        displayName={dm.otherUser?.displayName || dm.otherUser?.username || '?'}
+        displayName={cleanedName}
         size="xs"
         isOnline={isOnline}
         showStatus
       />
-      <span className="sidebar__item-name">
-        {dm.otherUser?.displayName || dm.otherUser?.username || 'Unknown'}
-      </span>
+      <div className="sidebar__item-meta">
+        <span className="sidebar__item-name">{cleanedName}</span>
+        {showHandle && (
+          <span className="sidebar__item-handle">@{username}</span>
+        )}
+      </div>
       {unread > 0 && (
         <span className="sidebar__unread-badge">{unread > 99 ? '99+' : unread}</span>
       )}
