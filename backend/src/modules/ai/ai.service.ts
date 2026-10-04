@@ -845,10 +845,15 @@ export function generateSmartFallbackResponse(prompt: string, userName: string, 
   if (hasImage) {
     return `Hey @${userName}! I received your image attachment. Since my online AI API keys are currently unavailable or quota reached, I couldn't run optical vision analysis on this image right now. Please ensure a valid \`GEMINI_API_KEY\` is configured in \`backend/.env\`! 🖼️`;
   }
-  const p = prompt.toLowerCase();
+  const p = prompt.toLowerCase().trim();
 
   const isAdvantage = p.includes('advantage') || p.includes('benefit') || p.includes('faida') || p.includes('pros') || p.includes('good') || p.includes('why use') || p.includes('feature');
   const isDiff = p.includes('diff') || p.includes('vs') || p.includes('compare') || p.includes('between');
+
+  // Intent detection — MUST run before topic matching to avoid wrong responses
+  const isDefinition = /^what\s+(is|are|does)\b|^define\b|kya\s+(he|hai|hota|hoti)\b|matlab\s+kya/.test(p)
+    && !p.includes('how to') && !p.includes('code') && !p.includes('build') && !p.includes('create');
+  const isHowTo = /how\s+to\b|how\s+do\b|kaise\b|steps?\b|tutorial\b/.test(p);
 
   // 1. React Native Advantages / Benefits
   if ((p.includes('react native') || p.includes('react-native')) && isAdvantage && !isDiff) {
@@ -936,8 +941,47 @@ export function MobileComponent() {
 Let me know if you need help with navigation or state management! 🚀`;
   }
 
-  // 3. Node.js / Express REST API
-  if (p.includes('node') || p.includes('express') || p.includes('api') || p.includes('backend')) {
+  // 3. Node.js — intent-aware responses
+  const isNode = p.includes('node.js') || p.includes('nodejs') || p.includes('node js')
+    || (p.includes('node') && !p.includes('react native') && !p.includes('frontend'));
+
+  if (isNode) {
+    if (isDefinition) {
+      return `Hey @${userName}! Here's what **Node.js** is:
+
+### 🟢 Node.js — Definition
+**Node.js** is an open-source, cross-platform **JavaScript runtime environment** built on Chrome's **V8 JavaScript engine**.
+
+It allows you to run JavaScript **on the server** (outside the browser), enabling you to build backend APIs, real-time servers, and CLI tools using JS.
+
+### Key Characteristics:
+| Feature | Detail |
+|---------|--------|
+| ⚡ Non-blocking I/O | Handles thousands of concurrent requests |
+| 🔄 Event-driven | Uses an event loop, not threads |
+| 📦 npm | 2M+ packages — largest registry in the world |
+| 🚀 Full-stack JS | Same language on frontend AND backend |
+
+### Common Use Cases:
+- REST APIs (Express.js, Fastify)
+- Real-time apps (Socket.io chat, live feeds)
+- CLI tools (Webpack, TypeScript compiler)
+- Microservices & serverless functions
+
+\`\`\`javascript
+// Simple Node.js HTTP server
+const http = require('http');
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Hello from Node.js!');
+});
+server.listen(3000, () => console.log('🟢 Server running on port 3000'));
+\`\`\`
+
+> **In short**: Node.js = JavaScript on the server. Fast, scalable, and great for real-time apps. 🚀`;
+    }
+
+    // How-to or API/Express question
     return `Hey @${userName}! Here is a clean, production-ready **Node.js & Express REST API** setup using TypeScript:
 
 \`\`\`typescript
@@ -948,12 +992,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-}
-
+interface Task { id: string; title: string; completed: boolean; }
 const tasks: Task[] = [];
 
 // GET /api/tasks
@@ -965,7 +1004,35 @@ app.get('/api/tasks', (req: Request, res: Response) => {
 app.post('/api/tasks', (req: Request, res: Response) => {
   const { title } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
+  const newTask: Task = { id: Date.now().toString(), title, completed: false };
+  tasks.push(newTask);
+  res.status(201).json({ success: true, data: newTask });
+});
 
+app.listen(5000, () => console.log('🚀 Server running on port 5000'));
+\`\`\``;
+  }
+
+  // 3b. Express / generic API/backend (without node keyword)
+  if (p.includes('express') || p.includes('api') || p.includes('backend')) {
+    return `Hey @${userName}! Here is a clean, production-ready **Node.js & Express REST API** setup using TypeScript:
+
+\`\`\`typescript
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+interface Task { id: string; title: string; completed: boolean; }
+const tasks: Task[] = [];
+
+app.get('/api/tasks', (req: Request, res: Response) => res.json({ success: true, data: tasks }));
+
+app.post('/api/tasks', (req: Request, res: Response) => {
+  const { title } = req.body;
+  if (!title) return res.status(400).json({ error: 'Title is required' });
   const newTask: Task = { id: Date.now().toString(), title, completed: false };
   tasks.push(newTask);
   res.status(201).json({ success: true, data: newTask });
@@ -988,27 +1055,15 @@ I am here to help you with:
 What are you building or debugging today? Ask me anything!`;
   }
 
-  // 5. Intelligent Technical Response Fallback
-  return `Hey @${userName}! 🤖 Here is a technical breakdown for your query: **"${prompt}"**
+  // Unmatched — honest AI unavailable notice (NOT random code!)
+  return `Hey @${userName}! 🤖 I'd love to answer **"${prompt}"**, but my AI engine (Google Gemini) is temporarily unavailable — likely due to an API quota limit or missing key.
 
-### Key Considerations:
-1. **Architecture & Design**: Ensure modular separation between UI presentation, state management (Zustand/Redux), and data access layers.
-2. **Type Safety & Reliability**: Define explicit TypeScript interfaces for all payload structures and use try/catch blocks for network resilience.
-3. **Performance Optimization**: Use memoization (\`useMemo\`, \`useCallback\`) to prevent unneeded re-renders in real-time interfaces.
+**To restore full AI responses:**
+1. Make sure \`GEMINI_API_KEY\` is set in \`backend/.env\`
+2. Verify it's valid at [aistudio.google.com](https://aistudio.google.com/apikey)
+3. Restart the backend server
 
-\`\`\`typescript
-// Production Safe Execution Helper Pattern
-export async function safeExecute<T>(promise: Promise<T>): Promise<[T | null, Error | null]> {
-  try {
-    const data = await promise;
-    return [data, null];
-  } catch (error) {
-    return [null, error as Error];
-  }
-}
-\`\`\`
-
-Feel free to ask for a specific code implementation, step-by-step tutorial, or debugging help! 🚀`;
+Once configured, I can answer any question — concepts, code, debugging, and more! 🚀`;
 }
 
 function getSetupInstructions(): string {
