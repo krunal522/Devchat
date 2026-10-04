@@ -864,22 +864,3 @@ I can help with React, Node.js, TypeScript, CSS, debugging, and more. Ask me any
 3. Restart the backend server`;
 }
 
-function getSetupInstructions(): string {
-  return `## 🔧 DevChat AI Setup Required
-
-To enable real AI responses powered by Google Gemini, you need a free API key:
-
-### Steps:
-1. Go to **[https://aistudio.google.com/apikey](https://aistudio.google.com/apikey)**
-2. Sign in with your Google account
-3. Click **"Create API Key"**
-4. Copy your API key
-5. Open \`backend/.env\` and paste it:
-   \`\`\`
-   GEMINI_API_KEY=your_api_key_here
-   \`\`\`
-6. **Restart the backend server**
-
-The free tier includes **1 million tokens/month** — more than enough! 🚀`;
-}
-
