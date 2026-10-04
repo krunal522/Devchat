@@ -843,227 +843,25 @@ export async function generateAIResponse(
 
 export function generateSmartFallbackResponse(prompt: string, userName: string, hasImage: boolean = false): string {
   if (hasImage) {
-    return `Hey @${userName}! I received your image attachment. Since my online AI API keys are currently unavailable or quota reached, I couldn't run optical vision analysis on this image right now. Please ensure a valid \`GEMINI_API_KEY\` is configured in \`backend/.env\`! 🖼️`;
+    return `Hey @${userName}! I received your image, but my AI engine is temporarily unavailable (API quota limit or missing key). Please ensure \`GEMINI_API_KEY\` is set in \`backend/.env\`. 🖼️`;
   }
+
   const p = prompt.toLowerCase().trim();
 
-  const isAdvantage = p.includes('advantage') || p.includes('benefit') || p.includes('faida') || p.includes('pros') || p.includes('good') || p.includes('why use') || p.includes('feature');
-  const isDiff = p.includes('diff') || p.includes('vs') || p.includes('compare') || p.includes('between');
+  // Greeting
+  if (/^(hi|hello|hey|namaste)\b/.test(p) || p === 'hi' || p === 'hello') {
+    return `Hello ${userName}! 👋 I'm **DevChat AI** — your coding assistant.
 
-  // Intent detection — MUST run before topic matching to avoid wrong responses
-  const isDefinition = /^what\s+(is|are|does)\b|^define\b|kya\s+(he|hai|hota|hoti)\b|matlab\s+kya/.test(p)
-    && !p.includes('how to') && !p.includes('code') && !p.includes('build') && !p.includes('create');
-  const isHowTo = /how\s+to\b|how\s+do\b|kaise\b|steps?\b|tutorial\b/.test(p);
-
-  // 1. React Native Advantages / Benefits
-  if ((p.includes('react native') || p.includes('react-native')) && isAdvantage && !isDiff) {
-    return `Hey @${userName}! Here are the top **Key Advantages & Benefits of React Native**:
-
-### 📱 1. Cross-Platform Development (Single Codebase)
-Write once, run on both **iOS** and **Android**. You share up to **80-90%** of your application code, drastically cutting development time, cost, and maintenance overhead.
-
-### ⚡ 2. Native Performance & UI Rendering
-React Native doesn't run inside a web view (unlike Ionic/Cordova). It compiles JavaScript bridges directly into **native iOS (Swift/Obj-C)** and **Android (Java/Kotlin)** UI components (\`<View>\`, \`<Text>\`, \`<FlatList>\`).
-
-### 🔥 3. Fast Refresh & Instant Prototyping
-Hot Reloading allows developers to modify code and see UI updates instantly without rebuilding the native app binary or losing application state.
-
-### 📦 4. Massive Ecosystem & Expo Framework
-Huge community support with pre-built modules for camera, push notifications, geolocation, biometric auth, and Expo framework for seamless deployment.
-
-### ⚛️ 5. Code Reusability with React Web
-If you already use **React JS** for web, your team can reuse custom hooks, state management (Zustand/Redux), and business logic seamlessly.
-
-\`\`\`tsx
-// Production React Native Component Example
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-
-export function QuickActionCard({ title, onPress }: { title: string; onPress: () => void }) {
-  return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
-      <Text style={styles.title}>{title}</Text>
-    </TouchableOpacity>
-  );
-}
-
-const styles = StyleSheet.create({
-  card: {
-    padding: 16,
-    backgroundColor: '#6366f1',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  title: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-});
-\`\`\`
-
-Let me know if you want to explore Expo Router or performance tuning! 🚀`;
+I can help with React, Node.js, TypeScript, CSS, debugging, and more. Ask me anything!`;
   }
 
-  // 2. React JS vs React Native Difference
-  if ((p.includes('react native') || p.includes('react-native')) && isDiff) {
-    return `Hey @${userName}! Here is the key difference between **React JS** and **React Native**:
+  // AI temporarily unavailable for everything else
+  return `Hey @${userName}! 🤖 My AI engine (Google Gemini) is temporarily unavailable — API quota limit or missing key.
 
-### ⚛️ React JS (Web)
-- **Target Platform**: Web Browsers (Chrome, Safari, Firefox).
-- **DOM Rendering**: Uses Virtual DOM and renders HTML tags like \`<div>\`, \`<span>\`, \`<h1>\`, \`<button>\`.
-- **Styling**: Uses CSS, SCSS, TailwindCSS, or styled-components.
-- **Navigation**: Uses \`react-router-dom\`.
-
-### 📱 React Native (Mobile)
-- **Target Platform**: iOS and Android mobile devices.
-- **Native Rendering**: Compiles to native iOS (Swift/Obj-C) and Android (Java/Kotlin) UI components (\`<View>\`, \`<Text>\`, \`<TouchableOpacity>\`).
-- **Styling**: Uses JavaScript \`StyleSheet\` objects (Flexbox based).
-- **Navigation**: Uses React Navigation or Expo Router.
-
-\`\`\`tsx
-// React JS Example (Web)
-export function WebComponent() {
-  return <div><h1>Hello Web!</h1></div>;
-}
-
-// React Native Example (Mobile)
-import { View, Text } from 'react-native';
-export function MobileComponent() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center' }}>
-      <Text style={{ fontSize: 20 }}>Hello Mobile!</Text>
-    </View>
-  );
-}
-\`\`\`
-
-Let me know if you need help with navigation or state management! 🚀`;
-  }
-
-  // 3. Node.js — intent-aware responses
-  const isNode = p.includes('node.js') || p.includes('nodejs') || p.includes('node js')
-    || (p.includes('node') && !p.includes('react native') && !p.includes('frontend'));
-
-  if (isNode) {
-    if (isDefinition) {
-      return `Hey @${userName}! Here's what **Node.js** is:
-
-### 🟢 Node.js — Definition
-**Node.js** is an open-source, cross-platform **JavaScript runtime environment** built on Chrome's **V8 JavaScript engine**.
-
-It allows you to run JavaScript **on the server** (outside the browser), enabling you to build backend APIs, real-time servers, and CLI tools using JS.
-
-### Key Characteristics:
-| Feature | Detail |
-|---------|--------|
-| ⚡ Non-blocking I/O | Handles thousands of concurrent requests |
-| 🔄 Event-driven | Uses an event loop, not threads |
-| 📦 npm | 2M+ packages — largest registry in the world |
-| 🚀 Full-stack JS | Same language on frontend AND backend |
-
-### Common Use Cases:
-- REST APIs (Express.js, Fastify)
-- Real-time apps (Socket.io chat, live feeds)
-- CLI tools (Webpack, TypeScript compiler)
-- Microservices & serverless functions
-
-\`\`\`javascript
-// Simple Node.js HTTP server
-const http = require('http');
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Hello from Node.js!');
-});
-server.listen(3000, () => console.log('🟢 Server running on port 3000'));
-\`\`\`
-
-> **In short**: Node.js = JavaScript on the server. Fast, scalable, and great for real-time apps. 🚀`;
-    }
-
-    // How-to or API/Express question
-    return `Hey @${userName}! Here is a clean, production-ready **Node.js & Express REST API** setup using TypeScript:
-
-\`\`\`typescript
-import express, { Request, Response } from 'express';
-import cors from 'cors';
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-interface Task { id: string; title: string; completed: boolean; }
-const tasks: Task[] = [];
-
-// GET /api/tasks
-app.get('/api/tasks', (req: Request, res: Response) => {
-  res.json({ success: true, data: tasks });
-});
-
-// POST /api/tasks
-app.post('/api/tasks', (req: Request, res: Response) => {
-  const { title } = req.body;
-  if (!title) return res.status(400).json({ error: 'Title is required' });
-  const newTask: Task = { id: Date.now().toString(), title, completed: false };
-  tasks.push(newTask);
-  res.status(201).json({ success: true, data: newTask });
-});
-
-app.listen(5000, () => console.log('🚀 Server running on port 5000'));
-\`\`\``;
-  }
-
-  // 3b. Express / generic API/backend (without node keyword)
-  if (p.includes('express') || p.includes('api') || p.includes('backend')) {
-    return `Hey @${userName}! Here is a clean, production-ready **Node.js & Express REST API** setup using TypeScript:
-
-\`\`\`typescript
-import express, { Request, Response } from 'express';
-import cors from 'cors';
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-interface Task { id: string; title: string; completed: boolean; }
-const tasks: Task[] = [];
-
-app.get('/api/tasks', (req: Request, res: Response) => res.json({ success: true, data: tasks }));
-
-app.post('/api/tasks', (req: Request, res: Response) => {
-  const { title } = req.body;
-  if (!title) return res.status(400).json({ error: 'Title is required' });
-  const newTask: Task = { id: Date.now().toString(), title, completed: false };
-  tasks.push(newTask);
-  res.status(201).json({ success: true, data: newTask });
-});
-
-app.listen(5000, () => console.log('🚀 Server running on port 5000'));
-\`\`\``;
-  }
-
-  // 4. Greetings
-  if (p === 'hi' || p === 'hello' || p === 'hey' || p.includes('hello') || p.includes('hi')) {
-    return `Hello ${userName}! 👋 I'm **DevChat AI Assistant**. 
-
-I am here to help you with:
-- ⚛️ **React & React Native** (Components, Hooks, Navigation)
-- 🟢 **Node.js & Express** (REST APIs, WebSockets, Prisma, MongoDB)
-- 🎨 **CSS & Tailwind** (Layouts, Animations, Flexbox/Grid)
-- 🐞 **Debugging & Code Reviews**
-
-What are you building or debugging today? Ask me anything!`;
-  }
-
-  // Unmatched — honest AI unavailable notice (NOT random code!)
-  return `Hey @${userName}! 🤖 I'd love to answer **"${prompt}"**, but my AI engine (Google Gemini) is temporarily unavailable — likely due to an API quota limit or missing key.
-
-**To restore full AI responses:**
-1. Make sure \`GEMINI_API_KEY\` is set in \`backend/.env\`
-2. Verify it's valid at [aistudio.google.com](https://aistudio.google.com/apikey)
-3. Restart the backend server
-
-Once configured, I can answer any question — concepts, code, debugging, and more! 🚀`;
+**To fix:**
+1. Set \`GEMINI_API_KEY\` in \`backend/.env\`
+2. Get a free key at [aistudio.google.com](https://aistudio.google.com/apikey)
+3. Restart the backend server`;
 }
 
 function getSetupInstructions(): string {
