@@ -197,15 +197,25 @@ export function isImageGenerationRequest(prompt: string): boolean {
 export function extractImagePrompt(prompt: string): string {
   let p = prompt.trim();
   p = p.replace(/^\/(?:image|imagine|img|pic|photo|draw|generate|paint|render)\s*/i, '');
-  p = p.replace(/^(?:can\s+you\s+|could\s+you\s+|please\s+)?(?:generate|create|make|draw|paint|render|illustrate)\s+(?:me\s+)?(?:an?\s+)?(?:image|photo|picture|pic|artwork|illustration|portrait|wallpaper|logo|icon)?\s*(?:of|for|showing|depicting)?\s*:?/i, '');
+  p = p.replace(/^(?:can\s+you\s+|could\s+you\s+|please\s+)?(?:generate|create|created|creating|make|draw|paint|render|illustrate)\s+(?:me\s+)?(?:an?\s+)?(?:image|images|photo|photos|picture|pictures|pic|pics|artwork|illustration|portrait|wallpaper|logo|icon)?\s*(?:of|for|showing|depicting)?\s*:?/i, '');
   p = p.replace(/\b(?:image|images|photo|photos|pic|pics|picture|pictures|tasveer|logo)\s+(?:created|generate|banao|bana\s+do|banaye|chahiye|chiye)\b/gi, '');
   p = p.replace(/^(?:banao|banaye|dikhao)\s+(?:ek\s+)?/i, '');
   p = p.replace(/\b(?:ki|ka|ke)\s+(?:image|photo|tasveer|picture|pic|logo|icon)\b/gi, '');
   p = p.replace(/\s*(?:banao|banado|chahiye|chiye|chahie|kar\s+dejie|kar\s+do|karo|dejiye)$/i, '');
   p = p.replace(/\s*(?:bekar\s+nay|bekar\s+nahi|bekar\s+nhi|accha\s+sa|acha\s+sa|best\s+quality).*$/i, '');
+  p = p.replace(/\s*(?:images?\s+)?created$/i, '');
   p = p.replace(/\s*(?:ki|ka|ke)$/i, '');
   p = p.replace(/\s*\.{2,}\s*/g, ' ');
   p = p.replace(/\s+but$/i, '');
+
+  // Auto-correct common Hinglish phonetics and car/brand typos
+  p = p.replace(/\b(?:oodi|aodi|aadi)\b/gi, 'Audi');
+  p = p.replace(/\b(?:mercdes|marcediz|marcedes)\b/gi, 'Mercedes-Benz');
+  p = p.replace(/\b(?:ferari|farari)\b/gi, 'Ferrari');
+  p = p.replace(/\b(?:lemborghini|lamborgini|lambo)\b/gi, 'Lamborghini');
+  p = p.replace(/\b(?:bm\s*w)\b/gi, 'BMW');
+  p = p.replace(/\b(?:porshe|porche)\b/gi, 'Porsche');
+
   return p.trim() || prompt.trim();
 }
 
@@ -238,35 +248,37 @@ async function planMetaAiImage(userPrompt: string, userName: string): Promise<Me
   const isNode = /\b(node|nodejs|node\s*js)\b/i.test(userPrompt);
   const isDocker = /\bdocker\b/i.test(userPrompt);
 
-  const cleanKey = env.GEMINI_API_KEY?.trim();
+  const cleanKey = env.GEMINI_API_KEY?.trim() || process.env.GEMINI_API_KEY?.trim() || '';
   if (cleanKey) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${cleanKey}`;
-      const payload = {
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text: `You are the Expert AI Art Director & Visual Creator for DevChat AI (operating with ChatGPT / DALL-E 3 visual mastery).
+    for (const item of FAST_REST_MODELS) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${item.model}:generateContent?key=${cleanKey}`;
+        const payload = {
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: `You are the Expert AI Art Director & Visual Creator for DevChat AI (operating with ChatGPT / DALL-E 3 visual mastery).
 A user named "${userName}" requested to create an image: "${userPrompt}".
 
 Your tasks:
-1. Identify the exact subject the user wants (e.g. portraits, people, user avatars, luxury cars, animals, anime, landscapes, architecture, cyberpunk cities, 3D art, fantasy, product design). NEVER assume it is a car unless the user specifically asked for a vehicle or car!
+1. Identify the exact subject the user wants (e.g. portraits, people, user avatars, luxury cars, animals, anime, landscapes, architecture, cyberpunk cities, 3D art, fantasy, product design).
+Note: Resolve phonetic and Hinglish typos (e.g. "oodi" -> Audi, "farari" -> Ferrari, "marcediz" -> Mercedes) to real luxury car brands!
 2. Translate & craft an ultra-detailed, photorealistic, cinematic prompt in English for Black Forest Labs FLUX.1 (including camera lens, lighting, atmospheric details, composition, 8k resolution, photorealistic, sharp focus, no watermarks, lifelike textures).
+3. If it's a luxury car (like Audi, BMW, Porsche): explicitly describe the dynamic 3/4 front-side angle studio shot showing the iconic brand emblems (e.g. four interlocking chrome rings on front honeycomb grille for Audi), sharp Matrix LED headlights, side profile curves, sports alloy rims, red brake calipers, and reflections on dark studio floor. Never use a flat straight-on view.
 CRITICAL FOR TECH & BRAND LOGOS (e.g. React, React Native, Python, JavaScript, Docker, Flutter, Android, Apple, Node.js):
 - You MUST preserve and explicitly describe the EXACT REAL-WORLD ICONIC SHAPE, GEOMETRY, AND OFFICIAL COLOR CODES!
-- For React / React Native: Describe the "official iconic cyan blue (#61DAFB) atom symbol with three intersecting elliptical orbital rings and central circular nucleus dot on clean dark background". NEVER replace it with a generic sphere, bowling ball, or unrelated glass orb!
+- For React / React Native: Describe the "official iconic cyan blue (#61DAFB) atom symbol with three intersecting elliptical orbital rings and central circular nucleus dot on clean dark background".
 - For Python: Two interlocking snakes in official blue (#306998) and yellow (#FFD438).
 - For Node.js: Green hexagon (#339933) with clean Node geometry.
 - For Docker: Blue whale carrying shipping containers.
-- If it's a general company/startup logo, design a clean vector tech emblem with geometric precision.
-3. Write a sleek, friendly, ChatGPT-style companion message in the EXACT SAME LANGUAGE and tone as the user (Hinglish/Hindi if user asked in Hinglish/Hindi, English if user asked in English):
-   - subjectTitle: Clean, elegant title of the image (e.g., "Cyberpunk Street at Night", "Portrait of a Software Engineer", "Golden Retriever Puppy in Sunshine")
-   - metaAiGreeting: A natural, polite introduction (e.g., "Ye lijiye, aapke liye **${userPrompt}** ki high-definition image taiyar hai ✨" or "Here is your photorealistic image of **[subject]** ✨")
+4. Write a sleek, friendly companion message in the EXACT SAME LANGUAGE and tone as the user (Hinglish/Hindi if user asked in Hinglish/Hindi, English if user asked in English):
+   - subjectTitle: Clean, elegant title of the image (e.g., "Audi R8 V10 Performance Supercar", "Cyberpunk Street at Night")
+   - metaAiGreeting: A natural, polite introduction
    - metaAiHighlights: 1-2 sentences highlighting the key visual aesthetic (lighting, mood, textures, composition)
-   - metaAiFollowUps: Array of 3 creative, relevant follow-up variations SPECIFIC to the subject (e.g., for a person: ["Studio cinematic close-up", "Outdoor golden hour lighting", "Black and white editorial portrait"]; for a landscape: ["Sunset golden hour", "Nighttime star-filled sky", "Winter snow atmosphere"]; for a car: ["Cockpit interior view", "Motion blur highway shot", "Track race drifting action"])
-   - metaAiClosing: A short, friendly closing prompt (e.g., "Aapko kaunsa style sabse accha laga?" or "Which variation would you like to see next?")
+   - metaAiFollowUps: Array of 3 creative, relevant follow-up variations SPECIFIC to the subject
+   - metaAiClosing: A short, friendly closing prompt
 
 Respond ONLY with valid JSON (no markdown ticks or extra text):
 {
@@ -277,49 +289,50 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
   "metaAiFollowUps": ["...", "...", "..."],
   "metaAiClosing": "..."
 }`,
-              },
-            ],
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 1024,
           },
-        ],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 1024,
-        },
-      };
+        };
 
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
 
-      if (resp.ok) {
-        const data: any = await resp.json();
-        const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-        const jsonMatch = candidate.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed.enhancedPrompt && parsed.subjectTitle) {
-            let finalPrompt = parsed.enhancedPrompt;
-            if (isReact && (!finalPrompt.toLowerCase().includes('atom') && !finalPrompt.toLowerCase().includes('orbital'))) {
-              finalPrompt = 'Official React JS cyan blue (#61DAFB) atom logo with three intersecting elliptical orbital rings and central circular nucleus dot on clean black background, vector style, 8k resolution, masterpiece';
+        if (resp.ok) {
+          const data: any = await resp.json();
+          const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+          const jsonMatch = candidate.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.enhancedPrompt && parsed.subjectTitle) {
+              let finalPrompt = parsed.enhancedPrompt;
+              if (isReact && (!finalPrompt.toLowerCase().includes('atom') && !finalPrompt.toLowerCase().includes('orbital'))) {
+                finalPrompt = 'Official React JS cyan blue (#61DAFB) atom logo with three intersecting elliptical orbital rings and central circular nucleus dot on clean black background, vector style, 8k resolution, masterpiece';
+              }
+              if (isPython && !finalPrompt.toLowerCase().includes('snake')) {
+                finalPrompt = 'Official Python programming language logo, two interlocking snakes in vibrant blue (#306998) and yellow (#FFD438), clean dark background, 8k resolution, crisp vector logo';
+              }
+              return {
+                subjectTitle: parsed.subjectTitle,
+                enhancedPrompt: finalPrompt,
+                metaAiGreeting: parsed.metaAiGreeting || `Ye lijiye — aapke liye **${parsed.subjectTitle}** taiyar hai ✨`,
+                metaAiHighlights: parsed.metaAiHighlights || '',
+                metaAiFollowUps: Array.isArray(parsed.metaAiFollowUps) ? parsed.metaAiFollowUps : ['Cinematic close-up detailed shot', 'Dramatic studio lighting variation', 'Vibrant artistic atmosphere'],
+                metaAiClosing: parsed.metaAiClosing || 'Batao kis variation me aur banau?',
+              };
             }
-            if (isPython && !finalPrompt.toLowerCase().includes('snake')) {
-              finalPrompt = 'Official Python programming language logo, two interlocking snakes in vibrant blue (#306998) and yellow (#FFD438), clean dark background, 8k resolution, crisp vector logo';
-            }
-            return {
-              subjectTitle: parsed.subjectTitle,
-              enhancedPrompt: finalPrompt,
-              metaAiGreeting: parsed.metaAiGreeting || `Ye lijiye — aapke liye **${parsed.subjectTitle}** taiyar hai ✨`,
-              metaAiHighlights: parsed.metaAiHighlights || '',
-              metaAiFollowUps: Array.isArray(parsed.metaAiFollowUps) ? parsed.metaAiFollowUps : ['Cinematic close-up detailed shot', 'Dramatic studio lighting variation', 'Vibrant artistic atmosphere'],
-              metaAiClosing: parsed.metaAiClosing || 'Batao kis variation me aur banau?',
-            };
           }
         }
+      } catch (err) {
+        logger.warn(`Gemini image planner failed on ${item.model}: ${err}`);
       }
-    } catch (err) {
-      logger.warn(`Gemini Meta AI image planning failed, using intelligent fallback: ${err}`);
     }
   }
 
@@ -373,7 +386,11 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
       ? ['Dramatic studio lighting black and white portrait', 'Golden hour natural sunlight outdoor shot', 'Cyberpunk neon backlight aesthetic']
       : ['Dramatic studio lighting black and white portrait', 'Golden hour natural sunlight outdoor shot', 'Cyberpunk neon backlight aesthetic'];
   } else if (isCar) {
-    enhancedPrompt = `Automotive commercial photography of ${rawSubject}, dynamic 3/4 front angle, reflections on sleek polished metallic body, dramatic studio lighting, wet asphalt floor, sharp focus, 8k resolution, photorealistic masterpiece`;
+    const isAudi = /\baudi\b/i.test(rawSubject);
+    const carSubject = isAudi
+      ? `${rawSubject}, luxury Audi sports supercar, dynamic 3/4 side angle studio shot, glossy metallic black finish, red brake calipers, sharp angular Matrix LED headlights, signature honeycomb front grille with iconic 4 interlocking chrome rings emblem, reflections on dark studio floor`
+      : `${rawSubject}, dynamic 3/4 front-side angle studio automotive photography, glossy metallic body, sharp headlights, aerodynamic contours, studio reflections`;
+    enhancedPrompt = `Masterpiece automotive commercial photography of ${carSubject}, shot on 35mm lens, dramatic dark studio rim lighting, 8k resolution, photorealistic, cinematic masterpiece, highly detailed`;
     metaAiFollowUps = isHindi
       ? ['Night city neon lights reflection shot', 'Track race high-speed action shot with motion blur', 'Luxury showroom studio presentation']
       : ['Night city neon lights reflection shot', 'Track race high-speed action shot with motion blur', 'Luxury showroom studio presentation'];
@@ -423,9 +440,13 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
 
 // Generate image buffer using Black Forest Labs FLUX.1 with multi-tiered fallback
 async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
-  const hfToken = env.HUGGINGFACE_API_KEY?.trim() || process.env.HF_TOKEN?.trim() || '';
+  const hfToken =
+    env.HUGGINGFACE_API_KEY?.trim() ||
+    process.env.HUGGINGFACE_API_KEY?.trim() ||
+    process.env.HF_TOKEN?.trim() ||
+    '';
 
-  // Method 1: Hugging Face Official Inference API with Black Forest Labs FLUX.1-schnell (Ultra fast ~4-5s, 8k true fidelity)
+  // Method 1: Hugging Face Official Inference API with Black Forest Labs FLUX.1-schnell (Ultra fast ~4-8s, 8k true fidelity)
   if (hfToken) {
     try {
       logger.info('Calling Hugging Face Inference API with FLUX.1-schnell (Black Forest Labs)...');
@@ -436,7 +457,7 @@ async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ bu
           inputs: enhancedPrompt,
         },
         {
-          signal: AbortSignal.timeout(12000),
+          signal: AbortSignal.timeout(30000),
         }
       );
 
@@ -466,7 +487,7 @@ async function fetchHuggingFaceImageBuffer(enhancedPrompt: string): Promise<{ bu
           inputs: enhancedPrompt,
         },
         {
-          signal: AbortSignal.timeout(12000),
+          signal: AbortSignal.timeout(20000),
         }
       );
 
