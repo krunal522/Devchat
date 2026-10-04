@@ -188,8 +188,9 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
 
         if (isDMWithAI || isAIMentioned || isSummarize || isCodeReview || isSlashCode || isSlashImage) {
           const isImageMode = isImageGenerationRequest(content);
-          // ⚡ 1. Emit AI typing start IMMEDIATELY (<1ms) to channel
-          io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId, mode: isImageMode ? 'image' : 'chat' });
+          const aiRooms = [`channel:${channelId}`, ...memberUserIds.map((uid) => `user:${uid}`)];
+          // ⚡ 1. Emit AI typing start IMMEDIATELY (<1ms) to channel + all members
+          io.to(aiRooms).emit('ai:typing:start', { channelId, mode: isImageMode ? 'image' : 'chat' });
 
           // Run AI generation asynchronously
           (async () => {
@@ -399,8 +400,8 @@ Structure your response with:
                 logger.error('Failed to send fallback AI message:', fallbackErr);
               }
             } finally {
-              // 🟢 Stop typing indicator immediately
-              io.to(`channel:${channelId}`).emit('ai:typing:stop', { channelId });
+              // 🟢 Stop typing indicator immediately across all rooms
+              io.to(aiRooms).emit('ai:typing:stop', { channelId });
             }
           })();
         }
