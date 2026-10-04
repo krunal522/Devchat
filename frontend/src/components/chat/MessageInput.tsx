@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { EmojiPicker } from '../ui/EmojiPicker';
 import { FileIcon } from '../ui/FileIcon';
 import { MentionPopup } from './MentionPopup';
+import { SlashCommandPopup } from './SlashCommandPopup';
 import { TypingIndicator } from './TypingIndicator';
 import { AttachmentSheet } from './AttachmentSheet';
 import { useChatStore } from '../../stores/chatStore';
@@ -39,8 +40,9 @@ export function MessageInput() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // Mention State
+  // Mention & Slash Command State
   const [mentionFilter, setMentionFilter] = useState<string | null>(null);
+  const [slashFilter, setSlashFilter] = useState<string | null>(null);
   const [workspaceUsers, setWorkspaceUsers] = useState<User[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -318,7 +320,7 @@ export function MessageInput() {
       insertText('`', '`');
       return;
     }
-    if (e.key === 'Enter' && !e.shiftKey && mentionFilter === null) {
+    if (e.key === 'Enter' && !e.shiftKey && mentionFilter === null && slashFilter === null) {
       e.preventDefault();
       handleSubmit();
     }
@@ -328,6 +330,13 @@ export function MessageInput() {
     const val = e.target.value;
     setContent(val);
     handleTyping();
+
+    // Detect /slash command trigger at start of message
+    if (val.startsWith('/') && !val.includes(' ')) {
+      setSlashFilter(val);
+    } else {
+      setSlashFilter(null);
+    }
 
     // Detect @mention trigger
     const cursorPos = e.target.selectionStart;
@@ -344,6 +353,14 @@ export function MessageInput() {
     if (textarea) {
       textarea.style.height = 'auto';
       textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
+    }
+  };
+
+  const insertSlashCommand = (cmd: string) => {
+    setContent(`${cmd} `);
+    setSlashFilter(null);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
     }
   };
 
@@ -455,6 +472,15 @@ export function MessageInput() {
           filterText={mentionFilter}
           onSelectUser={insertMention}
           onClose={() => setMentionFilter(null)}
+        />
+      )}
+
+      {/* Slash Command Auto-Complete Popover */}
+      {slashFilter !== null && (
+        <SlashCommandPopup
+          filterText={slashFilter}
+          onSelectCommand={insertSlashCommand}
+          onClose={() => setSlashFilter(null)}
         />
       )}
 

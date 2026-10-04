@@ -209,6 +209,28 @@ export function extractImagePrompt(prompt: string): string {
   return p.trim() || prompt.trim();
 }
 
+export function isSummarizeRequest(prompt: string): boolean {
+  const p = prompt.trim().toLowerCase();
+  return /^\/(?:summarize|summary|tldr)\b/i.test(p) ||
+         /\b(?:summarize\s+(?:this\s+)?channel|summarize\s+(?:the\s+)?chat|give\s+(?:me\s+a\s+)?summary|chat\s+summary)\b/i.test(p);
+}
+
+export function isCodeReviewRequest(prompt: string): boolean {
+  const p = prompt.trim().toLowerCase();
+  return /^\/(?:review|audit|critique)\b/i.test(p) ||
+         /\b(?:review\s+(?:this\s+|my\s+)?code|audit\s+(?:this\s+)?code|check\s+(?:this\s+)?code\s+for\s+bugs|code\s+review)\b/i.test(p);
+}
+
+export function isVisionCodeRequest(prompt: string, hasImage: boolean): boolean {
+  if (!hasImage) return false;
+  const p = prompt.trim().toLowerCase();
+  return /^\/(?:code|ui|react)\b/i.test(p) ||
+         /\b(?:code|react|component|html|css|tailwind|ui|screen|convert|make|build|banao|page|interface|frontend|design|wireframe|mockup)\b/i.test(p) ||
+         p === '' ||
+         p === 'describe and analyze this image in detail.' ||
+         p === 'hello ai';
+}
+
 // Generate ChatGPT-Grade Visual Plan using Gemini
 async function planMetaAiImage(userPrompt: string, userName: string): Promise<MetaAiImagePlan> {
   const isReact = /\b(react|react\s*js|reactjs|react\s*native)\b/i.test(userPrompt);
@@ -765,6 +787,58 @@ export async function generateAIResponse(
     }
   }
 
+  let effectivePrompt = userPrompt;
+
+  // 1. Multimodal Vision: Screenshot-to-Code Mode
+  if (isVisionCodeRequest(userPrompt, imageParts.length > 0)) {
+    logger.info(`AI Multimodal Vision requested for: "${userPrompt}"`);
+    effectivePrompt = `You are DevChat AI Vision Architect & Senior Frontend Specialist.
+The user (${userName}) uploaded a UI screenshot/mockup and requested full frontend component code: "${userPrompt || 'Convert this UI screenshot into a production-ready React component.'}".
+
+Perform an architectural breakdown and code generation:
+## 🎨 Vision to Code: UI Architecture
+
+### 📐 Layout & Design Breakdown
+- **Identified Sections:** Header, Cards, Form elements, Grid layout.
+- **Color Palette & Styling:** Observed primary, secondary colors, border radiuses, and shadow effects.
+
+### 💻 Production React (TypeScript) + CSS Component
+Write clean, modular, production-ready React component code. Include realistic state, clean prop types, and interactive hover effects in labeled markdown code blocks.
+
+### 📱 Responsive & Accessibility (a11y) Notes
+1-2 implementation tips for production integration.`;
+  } else if (isCodeReviewRequest(userPrompt)) {
+    // 2. Staff Engineer Code Review Mode
+    logger.info(`AI Code Review requested for: "${userPrompt.substring(0, 50)}..."`);
+    const rawCode = userPrompt.replace(/^\/(?:review|audit|critique)\s*/i, '').trim();
+    effectivePrompt = `You are DevChat AI Senior Staff Engineer & Security Auditor.
+A developer named ${userName} requested an in-depth, production-grade Code Review.
+
+Code to review:
+\`\`\`
+${rawCode || 'Please perform an architectural review on our recent discussion.'}
+\`\`\`
+
+Perform an exhaustive, professional code review in this exact structure:
+## 🔍 DevChat Code Review & Audit
+
+### 💡 Purpose & Overview
+Brief, precise explanation of what the code achieves.
+
+### ⏱️ Algorithmic Complexity (Big-O)
+- **Time Complexity:** O(...) with technical explanation.
+- **Space Complexity:** O(...) with memory footprint analysis.
+
+### ⚠️ Vulnerabilities, Bugs & Edge Cases
+Identify any security risks (e.g. injection, XSS, unhandled rejections), race conditions, null pointers, or memory leaks. (If clean, state "Clean Implementation").
+
+### 🚀 Production-Grade Optimized Code
+Provide the fully refactored, cleanly typed, production-ready version inside a labeled markdown code block with inline comments explaining key performance and readability improvements.
+
+### 💡 Senior Engineering Recommendations
+2 actionable tips for unit testing, caching, or scalability.`;
+  }
+
   // Build list of all configured keys (filter empty & deduplicate)
   const rawKeys = [
     env.GEMINI_API_KEY,
@@ -788,7 +862,7 @@ export async function generateAIResponse(
     logger.info(`AI Request — trying key ${i + 1}/${keys.length} (${key.substring(0, 8)}...), images attached: ${imageParts.length}`);
 
     try {
-      const text = await callGemini(key, userPrompt, userName, history, imageParts);
+      const text = await callGemini(key, effectivePrompt, userName, history, imageParts);
 
       if (text && text.trim() !== '') {
         logger.info(`AI Response generated with key ${i + 1} (${text.length} chars)`);

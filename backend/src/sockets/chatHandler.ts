@@ -17,7 +17,14 @@ import { Server, Socket } from 'socket.io';
 import { logger } from '../utils/logger.js';
 import { prisma } from '../config/database.js';
 import * as messageService from '../modules/messages/message.service.js';
-import { AI_BOT_ID, generateAIResponse, generateSmartFallbackResponse, isImageGenerationRequest } from '../modules/ai/ai.service.js';
+import {
+  AI_BOT_ID,
+  generateAIResponse,
+  generateSmartFallbackResponse,
+  isImageGenerationRequest,
+  isSummarizeRequest,
+  isCodeReviewRequest,
+} from '../modules/ai/ai.service.js';
 import { cacheGetMembers, cacheSetMembers } from './channelMemberCache.js';
 
 interface SendMessagePayload {
@@ -174,8 +181,10 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         // Direct chat with AI has memberUserIds containing AI_BOT_ID and length <= 2
         const isDMWithAI = memberUserIds.includes(AI_BOT_ID) && memberUserIds.length <= 2;
         const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
+        const isSummarize = content && isSummarizeRequest(content);
+        const isCodeReview = content && isCodeReviewRequest(content);
 
-        if (isDMWithAI || isAIMentioned) {
+        if (isDMWithAI || isAIMentioned || isSummarize || isCodeReview) {
           const isImageMode = isImageGenerationRequest(content);
           // ⚡ 1. Emit AI typing start IMMEDIATELY (<1ms) to channel
           io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId, mode: isImageMode ? 'image' : 'chat' });
@@ -184,31 +193,116 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
           (async () => {
             try {
               const senderName = socket.data.displayName || socket.data.username || 'Developer';
-              const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || (attachments && attachments.length > 0 ? 'Describe and analyze this image in detail.' : 'Hello AI');
+              let aiReplyText = '';
+              let aiAttachments: any[] = [];
 
-              // ⚡ Fetch lean recent conversation history (last 5 messages) for multi-turn context
-              let history: Array<{ role: 'user' | 'model'; text: string }> = [];
-              try {
-                const recentMessages = await prisma.message.findMany({
-                  where: { channelId },
+              if (isSummarize) {
+                // 📋 Feature 1: Channel Discussion Summarizer
+                const recentChannelMsgs = await prisma.message.findMany({
+                  where: { channelId, userId: { not: AI_BOT_ID } },
                   orderBy: { createdAt: 'desc' },
-                  take: 5,
-                  select: { content: true, userId: true },
+                  take: 30,
+                  include: { user: { select: { displayName: true, username: true } } },
                 });
-                history = recentMessages.reverse().slice(0, -1).map((m) => ({
-                  role: m.userId === AI_BOT_ID ? ('model' as const) : ('user' as const),
-                  text: m.content,
-                }));
-              } catch {
-                // proceed without history if query fails
+
+                const channelInfo = await prisma.channel.findUnique({
+                  where: { id: channelId },
+                  select: { name: true },
+                });
+                const chName = channelInfo?.name || 'channel';
+
+                if (recentChannelMsgs.length < 2) {
+                  aiReplyText = `Hey @${senderName}! 👋 Not enough recent messages in #${chName} to generate a summary yet. Chat with your team and run \`/summarize\` again! 💬`;
+                } else {
+                  const transcript = recentChannelMsgs
+                    .reverse()
+                    .map((m) => `${m.user.displayName || m.user.username}: ${m.content}`)
+                    .join('\n');
+
+                  const summaryPrompt = `You are DevChat AI Executive Summarizer.
+Analyze this developer team conversation from #${chName} and provide a crisp, executive summary for busy engineers:
+
+Transcript:
+${transcript}
+
+Structure your response with:
+## 📋 Channel Summary: #${chName}
+
+### 📌 Quick Overview
+1-2 concise sentences summarizing the discussion.
+
+### 💬 Key Discussion Points
+- Bullet points detailing topics discussed (mention participants where relevant).
+
+### 🎯 Decisions & Technical Consensus
+- What key architectural, code, or planning decisions were made?
+
+### ⚡ Action Items & Next Steps
+- [ ] Action items (with assignees if mentioned)`;
+
+                  const aiResult = await generateAIResponse(summaryPrompt, senderName, []);
+                  aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
+                }
+              } else if (isCodeReview) {
+                // 🔍 Feature 2: In-Depth Code Reviewer & Security Auditor
+                let rawCode = content
+                  .replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '')
+                  .replace(/^\/(?:review|audit|critique)\s*/i, '')
+                  .trim();
+
+                // If user just ran /review without inline code, check thread parent or previous message
+                if (!rawCode && parentId) {
+                  const parentMsg = await prisma.message.findUnique({
+                    where: { id: parentId },
+                    select: { content: true },
+                  });
+                  if (parentMsg?.content) rawCode = parentMsg.content;
+                }
+
+                if (!rawCode) {
+                  const prevMsg = await prisma.message.findFirst({
+                    where: { channelId, id: { not: instantMessage.id }, userId: { not: AI_BOT_ID } },
+                    orderBy: { createdAt: 'desc' },
+                    select: { content: true },
+                  });
+                  if (prevMsg?.content) rawCode = prevMsg.content;
+                }
+
+                const aiResult = await generateAIResponse(
+                  `/review ${rawCode}`,
+                  senderName,
+                  [],
+                  attachments as any
+                );
+                aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
+                aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
+              } else {
+                // 🎨 Feature 3: Conversational + Multimodal Vision (Screenshot-to-Code) + FLUX Image
+                const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || (attachments && attachments.length > 0 ? 'Describe and analyze this image in detail.' : 'Hello AI');
+
+                let history: Array<{ role: 'user' | 'model'; text: string }> = [];
+                try {
+                  const recentMessages = await prisma.message.findMany({
+                    where: { channelId },
+                    orderBy: { createdAt: 'desc' },
+                    take: 5,
+                    select: { content: true, userId: true },
+                  });
+                  history = recentMessages.reverse().slice(0, -1).map((m) => ({
+                    role: m.userId === AI_BOT_ID ? ('model' as const) : ('user' as const),
+                    text: m.content,
+                  }));
+                } catch {
+                  // proceed without history
+                }
+
+                const aiResult = await generateAIResponse(cleanPrompt, senderName, history, attachments as any);
+                aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
+                aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
               }
 
-              const aiResult = await generateAIResponse(cleanPrompt, senderName, history, attachments as any);
-              let aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
-              const aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
-
               if (!aiReplyText && (!aiAttachments || aiAttachments.length === 0)) {
-                aiReplyText = generateSmartFallbackResponse(cleanPrompt, senderName, Boolean(attachments && attachments.length > 0));
+                aiReplyText = generateSmartFallbackResponse(content, senderName, Boolean(attachments && attachments.length > 0));
               }
 
               // ⚡ 2. Instant broadcast to channel (0ms DB delay!)

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import * as messageService from './message.service.js';
 import { getIO } from '../../sockets/index.js';
 import { prisma } from '../../config/database.js';
-import { AI_BOT_ID, generateAIResponse } from '../ai/ai.service.js';
+import { AI_BOT_ID, generateAIResponse, isSummarizeRequest, isCodeReviewRequest } from '../ai/ai.service.js';
 import { logger } from '../../utils/logger.js';
 
 import { broadcastMessageToChannel, getChannelMemberUserIds } from '../../sockets/chatHandler.js';
@@ -31,23 +31,45 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
 
             const isDMWithAI = channel?.type === 'DIRECT' && channel.members.some((m) => m.userId === AI_BOT_ID);
             const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
+            const isSummarize = content && isSummarizeRequest(content);
+            const isCodeReview = content && isCodeReviewRequest(content);
 
-            if (isDMWithAI || isAIMentioned) {
+            if (isDMWithAI || isAIMentioned || isSummarize || isCodeReview) {
               const senderUser = await prisma.user.findUnique({ where: { id: senderUserId } });
               const senderName = senderUser?.displayName || senderUser?.username || 'Developer';
-              const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || (req.body.attachments && req.body.attachments.length > 0 ? 'Describe and analyze this image in detail.' : 'Hello AI');
-
-              const members = await prisma.channelMember.findMany({
-                where: { channelId },
-                select: { userId: true },
-              });
-
               io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId });
 
               try {
-                const aiResult = await generateAIResponse(cleanPrompt, senderName, [], req.body.attachments);
-                const aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
-                const aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
+                let aiReplyText = '';
+                let aiAttachments: any[] = [];
+
+                if (isSummarize) {
+                  const recentMsgs = await prisma.message.findMany({
+                    where: { channelId, userId: { not: AI_BOT_ID } },
+                    orderBy: { createdAt: 'desc' },
+                    take: 30,
+                    include: { user: { select: { displayName: true, username: true } } },
+                  });
+                  const chName = channel?.name || 'channel';
+                  if (recentMsgs.length < 2) {
+                    aiReplyText = `Hey @${senderName}! 👋 Not enough recent messages in #${chName} to generate a summary yet. Chat with your team and run \`/summarize\` again! 💬`;
+                  } else {
+                    const transcript = recentMsgs.reverse().map((m) => `${m.user.displayName || m.user.username}: ${m.content}`).join('\n');
+                    const summaryPrompt = `You are DevChat AI Executive Summarizer.\nAnalyze this developer conversation from #${chName} and provide a crisp executive summary:\n\n\`\`\`\n${transcript}\n\`\`\`\n\nStructure with:\n## 📋 Channel Summary: #${chName}\n\n### 📌 Quick Overview\n\n### 💬 Key Discussion Points\n\n### 🎯 Decisions & Technical Consensus\n\n### ⚡ Action Items & Next Steps`;
+                    const aiResult = await generateAIResponse(summaryPrompt, senderName, []);
+                    aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
+                  }
+                } else if (isCodeReview) {
+                  const rawCode = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').replace(/^\/(?:review|audit|critique)\s*/i, '').trim();
+                  const aiResult = await generateAIResponse(`/review ${rawCode}`, senderName, [], req.body.attachments);
+                  aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
+                  aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
+                } else {
+                  const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || (req.body.attachments && req.body.attachments.length > 0 ? 'Describe and analyze this image in detail.' : 'Hello AI');
+                  const aiResult = await generateAIResponse(cleanPrompt, senderName, [], req.body.attachments);
+                  aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
+                  aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
+                }
 
                 const aiMessage = await messageService.sendMessage(AI_BOT_ID, channelId, {
                   content: aiReplyText,
