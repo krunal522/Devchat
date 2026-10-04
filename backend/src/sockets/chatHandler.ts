@@ -183,8 +183,10 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
         const isAIMentioned = content && /@ai\b|@devchat_ai\b|@DevChat AI/i.test(content);
         const isSummarize = content && isSummarizeRequest(content);
         const isCodeReview = content && isCodeReviewRequest(content);
+        const isSlashCode = content && /^\/(?:code|ui|react)\b/i.test(content.trim());
+        const isSlashImage = content && isImageGenerationRequest(content);
 
-        if (isDMWithAI || isAIMentioned || isSummarize || isCodeReview) {
+        if (isDMWithAI || isAIMentioned || isSummarize || isCodeReview || isSlashCode || isSlashImage) {
           const isImageMode = isImageGenerationRequest(content);
           // ⚡ 1. Emit AI typing start IMMEDIATELY (<1ms) to channel
           io.to(`channel:${channelId}`).emit('ai:typing:start', { channelId, mode: isImageMode ? 'image' : 'chat' });
@@ -276,6 +278,26 @@ Structure your response with:
                 );
                 aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
                 aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
+              } else if (isSlashCode) {
+                // 💻 Feature 3: Screenshot-to-Code or Prompt-to-Code Generator
+                const rawPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').replace(/^\/(?:code|ui|react)\s*/i, '').trim();
+                const hasImages = attachments && attachments.length > 0;
+
+                if (!hasImages && !rawPrompt) {
+                  aiReplyText = `Hey @${senderName}! 💻 To generate code, you can:
+1. **Attach a UI screenshot / mockup** and type \`/code\` (Vision AI will convert the screenshot into React + CSS)
+2. Or describe what you want: e.g. \`/code modern responsive navbar in React + Tailwind\``;
+                } else {
+                  const effectiveVisionPrompt = rawPrompt || 'Convert this UI screenshot into a production-ready React component.';
+                  const aiResult = await generateAIResponse(
+                    `/code ${effectiveVisionPrompt}`,
+                    senderName,
+                    [],
+                    attachments as any
+                  );
+                  aiReplyText = typeof aiResult === 'string' ? aiResult : aiResult.text;
+                  aiAttachments = typeof aiResult === 'string' ? [] : (aiResult.attachments || []);
+                }
               } else {
                 // 🎨 Feature 3: Conversational + Multimodal Vision (Screenshot-to-Code) + FLUX Image
                 const cleanPrompt = content.replace(/@ai\b|@devchat_ai\b|@DevChat AI/gi, '').trim() || (attachments && attachments.length > 0 ? 'Describe and analyze this image in detail.' : 'Hello AI');
