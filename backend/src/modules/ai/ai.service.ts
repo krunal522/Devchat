@@ -54,18 +54,18 @@ Personality: Professional, direct, helpful, friendly.`;
 
 // Active ultra-fast models on Google Gemini API
 const FAST_REST_MODELS = [
-  { model: 'gemini-3.1-flash-lite', budget: 0 },
-  { model: 'gemini-3.7-flash', budget: 0 },
+  { model: 'gemini-3.8-flash', budget: 0 },
   { model: 'gemini-flash-latest', budget: 0 },
-  { model: 'gemini-3.1-flash-lite', budget: undefined },
-  { model: 'gemini-3.6-flash', budget: undefined },
+  { model: 'gemini-3.1-flash-lite', budget: 0 },
+  { model: 'gemini-3.8-flash', budget: undefined },
+  { model: 'gemini-3.7-flash', budget: undefined },
 ];
 
 const SDK_MODELS = [
+  'gemini-3.8-flash',
+  'gemini-flash-latest',
   'gemini-3.1-flash-lite',
   'gemini-3.7-flash',
-  'gemini-flash-latest',
-  'gemini-3.6-flash',
 ];
 
 export interface ChatHistoryMessage {
@@ -217,7 +217,7 @@ async function planMetaAiImage(userPrompt: string, userName: string): Promise<Me
   const cleanKey = env.GEMINI_API_KEY?.trim();
   if (cleanKey) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${cleanKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${cleanKey}`;
       const payload = {
         contents: [
           {
