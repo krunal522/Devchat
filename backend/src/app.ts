@@ -97,6 +97,7 @@ app.use('/api', apiLimiter);
 // ─── Health Check ───────────────────────────────────────
 app.get(['/health', '/api/health'], (_req, res) => {
   const k = (env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '').trim();
+  const hf = (env.HUGGINGFACE_API_KEY || process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || '').trim();
   res.json({
     success: true,
     data: {
@@ -106,6 +107,8 @@ app.get(['/health', '/api/health'], (_req, res) => {
       environment: env.NODE_ENV,
       hasGeminiKey: Boolean(k),
       geminiKeyPrefix: k ? `${k.substring(0, 7)}...${k.slice(-4)}` : 'MISSING',
+      hasHfKey: Boolean(hf),
+      imageEngine: hf ? 'Black Forest Labs FLUX.1 (Ultra-HD)' : 'Pollinations AI (Free Tier)',
     },
   });
 });
