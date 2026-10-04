@@ -96,6 +96,7 @@ app.use('/api', apiLimiter);
 
 // ─── Health Check ───────────────────────────────────────
 app.get(['/health', '/api/health'], (_req, res) => {
+  const k = (env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '').trim();
   res.json({
     success: true,
     data: {
@@ -103,6 +104,8 @@ app.get(['/health', '/api/health'], (_req, res) => {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: env.NODE_ENV,
+      hasGeminiKey: Boolean(k),
+      geminiKeyPrefix: k ? `${k.substring(0, 7)}...${k.slice(-4)}` : 'MISSING',
     },
   });
 });

@@ -52,20 +52,22 @@ Your responsibilities:
 
 Personality: Professional, direct, helpful, friendly.`;
 
-// Active ultra-fast models on Google Gemini API
+// Active ultra-fast models on Google Gemini API (with resilient failover)
 const FAST_REST_MODELS = [
+  { model: 'gemini-3.1-flash-lite', budget: 0 },
+  { model: 'gemini-flash-lite-latest', budget: 0 },
+  { model: 'gemini-3.5-flash', budget: 0 },
   { model: 'gemini-3.8-flash', budget: 0 },
   { model: 'gemini-flash-latest', budget: 0 },
-  { model: 'gemini-3.1-flash-lite', budget: 0 },
-  { model: 'gemini-3.8-flash', budget: undefined },
-  { model: 'gemini-3.7-flash', budget: undefined },
+  { model: 'gemini-3.1-flash-lite', budget: undefined },
 ];
 
 const SDK_MODELS = [
+  'gemini-3.1-flash-lite',
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash',
   'gemini-3.8-flash',
   'gemini-flash-latest',
-  'gemini-3.1-flash-lite',
-  'gemini-3.7-flash',
 ];
 
 export interface ChatHistoryMessage {
@@ -655,9 +657,6 @@ async function callGeminiRest(
 
       if (!response.ok) {
         const errText = await response.text();
-        if (response.status === 429 || errText.includes('quota') || errText.includes('RESOURCE_EXHAUSTED')) {
-          throw new Error('RESOURCE_EXHAUSTED');
-        }
         logger.warn(`REST model ${item.model} returned ${response.status}: ${errText.substring(0, 100)}`);
         continue;
       }
@@ -668,7 +667,6 @@ async function callGeminiRest(
         return text.trim();
       }
     } catch (err: any) {
-      if (err?.message === 'RESOURCE_EXHAUSTED') throw err;
       logger.warn(`REST error for ${item.model}: ${err?.message || err}`);
     }
   }
@@ -767,10 +765,16 @@ export async function generateAIResponse(
     }
   }
 
-  // Build list of all configured keys (filter empty)
-  const keys = [env.GEMINI_API_KEY, env.GEMINI_API_KEY_2].filter(
-    (k): k is string => !!k && k.trim() !== ''
-  );
+  // Build list of all configured keys (filter empty & deduplicate)
+  const rawKeys = [
+    env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY,
+    env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_2,
+  ];
+  const keys = rawKeys
+    .map((k) => k?.trim() || '')
+    .filter((k, idx, arr): k is string => !!k && arr.indexOf(k) === idx);
 
   if (keys.length === 0) {
     logger.warn('No GEMINI_API_KEY configured — generating smart context response');
