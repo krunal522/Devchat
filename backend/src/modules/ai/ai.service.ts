@@ -266,7 +266,7 @@ Your tasks:
 1. Identify the exact subject the user wants (e.g. portraits, people, user avatars, luxury cars, animals, anime, landscapes, architecture, cyberpunk cities, 3D art, fantasy, product design).
 Note: Resolve phonetic and Hinglish typos (e.g. "oodi" -> Audi, "farari" -> Ferrari, "marcediz" -> Mercedes) to real luxury car brands!
 2. Translate & craft an ultra-detailed, photorealistic, cinematic prompt in English for Black Forest Labs FLUX.1 (including camera lens, lighting, atmospheric details, composition, 8k resolution, photorealistic, sharp focus, no watermarks, lifelike textures).
-3. If it's a luxury car (like Audi, BMW, Porsche): explicitly describe the dynamic 3/4 front-side angle studio shot showing the iconic brand emblems (e.g. four interlocking chrome rings on front honeycomb grille for Audi), sharp Matrix LED headlights, side profile curves, sports alloy rims, red brake calipers, and reflections on dark studio floor. Never use a flat straight-on view.
+3. If it's a luxury car (like Audi, BMW, Porsche): explicitly describe the dynamic 3/4 front-side angle studio shot showing the iconic brand emblems (e.g. four interlocking chrome rings on front honeycomb grille for Audi), sharp Matrix LED headlights, side profile curves, sports alloy rims, red brake calipers, front license plate clearly displaying the embossed bold text "R8 V10" (or any user requested name in quotes), and reflections on dark studio floor. Never use a flat straight-on view or blank plate.
 CRITICAL FOR TECH & BRAND LOGOS (e.g. React, React Native, Python, JavaScript, Docker, Flutter, Android, Apple, Node.js):
 - You MUST preserve and explicitly describe the EXACT REAL-WORLD ICONIC SHAPE, GEOMETRY, AND OFFICIAL COLOR CODES!
 - For React / React Native: Describe the "official iconic cyan blue (#61DAFB) atom symbol with three intersecting elliptical orbital rings and central circular nucleus dot on clean dark background".
@@ -387,9 +387,12 @@ Respond ONLY with valid JSON (no markdown ticks or extra text):
       : ['Dramatic studio lighting black and white portrait', 'Golden hour natural sunlight outdoor shot', 'Cyberpunk neon backlight aesthetic'];
   } else if (isCar) {
     const isAudi = /\baudi\b/i.test(rawSubject);
+    const quotedMatch = userPrompt.match(/["']([^"']+)["']/);
+    const plateText = quotedMatch ? quotedMatch[1] : (isAudi ? 'R8 V10' : '');
+    const plateInstruction = plateText ? `, front license plate clearly displaying the embossed bold text "${plateText}"` : '';
     const carSubject = isAudi
-      ? `${rawSubject}, luxury Audi sports supercar, dynamic 3/4 side angle studio shot, glossy metallic black finish, red brake calipers, sharp angular Matrix LED headlights, signature honeycomb front grille with iconic 4 interlocking chrome rings emblem, reflections on dark studio floor`
-      : `${rawSubject}, dynamic 3/4 front-side angle studio automotive photography, glossy metallic body, sharp headlights, aerodynamic contours, studio reflections`;
+      ? `${rawSubject}, luxury Audi sports supercar, dynamic 3/4 side angle studio shot, glossy metallic black finish, red brake calipers, sharp angular Matrix LED headlights, signature honeycomb front grille with iconic 4 interlocking chrome rings emblem${plateInstruction}, reflections on dark studio floor`
+      : `${rawSubject}, dynamic 3/4 front-side angle studio automotive photography, glossy metallic body, sharp headlights, aerodynamic contours${plateInstruction}, studio reflections`;
     enhancedPrompt = `Masterpiece automotive commercial photography of ${carSubject}, shot on 35mm lens, dramatic dark studio rim lighting, 8k resolution, photorealistic, cinematic masterpiece, highly detailed`;
     metaAiFollowUps = isHindi
       ? ['Night city neon lights reflection shot', 'Track race high-speed action shot with motion blur', 'Luxury showroom studio presentation']
